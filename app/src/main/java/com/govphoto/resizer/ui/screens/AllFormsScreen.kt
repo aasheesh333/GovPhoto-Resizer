@@ -78,7 +78,7 @@ fun AllFormsScreen(
                         .padding(bottom = 16.dp)
                 )
                 
-                HorizontalDivider(color = DividerLight)
+                Divider(color = DividerLight)
             }
         },
         bottomBar = {
@@ -313,7 +313,7 @@ private fun FormListItem(
                 tint = TextSecondaryLight
             )
         }
-        HorizontalDivider(
+        Divider(
             modifier = Modifier.padding(start = 80.dp),
             color = DividerLight
         )
