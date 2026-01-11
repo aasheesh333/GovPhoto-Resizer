@@ -53,9 +53,12 @@ fun EditPhotoScreen(
     val backgroundColor by sharedViewModel.backgroundColor.collectAsState()
     val compressionQuality by sharedViewModel.compressionQuality.collectAsState()
     val fileSizeKb by sharedViewModel.fileSizeKb.collectAsState()
+    val selectedPreset by sharedViewModel.selectedPreset.collectAsState()
     
     // Dynamic aspect ratio from preset
     val aspectRatio = sharedViewModel.aspectRatio
+    val format = selectedPreset?.format?.uppercase() ?: "JPG"
+    val maxSize = selectedPreset?.maxFileSizeKb ?: 500
     
     // Local UI state
     var selectedBackground by remember { mutableStateOf(BackgroundOption.WHITE) }
@@ -204,7 +207,9 @@ fun EditPhotoScreen(
             CompressionControl(
                 value = compressionValue,
                 onValueChange = { compressionValue = it },
-                estimatedSize = fileSizeKb
+                estimatedSize = fileSizeKb,
+                format = format,
+                maxSize = maxSize
             )
             
             Spacer(modifier = Modifier.height(100.dp))
@@ -531,7 +536,9 @@ private fun BackgroundOptionItem(
 private fun CompressionControl(
     value: Float,
     onValueChange: (Float) -> Unit,
-    estimatedSize: Int
+    estimatedSize: Int,
+    format: String,
+    maxSize: Int
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -539,13 +546,28 @@ private fun CompressionControl(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = stringResource(R.string.compression),
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold
-                ),
-                color = MaterialTheme.colorScheme.onBackground
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = stringResource(R.string.compression),
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = Primary.copy(alpha = 0.1f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Primary.copy(alpha = 0.5f))
+                ) {
+                    Text(
+                        text = format,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = Primary,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                    )
+                }
+            }
             Surface(
                 shape = RoundedCornerShape(24.dp),
                 color = IndiaGreen.copy(alpha = 0.1f)
@@ -624,12 +646,12 @@ private fun CompressionControl(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "20KB",
+                        text = "10KB",
                         style = MaterialTheme.typography.labelMedium,
                         color = TextSecondaryLight
                     )
                     Text(
-                        text = "200KB",
+                        text = "${maxSize}KB",
                         style = MaterialTheme.typography.labelMedium,
                         color = TextSecondaryLight
                     )

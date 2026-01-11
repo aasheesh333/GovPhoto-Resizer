@@ -163,10 +163,14 @@ class SharedPhotoViewModel @Inject constructor(
     /**
      * Save the processed photo to Gallery using MediaStore
      */
+    /**
+     * Save the processed photo to Gallery using MediaStore
+     * STRICTLY enforces file size limit and format.
+     */
     suspend fun savePhotoToGallery(): Result<Uri> {
         return withContext(Dispatchers.IO) {
             try {
-                // Get the bitmap to save (either captured or loaded from URI)
+                // Get the bitmap to save
                 val originalBitmap = _capturedBitmap.value ?: run {
                     _selectedImageUri.value?.let { uri ->
                         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
@@ -185,28 +189,73 @@ class SharedPhotoViewModel @Inject constructor(
                     return@withContext Result.failure(Exception("No image to save"))
                 }
 
-                // 1. Resize/Crop (Simplified: Just scaling to target dimensions for now)
-                // Real app would implement actual cropping based on UI coordinates
-                val scaledBitmap = Bitmap.createScaledBitmap(
-                    originalBitmap,
-                    targetWidth,
-                    targetHeight,
-                    true
-                )
+                // Target dimensions
+                var targetW = targetWidth
+                var targetH = targetHeight
                 
-                // 2. Compress
+                // Target Format
+                val format = _selectedPreset.value?.format?.lowercase() ?: "jpg"
+                val compressFormat = if (format == "png") {
+                    Bitmap.CompressFormat.PNG
+                } else {
+                    Bitmap.CompressFormat.JPEG
+                }
+                
+                // Target File Size
+                val maxFileSizeBytes = (_selectedPreset.value?.maxFileSizeKb ?: 500) * 1024
+                
+                // Iterative Compression & Resizing Loop
+                var quality = (_compressionQuality.value * 100).toInt()
                 val outputStream = ByteArrayOutputStream()
-                val qualityInt = (_compressionQuality.value * 100).toInt()
-                scaledBitmap.compress(Bitmap.CompressFormat.JPEG, qualityInt, outputStream)
+                var attempts = 0
+                val maxAttempts = 15 // Prevent infinite loops
+                
+                var currentBitmap = Bitmap.createScaledBitmap(originalBitmap, targetW, targetH, true)
+                
+                while (attempts < maxAttempts) {
+                    outputStream.reset()
+                    currentBitmap.compress(compressFormat, quality, outputStream)
+                    
+                    val currentSize = outputStream.size()
+                    
+                    if (currentSize <= maxFileSizeBytes) {
+                        break // Success!
+                    }
+                    
+                    // Size exceeded, need to reduce
+                    attempts++
+                    
+                    if (format == "png") {
+                        // PNG is lossless, quality param deals with filter/compression level but usually doesn't reduce size much.
+                        // We must reduce dimensions for PNG if size is too big.
+                        targetW = (targetW * 0.9f).toInt()
+                        targetH = (targetH * 0.9f).toInt()
+                        currentBitmap = Bitmap.createScaledBitmap(originalBitmap, targetW, targetH, true)
+                    } else {
+                        // JPG: Reduce quality first, then dimensions if quality gets too low
+                        if (quality > 10) {
+                            quality -= 5 // Reduce quality by 5%
+                        } else {
+                            // Quality already very low, start reducing dimensions
+                            targetW = (targetW * 0.9f).toInt()
+                            targetH = (targetH * 0.9f).toInt()
+                            currentBitmap = Bitmap.createScaledBitmap(originalBitmap, targetW, targetH, true)
+                        }
+                    }
+                }
+                
                 val imageBytes = outputStream.toByteArray()
                 
-                // 3. Save to MediaStore
-                val filename = "GovPhoto_${System.currentTimeMillis()}.jpg"
+                // Save to MediaStore
+                val extension = if (format == "png") "png" else "jpg"
+                val mimeType = if (format == "png") "image/png" else "image/jpeg"
+                val filename = "GovPhoto_${System.currentTimeMillis()}.$extension"
+                
                 val contentValues = ContentValues().apply {
                     put(MediaStore.Images.Media.DISPLAY_NAME, filename)
-                    put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-                    put(MediaStore.Images.Media.WIDTH, targetWidth)
-                    put(MediaStore.Images.Media.HEIGHT, targetHeight)
+                    put(MediaStore.Images.Media.MIME_TYPE, mimeType)
+                    put(MediaStore.Images.Media.WIDTH, targetW)
+                    put(MediaStore.Images.Media.HEIGHT, targetH)
                     put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/GovPhoto Resizer")
                 }
                 
@@ -219,7 +268,10 @@ class SharedPhotoViewModel @Inject constructor(
                     stream.write(imageBytes)
                 }
                 
+                // Update final size
+                _fileSizeKb.value = imageBytes.size / 1024
                 _processedImageUri.value = imageUri
+                
                 Result.success(imageUri)
                 
             } catch (e: Exception) {

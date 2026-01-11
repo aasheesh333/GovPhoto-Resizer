@@ -39,6 +39,9 @@ data class PhotoPreset(
     
     @SerializedName("min_file_size_kb")
     val minFileSizeKb: Int? = null,
+
+    @SerializedName("format")
+    val format: String = "jpg", // "jpg" or "png"
     
     @SerializedName("background_color")
     val backgroundColor: String = "#FFFFFF",
