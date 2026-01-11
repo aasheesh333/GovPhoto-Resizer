@@ -1,7 +1,9 @@
 package com.govphoto.resizer.ui.screens
 
+import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -26,29 +28,47 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.govphoto.resizer.R
+import com.govphoto.resizer.data.model.PhotoPreset
 import com.govphoto.resizer.ui.theme.*
 import com.govphoto.resizer.ui.viewmodel.BackgroundColor
 import com.govphoto.resizer.ui.viewmodel.SharedPhotoViewModel
+import kotlinx.coroutines.launch
 
 /**
  * Preview & Validation Screen - Shows processed photo with validation checklist.
+ * Handles Saving and Sharing of the final image.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PreviewValidationScreen(
     sharedViewModel: SharedPhotoViewModel,
     onNavigateBack: () -> Unit,
-    onSaveComplete: () -> Unit,
+    onSaveComplete: () -> Unit, // This now just navigates home
     onRetakeEdit: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    
     val selectedImageUri by sharedViewModel.selectedImageUri.collectAsState()
     val capturedBitmap by sharedViewModel.capturedBitmap.collectAsState()
     val backgroundColor by sharedViewModel.backgroundColor.collectAsState()
     val fileSizeKb by sharedViewModel.fileSizeKb.collectAsState()
     val presetName by sharedViewModel.selectedPresetName.collectAsState()
+    val selectedPreset by sharedViewModel.selectedPreset.collectAsState()
+    val processedImageUri by sharedViewModel.processedImageUri.collectAsState()
     
     var selectedTab by remember { mutableIntStateOf(1) } // 0 = Original, 1 = Processed
+    var isSaving by remember { mutableStateOf(false) }
+    
+    // Function to handle sharing
+    fun shareImage(uri: Uri) {
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "image/jpeg"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(Intent.createChooser(shareIntent, "Share Photo"))
+    }
     
     Scaffold(
         topBar = {
@@ -84,7 +104,18 @@ fun PreviewValidationScreen(
                             color = TextSecondaryLight
                         )
                     }
-                    Spacer(modifier = Modifier.size(48.dp))
+                    // Share Button (Visible if processed image exists)
+                    if (processedImageUri != null) {
+                        IconButton(onClick = { shareImage(processedImageUri!!) }) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Share",
+                                tint = Primary
+                            )
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.size(48.dp))
+                    }
                 }
                 
                 // Progress Indicator
@@ -122,7 +153,22 @@ fun PreviewValidationScreen(
                 ) {
                     // Save Button
                     Button(
-                        onClick = onSaveComplete,
+                        onClick = {
+                            if (!isSaving) {
+                                isSaving = true
+                                scope.launch {
+                                    val result = sharedViewModel.savePhotoToGallery()
+                                    isSaving = false
+                                    result.onSuccess {
+                                        Toast.makeText(context, "Photo saved to Gallery!", Toast.LENGTH_SHORT).show()
+                                        onSaveComplete()
+                                    }.onFailure {
+                                        Toast.makeText(context, "Failed to save: ${it.message}", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            }
+                        },
+                        enabled = !isSaving,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
@@ -134,20 +180,28 @@ fun PreviewValidationScreen(
                             defaultElevation = 4.dp
                         )
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.SaveAlt,
-                            contentDescription = null,
-                            tint = Primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.save_photo),
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = Primary
-                        )
+                        if (isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = Primary,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.SaveAlt,
+                                contentDescription = null,
+                                tint = Primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(R.string.save_photo),
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                color = Primary
+                            )
+                        }
                     }
                     
                     // Retake/Edit Button
@@ -193,16 +247,17 @@ fun PreviewValidationScreen(
                 onTabSelected = { selectedTab = it }
             )
             
-            // Preview Card with actual image
+            // Preview Card
             PreviewCard(
                 imageUri = selectedImageUri,
                 bitmap = capturedBitmap,
                 backgroundColor = backgroundColor,
-                fileSizeKb = fileSizeKb
+                fileSizeKb = fileSizeKb,
+                preset = selectedPreset
             )
             
             // Validation Checklist
-            ValidationChecklist()
+            ValidationChecklist(fileSizeKb = fileSizeKb, preset = selectedPreset)
             
             Spacer(modifier = Modifier.height(100.dp))
         }
@@ -261,9 +316,11 @@ private fun PreviewCard(
     imageUri: Uri?,
     bitmap: Bitmap?,
     backgroundColor: BackgroundColor,
-    fileSizeKb: Int
+    fileSizeKb: Int,
+    preset: PhotoPreset?
 ) {
     val context = LocalContext.current
+    val aspectRatio = preset?.getAspectRatio() ?: 0.8f
     
     val bgColor = when (backgroundColor) {
         BackgroundColor.WHITE -> Color.White
@@ -280,45 +337,53 @@ private fun PreviewCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
-            // Photo Preview
+            // Photo Preview container
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(0.8f)
-                    .background(bgColor),
+                    .padding(24.dp),
                 contentAlignment = Alignment.Center
             ) {
-                if (imageUri != null) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(imageUri)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = "Preview photo",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else if (bitmap != null) {
-                    androidx.compose.foundation.Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = "Preview photo",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        tint = Color.Gray,
-                        modifier = Modifier.size(80.dp)
-                    )
+                // Actual Photo Box with dynamic aspect ratio
+                Box(
+                    modifier = Modifier
+                        .width(200.dp) // Fixed width basis
+                        .aspectRatio(aspectRatio) // Dynamic height based on ratio
+                        .background(bgColor)
+                        .border(1.dp, BorderLight),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (imageUri != null) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(imageUri)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Preview photo",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else if (bitmap != null) {
+                        androidx.compose.foundation.Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = "Preview photo",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(80.dp)
+                        )
+                    }
                 }
                 
                 // Valid Badge
                 Surface(
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(12.dp),
+                        .align(Alignment.TopEnd),
                     shape = RoundedCornerShape(24.dp),
                     color = Color.White,
                     shadowElevation = 4.dp
@@ -346,6 +411,7 @@ private fun PreviewCard(
             }
             
             // Info Row
+            Divider(color = DividerLight)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -362,13 +428,7 @@ private fun PreviewCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Passport Size • ${
-                            when (backgroundColor) {
-                                BackgroundColor.WHITE -> "White"
-                                BackgroundColor.LIGHT_BLUE -> "Light Blue"
-                                BackgroundColor.TRANSPARENT -> "Transparent"
-                            }
-                        } Background",
+                        text = preset?.getFormattedDimensions() ?: "Custom Size",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondaryLight
                     )
@@ -392,7 +452,9 @@ private fun PreviewCard(
 }
 
 @Composable
-private fun ValidationChecklist() {
+private fun ValidationChecklist(fileSizeKb: Int, preset: PhotoPreset?) {
+    val isSizeValid = fileSizeKb <= (preset?.maxFileSizeKb ?: 500)
+    
     Column {
         Text(
             text = stringResource(R.string.validation_checklist),
@@ -413,45 +475,47 @@ private fun ValidationChecklist() {
             ValidationItem(
                 icon = Icons.Default.AspectRatio,
                 title = stringResource(R.string.correct_dimensions),
-                description = "Cropped to 600x600px (2x2\")",
+                description = "Cropped to ${preset?.getFormattedDimensions() ?: "standard size"}",
                 isSuccess = true
             )
             ValidationItem(
                 icon = Icons.Default.CloudDownload,
-                title = stringResource(R.string.file_size_ok),
-                description = "Optimized for upload (< 240KB)",
-                isSuccess = true
+                title = if (isSizeValid) stringResource(R.string.file_size_ok) else "File Size Warning",
+                description = "Optimized for upload (< ${preset?.maxFileSizeKb ?: 500}KB)",
+                isSuccess = isSizeValid
             )
         }
         
         // Success Info Note
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = SuccessLight
-            )
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+        if (isSizeValid) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = SuccessLight
+                )
             ) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = null,
-                    tint = Success,
-                    modifier = Modifier.size(24.dp)
-                )
-                Text(
-                    text = stringResource(R.string.photo_meets_requirements),
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = FontWeight.Medium
-                    ),
-                    color = Success
-                )
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = Success,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.photo_meets_requirements),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = Success
+                    )
+                }
             }
         }
     }
@@ -481,7 +545,7 @@ private fun ValidationItem(
                     .width(4.dp)
                     .height(72.dp)
                     .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
-                    .background(if (isSuccess) Success else Error)
+                    .background(if (isSuccess) Success else Warning)
             )
             
             Row(
@@ -495,13 +559,13 @@ private fun ValidationItem(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .background(if (isSuccess) SuccessLight else ErrorLight),
+                        .background(if (isSuccess) SuccessLight else WarningLight),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = if (isSuccess) Success else Error,
+                        tint = if (isSuccess) Success else Warning,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -522,9 +586,9 @@ private fun ValidationItem(
                 }
                 
                 Icon(
-                    imageVector = if (isSuccess) Icons.Default.CheckCircle else Icons.Default.Error,
+                    imageVector = if (isSuccess) Icons.Default.CheckCircle else Icons.Default.Warning,
                     contentDescription = null,
-                    tint = if (isSuccess) Success else Error,
+                    tint = if (isSuccess) Success else Warning,
                     modifier = Modifier.size(24.dp)
                 )
             }

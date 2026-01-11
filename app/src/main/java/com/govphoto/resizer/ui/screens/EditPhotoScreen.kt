@@ -52,11 +52,14 @@ fun EditPhotoScreen(
     val capturedBitmap by sharedViewModel.capturedBitmap.collectAsState()
     val backgroundColor by sharedViewModel.backgroundColor.collectAsState()
     val compressionQuality by sharedViewModel.compressionQuality.collectAsState()
+    val fileSizeKb by sharedViewModel.fileSizeKb.collectAsState()
+    
+    // Dynamic aspect ratio from preset
+    val aspectRatio = sharedViewModel.aspectRatio
     
     // Local UI state
     var selectedBackground by remember { mutableStateOf(BackgroundOption.WHITE) }
     var compressionValue by remember { mutableFloatStateOf(compressionQuality) }
-    val estimatedSize = (20 + (180 * compressionValue)).toInt()
     
     // Image transformation state
     var scale by remember { mutableFloatStateOf(1f) }
@@ -77,7 +80,6 @@ fun EditPhotoScreen(
     // Sync compression with ViewModel
     LaunchedEffect(compressionValue) {
         sharedViewModel.setCompressionQuality(compressionValue)
-        sharedViewModel.setFileSizeKb(estimatedSize)
     }
     
     Scaffold(
@@ -159,11 +161,12 @@ fun EditPhotoScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Photo Preview with actual image
+            // Photo Preview with actual image and dynamic aspect ratio
             PhotoPreviewWithImage(
                 imageUri = selectedImageUri,
                 bitmap = capturedBitmap,
                 backgroundColor = selectedBackground,
+                aspectRatio = aspectRatio,
                 scale = scale,
                 offsetX = offsetX,
                 offsetY = offsetY,
@@ -201,7 +204,7 @@ fun EditPhotoScreen(
             CompressionControl(
                 value = compressionValue,
                 onValueChange = { compressionValue = it },
-                estimatedSize = estimatedSize
+                estimatedSize = fileSizeKb
             )
             
             Spacer(modifier = Modifier.height(100.dp))
@@ -214,6 +217,7 @@ private fun PhotoPreviewWithImage(
     imageUri: Uri?,
     bitmap: Bitmap?,
     backgroundColor: BackgroundOption,
+    aspectRatio: Float,
     scale: Float,
     offsetX: Float,
     offsetY: Float,
@@ -225,7 +229,7 @@ private fun PhotoPreviewWithImage(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(0.8f)
+            .aspectRatio(aspectRatio) // Use dynamic aspect ratio
             .clip(RoundedCornerShape(16.dp))
             .border(2.dp, BorderLight, RoundedCornerShape(16.dp)),
         contentAlignment = Alignment.Center

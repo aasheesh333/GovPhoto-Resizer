@@ -330,24 +330,24 @@ private data class PresetItem(
 
 private val identityCardsPresets = listOf(
     PresetItem("aadhaar", "Aadhaar Card", "3.5cm x 4.5cm", Icons.Default.Fingerprint),
-    PresetItem("pan", "PAN Card", "2.5cm x 3.5cm", Icons.Default.CreditCard),
+    PresetItem("pan_card", "PAN Card", "2.5cm x 3.5cm", Icons.Default.CreditCard),
     PresetItem("voter_id", "Voter ID", "3.5cm x 4.5cm", Icons.Default.HowToVote)
 )
 
 private val travelVisasPresets = listOf(
     PresetItem("passport", "Indian Passport", "2in x 2in (51mm x 51mm)", Icons.Default.Book),
-    PresetItem("schengen", "Schengen Visa", "35mm x 45mm", Icons.Default.Public),
+    PresetItem("schengen_visa", "Schengen Visa", "35mm x 45mm", Icons.Default.Public),
     PresetItem("us_visa", "US Visa", "2in x 2in (Digital)", Icons.Default.FlightTakeoff)
 )
 
 private val jobExamsPresets = listOf(
-    PresetItem("upsc", "UPSC Civil Services", "3.5cm x 4.5cm", Icons.Default.AccountBalance),
+    PresetItem("upsc_cse", "UPSC Civil Services", "3.5cm x 4.5cm", Icons.Default.AccountBalance),
     PresetItem("ssc_cgl", "SSC CGL", "3.5cm x 4.5cm", Icons.Default.Work),
-    PresetItem("ibps", "IBPS Banking", "4.5cm x 3.5cm", Icons.Default.AccountBalanceWallet),
-    PresetItem("railway", "Railway RRB", "3.5cm x 4.5cm", Icons.Default.Train)
+    PresetItem("ibps_po", "IBPS PO", "4.5cm x 3.5cm", Icons.Default.AccountBalanceWallet),
+    PresetItem("rrb_ntpc", "Railway RRB NTPC", "3.5cm x 4.5cm", Icons.Default.Train)
 )
 
 private val educationPresets = listOf(
-    PresetItem("cbse", "CBSE Admit Card", "Passport Size", Icons.Default.School),
-    PresetItem("jee", "JEE Main", "10KB - 200KB (JPG)", Icons.Default.EditNote)
+    PresetItem("ctet", "CTET", "3.5cm x 4.5cm", Icons.Default.School),
+    PresetItem("ugc_net", "UGC NET", "10KB - 200KB (JPG)", Icons.Default.EditNote)
 )
