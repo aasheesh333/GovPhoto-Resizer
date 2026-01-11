@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Edit Photo &amp; Background</title>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0b3b5b",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#111b21",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans", "sans-serif"],
+                        "sans": ["Public Sans", "sans-serif"],
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.375rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom slider styling for webkit/moz consistency */
+        input[type=range] {
+            -webkit-appearance: none; /* Hides the slider so that custom slider can be made */
+            width: 100%; /* Specific width is required for Firefox. */
+            background: transparent; /* Otherwise white in Chrome */
+        }
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #0b3b5b;
+            cursor: pointer;
+            margin-top: -10px; /* You need to specify a margin in Chrome, but in Firefox and IE it is automatic */
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+        input[type=range]::-moz-range-thumb {
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #0b3b5b;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+
+        input[type=range]::-moz-range-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+        
+        /* Grid pattern for transparent background */
+        .bg-checkerboard {
+            background-color: #fff;
+            background-image: linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%, #eee), 
+                              linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%, #eee);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white antialiased selection:bg-primary/20">
+<div class="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden max-w-md mx-auto bg-white dark:bg-[#1a2632] shadow-xl">
+<!-- Header -->
+<header class="flex items-center bg-primary p-4 sticky top-0 z-50 text-white shadow-md">
+<button aria-label="Go back" class="flex size-10 shrink-0 items-center justify-center hover:bg-white/10 rounded-full transition-colors">
+<span class="material-symbols-outlined text-white" style="font-size: 24px;">arrow_back_ios_new</span>
+</button>
+<h1 class="text-white text-lg font-bold leading-tight flex-1 text-center">Edit Photo</h1>
+<div class="flex w-10 items-center justify-end">
+<span class="text-white/80 text-sm font-medium">2/3</span>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col p-4 gap-6 pb-24">
+<!-- Photo Preview Area -->
+<section class="relative w-full flex flex-col items-center">
+<!-- Image Container with Grid -->
+<div class="relative w-full max-w-[300px] aspect-[4/5] rounded-2xl overflow-hidden shadow-lg bg-slate-200">
+<!-- Main Image -->
+<div class="absolute inset-0 bg-center bg-no-repeat bg-cover" data-alt="Portrait photo of a person for official document processing" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBt5MsTkmP0HycQJxufk0OnmUT_paNjr8D1GS2KfEm0iiD6qi--0FrWDdLkHmmpGgPbNnAaMsrMVprSGWmf4g1VujSMM0AwSwu9A2jaSgP-_VOQ5GEONqem-qrupDoWmOOAeJpzcPJzj-Uu8X3OF_7tW-rp62GIOlRGSMjjluShuznQm_y9cmFZX9uyLVp5YSO56SE0mEBVyoGslzS1PjFMpnp2mheRUdi7J3jYLGmFNgD0LHnThvrhdIcAC8wR6HAbzHjyxJ476f0L");'>
+</div>
+<!-- Alignment Grid Overlay -->
+<div class="absolute inset-0 pointer-events-none opacity-40">
+<!-- Rule of thirds lines -->
+<div class="w-full h-full grid grid-cols-3 grid-rows-3 border border-white/30">
+<div class="border-r border-b border-white/30"></div>
+<div class="border-r border-b border-white/30"></div>
+<div class="border-b border-white/30"></div>
+<div class="border-r border-b border-white/30"></div>
+<div class="border-r border-b border-white/30"></div>
+<div class="border-b border-white/30"></div>
+<div class="border-r border-white/30"></div>
+<div class="border-r border-white/30"></div>
+<div></div>
+</div>
+<!-- Face Oval Guide -->
+<svg class="absolute inset-0 w-full h-full" preserveaspectratio="none" viewbox="0 0 300 375">
+<ellipse cx="150" cy="160" fill="none" rx="90" ry="110" stroke="white" stroke-dasharray="8 4" stroke-width="2"></ellipse>
+<line stroke="white" stroke-dasharray="4 4" stroke-width="1" x1="150" x2="150" y1="50" y2="270"></line>
+<line stroke="white" stroke-dasharray="4 4" stroke-width="1" x1="100" x2="200" y1="160" y2="160"></line>
+</svg>
+</div>
+<!-- Floating Action Toolbar (Undo/Redo) -->
+<div class="absolute bottom-4 left-4 right-4 flex justify-between px-2">
+<button aria-label="Undo" class="flex items-center justify-center size-10 rounded-full bg-black/40 backdrop-blur-sm text-white hover:bg-black/60 transition-colors shadow-sm active:scale-95">
+<span class="material-symbols-outlined" style="font-size: 20px;">undo</span>
+</button>
+<button aria-label="Redo" class="flex items-center justify-center size-10 rounded-full bg-black/40 backdrop-blur-sm text-white hover:bg-black/60 transition-colors shadow-sm active:scale-95">
+<span class="material-symbols-outlined" style="font-size: 20px;">redo</span>
+</button>
+</div>
+</div>
+<p class="mt-3 text-xs text-slate-500 font-medium text-center">Align face within the dotted oval</p>
+</section>
+<!-- Background Tools -->
+<section class="flex flex-col gap-3">
+<h3 class="text-slate-800 dark:text-slate-100 text-lg font-bold leading-tight px-1">Background</h3>
+<div class="grid grid-cols-3 gap-3">
+<!-- Option 1: White -->
+<button class="group flex flex-col items-center gap-2 p-3 rounded-xl border-2 border-primary bg-primary/5 cursor-pointer relative overflow-hidden transition-all hover:shadow-md">
+<div class="absolute top-2 right-2 text-primary">
+<span class="material-symbols-outlined filled" style="font-size: 20px; font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="size-12 rounded-full bg-white border border-slate-200 shadow-sm grid place-items-center">
+<!-- Empty for white -->
+</div>
+<span class="text-sm font-bold text-primary">White</span>
+</button>
+<!-- Option 2: Light Blue -->
+<button class="group flex flex-col items-center gap-2 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer relative overflow-hidden transition-all hover:border-primary/50">
+<div class="size-12 rounded-full bg-[#d0e6f5] border border-slate-200 shadow-sm grid place-items-center">
+<!-- Blue Swatch -->
+</div>
+<span class="text-sm font-medium text-slate-600 dark:text-slate-300">Light Blue</span>
+</button>
+<!-- Option 3: Remove -->
+<button class="group flex flex-col items-center gap-2 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer relative overflow-hidden transition-all hover:border-primary/50">
+<div class="size-12 rounded-full bg-checkerboard border border-slate-200 shadow-sm grid place-items-center text-slate-400">
+<span class="material-symbols-outlined" style="font-size: 24px;">grid_off</span>
+</div>
+<span class="text-sm font-medium text-slate-600 dark:text-slate-300">Remove</span>
+</button>
+</div>
+</section>
+<!-- Compression / Size Control -->
+<section class="flex flex-col gap-4 pt-2">
+<div class="flex items-center justify-between px-1">
+<h3 class="text-slate-800 dark:text-slate-100 text-lg font-bold leading-tight">Compression</h3>
+<div class="bg-primary/10 px-3 py-1 rounded-full">
+<span class="text-primary font-bold text-sm">~ 45 KB</span>
+</div>
+</div>
+<div class="px-2 py-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
+<div class="flex flex-col gap-4">
+<div class="flex justify-between text-xs font-semibold text-slate-400 uppercase tracking-wider">
+<span>Quality</span>
+<span>Max Size</span>
+</div>
+<div class="relative w-full h-6 flex items-center">
+<input class="w-full z-20 focus:outline-none focus:ring-0" max="100" min="10" type="range" value="85"/>
+</div>
+<div class="flex justify-between text-xs text-slate-500 font-medium">
+<span>20KB</span>
+<span>200KB</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Fixed Footer Action -->
+<div class="fixed bottom-0 left-0 right-0 p-4 bg-white/90 dark:bg-[#1a2632]/90 backdrop-blur-md border-t border-slate-100 dark:border-slate-700 z-40 max-w-md mx-auto">
+<button class="w-full bg-primary hover:bg-[#082a41] text-white font-bold h-12 rounded-lg shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+<span>Continue to Save</span>
+<span class="material-symbols-outlined" style="font-size: 20px;">arrow_forward</span>
+</button>
+</div>
+</div>
+</body></html>

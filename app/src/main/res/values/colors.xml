@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary Colors -->
+    <color name="primary">#0B3B5B</color>
+    <color name="primary_dark">#082A41</color>
+    <color name="primary_light">#1985CC</color>
+    
+    <!-- India Theme Colors -->
+    <color name="india_green">#138808</color>
+    <color name="saffron">#FF9933</color>
+    <color name="india_white">#FFFFFF</color>
+    
+    <!-- Background Colors -->
+    <color name="background_light">#F6F7F8</color>
+    <color name="background_dark">#111B21</color>
+    <color name="surface_light">#FFFFFF</color>
+    <color name="surface_dark">#1F2C34</color>
+    
+    <!-- Text Colors -->
+    <color name="text_main_light">#111518</color>
+    <color name="text_main_dark">#E9EDEF</color>
+    <color name="text_secondary_light">#637988</color>
+    <color name="text_secondary_dark">#8696A0</color>
+    
+    <!-- Status Colors -->
+    <color name="success">#22C55E</color>
+    <color name="warning">#F59E0B</color>
+    <color name="error">#EF4444</color>
+    
+    <!-- Photo Background Colors -->
+    <color name="photo_bg_white">#FFFFFF</color>
+    <color name="photo_bg_light_blue">#D0E6F5</color>
+    
+    <!-- Splash Screen -->
+    <color name="splash_background">#0B3B5B</color>
+</resources>

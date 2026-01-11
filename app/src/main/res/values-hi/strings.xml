@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GovPhoto Resizer</string>
+    <string name="app_tagline">सभी सरकारी फॉर्म के लिए फोटो रीसाइज़ करें</string>
+    <string name="security_note">बिना अनुमति के कोई फोटो सेव नहीं होगी</string>
+    
+    <!-- Home Screen -->
+    <string name="quick_upload">जल्दी अपलोड</string>
+    <string name="auto_detect_requirements">स्वचालित आवश्यकता पहचान</string>
+    <string name="select_document_type">दस्तावेज़ का प्रकार चुनें</string>
+    <string name="view_all">सभी देखें</string>
+    <string name="browse_all_forms">सभी फॉर्म ब्राउज़ करें</string>
+    
+    <!-- Navigation -->
+    <string name="nav_home">होम</string>
+    <string name="nav_history">इतिहास</string>
+    <string name="nav_profile">प्रोफ़ाइल</string>
+    <string name="nav_forms">फॉर्म</string>
+    <string name="nav_settings">सेटिंग्स</string>
+    
+    <!-- Document Types -->
+    <string name="passport">पासपोर्ट</string>
+    <string name="aadhaar">आधार</string>
+    <string name="pan_card">पैन कार्ड</string>
+    <string name="voter_id">वोटर आईडी</string>
+    
+    <!-- Categories -->
+    <string name="identity_cards">पहचान पत्र</string>
+    <string name="travel_visas">यात्रा और वीज़ा</string>
+    <string name="job_exams">नौकरी और परीक्षा</string>
+    <string name="education">शिक्षा</string>
+    <string name="all_government_form_types">सभी सरकारी फॉर्म प्रकार</string>
+    
+    <!-- Search -->
+    <string name="search_placeholder">फॉर्म खोजें (जैसे UPSC, वीज़ा)</string>
+    
+    <!-- Edit Photo -->
+    <string name="edit_photo">फोटो संपादित करें</string>
+    <string name="align_face">चेहरे को बिंदुओं वाले अंडाकार में रखें</string>
+    <string name="background">पृष्ठभूमि</string>
+    <string name="white">सफ़ेद</string>
+    <string name="light_blue">हल्का नीला</string>
+    <string name="remove">हटाएं</string>
+    <string name="compression">संपीड़न</string>
+    <string name="quality">गुणवत्ता</string>
+    <string name="max_size">अधिकतम आकार</string>
+    <string name="continue_to_save">सेव करने के लिए आगे बढ़ें</string>
+    
+    <!-- Preview & Validation -->
+    <string name="preview_validation">प्रीव्यू और सत्यापन</string>
+    <string name="step_format">चरण %1$d का %2$d</string>
+    <string name="original">मूल</string>
+    <string name="processed">प्रोसेस्ड</string>
+    <string name="processed_preview">प्रोसेस्ड प्रीव्यू</string>
+    <string name="valid">मान्य</string>
+    <string name="validation_checklist">सत्यापन चेकलिस्ट</string>
+    <string name="face_detected">चेहरा पहचाना गया</string>
+    <string name="face_detected_desc">बायोमेट्रिक विशेषताएं स्पष्ट और केंद्रित।</string>
+    <string name="correct_dimensions">सही आयाम</string>
+    <string name="correct_dimensions_desc">%1$s में क्रॉप किया गया।</string>
+    <string name="file_size_ok">फ़ाइल साइज़ सही</string>
+    <string name="file_size_ok_desc">अपलोड के लिए अनुकूलित (&lt; %1$dKB)।</string>
+    <string name="photo_meets_requirements">आपकी फोटो आधिकारिक दस्तावेज़ जमा करने की सभी आवश्यकताओं को पूरा करती है।</string>
+    <string name="save_photo">फोटो सेव करें</string>
+    <string name="retake_edit">दोबारा लें / संपादित करें</string>
+    
+    <!-- History -->
+    <string name="recent_photos">हाल की फोटो</string>
+    <string name="recent_presets">हाल के प्रीसेट</string>
+    <string name="no_history">अभी तक कोई फोटो रीसाइज़ नहीं की गई</string>
+    
+    <!-- Settings -->
+    <string name="language">भाषा</string>
+    <string name="english">English</string>
+    <string name="hindi">हिंदी</string>
+    <string name="accessibility">पहुँच</string>
+    <string name="large_buttons">बड़े बटन</string>
+    <string name="high_contrast">उच्च कंट्रास्ट</string>
+    <string name="about">के बारे में</string>
+    <string name="version">संस्करण</string>
+    <string name="privacy_policy">गोपनीयता नीति</string>
+    
+    <!-- Permissions -->
+    <string name="camera_permission_required">फोटो लेने के लिए कैमरा अनुमति आवश्यक है</string>
+    <string name="storage_permission_required">फोटो सेव करने के लिए स्टोरेज अनुमति आवश्यक है</string>
+    <string name="grant_permission">अनुमति दें</string>
+    
+    <!-- Actions -->
+    <string name="upload_from_camera">फोटो लें</string>
+    <string name="upload_from_gallery">गैलरी से चुनें</string>
+    <string name="undo">पूर्ववत करें</string>
+    <string name="redo">फिर से करें</string>
+    <string name="cancel">रद्द करें</string>
+    <string name="confirm">पुष्टि करें</string>
+    <string name="back">वापस</string>
+    
+    <!-- Content Descriptions -->
+    <string name="cd_app_logo">GovPhoto Resizer लोगो</string>
+    <string name="cd_language_selector">भाषा बदलें</string>
+    <string name="cd_notification">सूचनाएं</string>
+    <string name="cd_back_button">वापस जाएं</string>
+    <string name="cd_undo_button">पिछली क्रिया पूर्ववत करें</string>
+    <string name="cd_redo_button">पिछली क्रिया फिर से करें</string>
+    <string name="cd_photo_preview">फोटो प्रीव्यू</string>
+</resources>

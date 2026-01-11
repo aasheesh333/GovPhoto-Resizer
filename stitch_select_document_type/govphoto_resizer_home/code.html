@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>GovPhoto Resizer Home V2</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0b3b5b",
+                        "india-green": "#138808",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#111b21",
+                        "card-light": "#ffffff",
+                        "card-dark": "#1e2830",
+                        "text-main-light": "#111518",
+                        "text-main-dark": "#ffffff",
+                        "text-sub-light": "#637988",
+                        "text-sub-dark": "#9ca3af",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer utilities {
+            .material-symbols-outlined {
+                font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            }
+            .icon-filled {
+                font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            }
+        }
+    </style>
+<style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-gray-100 dark:bg-gray-900 flex justify-center min-h-screen">
+<div class="relative flex h-full min-h-screen w-full max-w-[480px] flex-col bg-background-light dark:bg-background-dark shadow-xl overflow-x-hidden font-display">
+<header class="flex flex-col bg-white dark:bg-card-dark p-6 gap-6 shadow-sm z-20">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="flex items-center justify-center w-8 h-8 rounded bg-primary text-white">
+<span class="material-symbols-outlined text-[20px] icon-filled">branding_watermark</span>
+</div>
+<h2 class="text-text-main-light dark:text-text-main-dark text-xl font-extrabold leading-tight tracking-[-0.015em]">GovPhoto</h2>
+</div>
+<button class="flex items-center justify-center gap-1.5 px-4 py-2 rounded-full border-2 border-primary text-primary hover:bg-primary/5 transition-colors">
+<span class="material-symbols-outlined text-[20px]">translate</span>
+<span class="text-sm font-bold leading-normal">EN / HI</span>
+<span class="material-symbols-outlined text-[18px]">arrow_drop_down</span>
+</button>
+</div>
+<div>
+<h1 class="text-text-main-light dark:text-text-main-dark text-lg font-bold">Resize Official Photos</h1>
+<p class="text-text-sub-light dark:text-text-sub-dark text-sm">Compliant with all government standards</p>
+</div>
+<button class="w-full flex items-center justify-between px-6 py-5 bg-india-green hover:opacity-90 active:scale-[0.98] transition-all rounded-2xl shadow-lg shadow-india-green/20">
+<div class="flex items-center gap-4">
+<div class="bg-white/20 p-2 rounded-lg">
+<span class="material-symbols-outlined text-white text-[28px]">add_a_photo</span>
+</div>
+<div class="text-left text-white">
+<span class="block text-lg font-bold tracking-tight">Quick Upload</span>
+<span class="block text-xs text-white/80">Auto-detect requirements</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-white text-[24px]">chevron_right</span>
+</button>
+</header>
+<main class="flex-1 flex flex-col p-6 gap-4 pb-32">
+<div class="flex items-center justify-between">
+<h2 class="text-text-main-light dark:text-text-main-dark text-[18px] font-bold tracking-tight">Select Document Type</h2>
+<button class="text-primary dark:text-blue-300 font-bold text-sm hover:opacity-80 active:opacity-60 transition-opacity flex items-center gap-1">
+                    View All
+                    <span class="material-symbols-outlined text-lg">arrow_forward</span>
+</button>
+</div>
+<div class="flex flex-col gap-3">
+<div class="flex items-center justify-between p-4 bg-white dark:bg-card-dark rounded-2xl border-2 border-gray-100 dark:border-gray-800 shadow-sm hover:border-primary/30 transition-all">
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[32px]">public</span>
+</div>
+<div>
+<h3 class="text-text-main-light dark:text-text-main-dark text-lg font-bold leading-tight">Passport</h3>
+<p class="text-text-sub-light dark:text-text-sub-dark text-sm">3.5 x 4.5 cm</p>
+</div>
+</div>
+<button class="px-5 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-md active:scale-95 transition-transform">
+                        Select
+                    </button>
+</div>
+<div class="flex items-center justify-between p-4 bg-white dark:bg-card-dark rounded-2xl border-2 border-gray-100 dark:border-gray-800 shadow-sm hover:border-primary/30 transition-all">
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[32px]">fingerprint</span>
+</div>
+<div>
+<h3 class="text-text-main-light dark:text-text-main-dark text-lg font-bold leading-tight">Aadhaar</h3>
+<p class="text-text-sub-light dark:text-text-sub-dark text-sm">Official Update</p>
+</div>
+</div>
+<button class="px-5 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-md active:scale-95 transition-transform">
+                        Select
+                    </button>
+</div>
+<div class="flex items-center justify-between p-4 bg-white dark:bg-card-dark rounded-2xl border-2 border-gray-100 dark:border-gray-800 shadow-sm hover:border-primary/30 transition-all">
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[32px]">badge</span>
+</div>
+<div>
+<h3 class="text-text-main-light dark:text-text-main-dark text-lg font-bold leading-tight">PAN Card</h3>
+<p class="text-text-sub-light dark:text-text-sub-dark text-sm">Standard Size</p>
+</div>
+</div>
+<button class="px-5 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-md active:scale-95 transition-transform">
+                        Select
+                    </button>
+</div>
+<div class="relative overflow-hidden flex items-center justify-between p-4 bg-white dark:bg-card-dark rounded-2xl border-2 border-gray-100 dark:border-gray-800 shadow-sm">
+<div class="flex items-center justify-between w-full opacity-40 grayscale-[25%] blur-[0.5px]">
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[32px]">edit_document</span>
+</div>
+<div>
+<h3 class="text-text-main-light dark:text-text-main-dark text-lg font-bold leading-tight">Exams</h3>
+<p class="text-text-sub-light dark:text-text-sub-dark text-sm">JEE, NEET, etc.</p>
+</div>
+</div>
+<div class="px-5 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 rounded-xl font-bold text-sm">
+            Select
+        </div>
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-white via-white/80 to-transparent dark:from-card-dark dark:via-card-dark/80 dark:to-transparent z-10"></div>
+<button class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 flex items-center gap-2 pl-5 pr-6 py-3.5 bg-primary text-white rounded-full font-bold shadow-xl shadow-primary/25 hover:bg-primary/90 hover:scale-105 active:scale-95 transition-all w-max">
+<span class="material-symbols-outlined text-[24px]">search</span>
+<span class="text-[15px]">Browse All Forms</span>
+</button>
+</div>
+</div>
+</main>
+<nav class="fixed bottom-0 w-full max-w-[480px] bg-card-light dark:bg-card-dark border-t border-gray-200 dark:border-gray-800 pb-safe z-30">
+<div class="flex justify-around items-center h-16">
+<button class="flex flex-col items-center justify-center w-full h-full gap-1 text-primary">
+<span class="material-symbols-outlined icon-filled text-[24px]">home</span>
+<span class="text-xs font-bold">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center w-full h-full gap-1 text-text-sub-light dark:text-text-sub-dark hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[24px]">history</span>
+<span class="text-xs font-medium">History</span>
+</button>
+<button class="flex flex-col items-center justify-center w-full h-full gap-1 text-text-sub-light dark:text-text-sub-dark hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[24px]">account_circle</span>
+<span class="text-xs font-medium">Profile</span>
+</button>
+</div>
+<div class="h-4 w-full"></div>
+</nav>
+</div>
+</body></html>
