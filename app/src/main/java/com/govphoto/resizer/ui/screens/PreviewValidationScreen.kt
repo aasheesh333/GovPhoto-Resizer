@@ -1,5 +1,7 @@
 package com.govphoto.resizer.ui.screens
 
+import android.graphics.Bitmap
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -14,12 +16,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.govphoto.resizer.R
 import com.govphoto.resizer.ui.theme.*
+import com.govphoto.resizer.ui.viewmodel.BackgroundColor
+import com.govphoto.resizer.ui.viewmodel.SharedPhotoViewModel
 
 /**
  * Preview & Validation Screen - Shows processed photo with validation checklist.
@@ -27,10 +36,18 @@ import com.govphoto.resizer.ui.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PreviewValidationScreen(
+    sharedViewModel: SharedPhotoViewModel,
     onNavigateBack: () -> Unit,
     onSaveComplete: () -> Unit,
     onRetakeEdit: () -> Unit
 ) {
+    val context = LocalContext.current
+    val selectedImageUri by sharedViewModel.selectedImageUri.collectAsState()
+    val capturedBitmap by sharedViewModel.capturedBitmap.collectAsState()
+    val backgroundColor by sharedViewModel.backgroundColor.collectAsState()
+    val fileSizeKb by sharedViewModel.fileSizeKb.collectAsState()
+    val presetName by sharedViewModel.selectedPresetName.collectAsState()
+    
     var selectedTab by remember { mutableIntStateOf(1) } // 0 = Original, 1 = Processed
     
     Scaffold(
@@ -81,11 +98,11 @@ fun PreviewValidationScreen(
                     repeat(3) { index ->
                         Box(
                             modifier = Modifier
-                                .width(32.dp)
+                                .width(if (index == 2) 40.dp else 32.dp)
                                 .height(4.dp)
                                 .clip(RoundedCornerShape(2.dp))
                                 .background(
-                                    if (index == 2) Primary else DividerLight
+                                    if (index <= 2) IndiaGreen else DividerLight
                                 )
                         )
                         if (index < 2) Spacer(modifier = Modifier.width(8.dp))
@@ -109,20 +126,24 @@ fun PreviewValidationScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Saffron
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(
+                            defaultElevation = 4.dp
                         )
                     ) {
                         Icon(
                             imageVector = Icons.Default.SaveAlt,
                             contentDescription = null,
-                            tint = Primary
+                            tint = Primary,
+                            modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = stringResource(R.string.save_photo),
-                            style = MaterialTheme.typography.titleMedium.copy(
+                            style = MaterialTheme.typography.titleSmall.copy(
                                 fontWeight = FontWeight.Bold
                             ),
                             color = Primary
@@ -135,12 +156,20 @@ fun PreviewValidationScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight)
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = null,
+                            tint = TextSecondaryLight,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = stringResource(R.string.retake_edit),
                             style = MaterialTheme.typography.labelLarge.copy(
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Medium
                             ),
                             color = TextSecondaryLight
                         )
@@ -164,8 +193,13 @@ fun PreviewValidationScreen(
                 onTabSelected = { selectedTab = it }
             )
             
-            // Preview Card
-            PreviewCard()
+            // Preview Card with actual image
+            PreviewCard(
+                imageUri = selectedImageUri,
+                bitmap = capturedBitmap,
+                backgroundColor = backgroundColor,
+                fileSizeKb = fileSizeKb
+            )
             
             // Validation Checklist
             ValidationChecklist()
@@ -185,7 +219,8 @@ private fun TabSelector(
             .fillMaxWidth()
             .height(48.dp),
         shape = RoundedCornerShape(12.dp),
-        color = BackgroundLight.copy(alpha = 0.5f)
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight)
     ) {
         Row(
             modifier = Modifier
@@ -201,8 +236,7 @@ private fun TabSelector(
                         .weight(1f)
                         .fillMaxHeight(),
                     shape = RoundedCornerShape(8.dp),
-                    color = if (selectedTab == index) MaterialTheme.colorScheme.surface else Color.Transparent,
-                    shadowElevation = if (selectedTab == index) 1.dp else 0.dp,
+                    color = if (selectedTab == index) Primary else Color.Transparent,
                     onClick = { onTabSelected(index) }
                 ) {
                     Box(
@@ -213,7 +247,7 @@ private fun TabSelector(
                             style = MaterialTheme.typography.labelLarge.copy(
                                 fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium
                             ),
-                            color = if (selectedTab == index) Primary else TextSecondaryLight
+                            color = if (selectedTab == index) Color.White else TextSecondaryLight
                         )
                     }
                 }
@@ -223,14 +257,27 @@ private fun TabSelector(
 }
 
 @Composable
-private fun PreviewCard() {
+private fun PreviewCard(
+    imageUri: Uri?,
+    bitmap: Bitmap?,
+    backgroundColor: BackgroundColor,
+    fileSizeKb: Int
+) {
+    val context = LocalContext.current
+    
+    val bgColor = when (backgroundColor) {
+        BackgroundColor.WHITE -> Color.White
+        BackgroundColor.LIGHT_BLUE -> PhotoBgLightBlue
+        BackgroundColor.TRANSPARENT -> Color.LightGray.copy(alpha = 0.3f)
+    }
+    
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
             // Photo Preview
@@ -238,15 +285,34 @@ private fun PreviewCard() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(0.8f)
-                    .background(Color.LightGray),
+                    .background(bgColor),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    tint = Color.Gray,
-                    modifier = Modifier.size(80.dp)
-                )
+                if (imageUri != null) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(imageUri)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Preview photo",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else if (bitmap != null) {
+                    androidx.compose.foundation.Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "Preview photo",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = Color.Gray,
+                        modifier = Modifier.size(80.dp)
+                    )
+                }
                 
                 // Valid Badge
                 Surface(
@@ -254,25 +320,26 @@ private fun PreviewCard() {
                         .align(Alignment.TopEnd)
                         .padding(12.dp),
                     shape = RoundedCornerShape(24.dp),
-                    color = Color.White.copy(alpha = 0.9f)
+                    color = Color.White,
+                    shadowElevation = 4.dp
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Verified,
                             contentDescription = null,
-                            tint = Success,
-                            modifier = Modifier.size(18.dp)
+                            tint = IndiaGreen,
+                            modifier = Modifier.size(20.dp)
                         )
                         Text(
                             text = stringResource(R.string.valid).uppercase(),
-                            style = MaterialTheme.typography.labelSmall.copy(
+                            style = MaterialTheme.typography.labelMedium.copy(
                                 fontWeight = FontWeight.Bold
                             ),
-                            color = Primary
+                            color = IndiaGreen
                         )
                     }
                 }
@@ -295,20 +362,28 @@ private fun PreviewCard() {
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "2x2 inches • White Background",
+                        text = "Passport Size • ${
+                            when (backgroundColor) {
+                                BackgroundColor.WHITE -> "White"
+                                BackgroundColor.LIGHT_BLUE -> "Light Blue"
+                                BackgroundColor.TRANSPARENT -> "Transparent"
+                            }
+                        } Background",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondaryLight
                     )
                 }
                 Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = BackgroundLight
+                    shape = RoundedCornerShape(8.dp),
+                    color = IndiaGreen.copy(alpha = 0.1f)
                 ) {
                     Text(
-                        text = "238 KB",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = TextSecondaryLight,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        text = "$fileSizeKb KB",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = IndiaGreen,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                 }
             }
@@ -349,30 +424,33 @@ private fun ValidationChecklist() {
             )
         }
         
-        // Info Note
+        // Success Info Note
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 16.dp),
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(
-                containerColor = PrimaryContainer.copy(alpha = 0.5f)
+                containerColor = SuccessLight
             )
         ) {
             Row(
-                modifier = Modifier.padding(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier.padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Default.Info,
+                    imageVector = Icons.Default.CheckCircle,
                     contentDescription = null,
-                    tint = Primary,
-                    modifier = Modifier.size(16.dp)
+                    tint = Success,
+                    modifier = Modifier.size(24.dp)
                 )
                 Text(
                     text = stringResource(R.string.photo_meets_requirements),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Primary
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = Success
                 )
             }
         }
@@ -391,18 +469,18 @@ private fun ValidationItem(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
-        )
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 0.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
             // Left border indicator
             Box(
                 modifier = Modifier
                     .width(4.dp)
                     .height(72.dp)
+                    .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
                     .background(if (isSuccess) Success else Error)
             )
             
@@ -415,7 +493,7 @@ private fun ValidationItem(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
                         .background(if (isSuccess) SuccessLight else ErrorLight),
                     contentAlignment = Alignment.Center
@@ -446,7 +524,8 @@ private fun ValidationItem(
                 Icon(
                     imageVector = if (isSuccess) Icons.Default.CheckCircle else Icons.Default.Error,
                     contentDescription = null,
-                    tint = if (isSuccess) Success else Error
+                    tint = if (isSuccess) Success else Error,
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }

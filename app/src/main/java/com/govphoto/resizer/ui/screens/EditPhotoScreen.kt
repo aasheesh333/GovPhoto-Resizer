@@ -1,8 +1,12 @@
 package com.govphoto.resizer.ui.screens
 
+import android.graphics.Bitmap
+import android.net.Uri
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -15,26 +19,66 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.govphoto.resizer.R
 import com.govphoto.resizer.ui.theme.*
+import com.govphoto.resizer.ui.viewmodel.BackgroundColor
+import com.govphoto.resizer.ui.viewmodel.SharedPhotoViewModel
 
 /**
  * Edit Photo Screen - Face alignment, background selection, and compression controls.
+ * Displays the selected image with editing tools.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditPhotoScreen(
+    sharedViewModel: SharedPhotoViewModel,
     onNavigateBack: () -> Unit,
     onContinue: () -> Unit
 ) {
+    val context = LocalContext.current
+    val selectedImageUri by sharedViewModel.selectedImageUri.collectAsState()
+    val capturedBitmap by sharedViewModel.capturedBitmap.collectAsState()
+    val backgroundColor by sharedViewModel.backgroundColor.collectAsState()
+    val compressionQuality by sharedViewModel.compressionQuality.collectAsState()
+    
+    // Local UI state
     var selectedBackground by remember { mutableStateOf(BackgroundOption.WHITE) }
-    var compressionValue by remember { mutableFloatStateOf(0.7f) }
+    var compressionValue by remember { mutableFloatStateOf(compressionQuality) }
     val estimatedSize = (20 + (180 * compressionValue)).toInt()
+    
+    // Image transformation state
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offsetX by remember { mutableFloatStateOf(0f) }
+    var offsetY by remember { mutableFloatStateOf(0f) }
+    
+    // Sync background with ViewModel
+    LaunchedEffect(selectedBackground) {
+        sharedViewModel.setBackgroundColor(
+            when (selectedBackground) {
+                BackgroundOption.WHITE -> BackgroundColor.WHITE
+                BackgroundOption.LIGHT_BLUE -> BackgroundColor.LIGHT_BLUE
+                BackgroundOption.REMOVE -> BackgroundColor.TRANSPARENT
+            }
+        )
+    }
+    
+    // Sync compression with ViewModel
+    LaunchedEffect(compressionValue) {
+        sharedViewModel.setCompressionQuality(compressionValue)
+        sharedViewModel.setFileSizeKb(estimatedSize)
+    }
     
     Scaffold(
         topBar = {
@@ -81,15 +125,18 @@ fun EditPhotoScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
-                        .height(52.dp),
-                    shape = RoundedCornerShape(12.dp),
+                        .height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Primary
+                        containerColor = IndiaGreen
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 4.dp
                     )
                 ) {
                     Text(
                         text = stringResource(R.string.continue_to_save),
-                        style = MaterialTheme.typography.labelLarge.copy(
+                        style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.Bold
                         )
                     )
@@ -112,9 +159,24 @@ fun EditPhotoScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Photo Preview with Grid
-            PhotoPreviewWithGrid(
-                backgroundColor = selectedBackground
+            // Photo Preview with actual image
+            PhotoPreviewWithImage(
+                imageUri = selectedImageUri,
+                bitmap = capturedBitmap,
+                backgroundColor = selectedBackground,
+                scale = scale,
+                offsetX = offsetX,
+                offsetY = offsetY,
+                onTransform = { newScale, newOffsetX, newOffsetY ->
+                    scale = (scale * newScale).coerceIn(0.5f, 3f)
+                    offsetX += newOffsetX
+                    offsetY += newOffsetY
+                },
+                onReset = {
+                    scale = 1f
+                    offsetX = 0f
+                    offsetY = 0f
+                }
             )
             
             Spacer(modifier = Modifier.height(8.dp))
@@ -142,21 +204,30 @@ fun EditPhotoScreen(
                 estimatedSize = estimatedSize
             )
             
-            Spacer(modifier = Modifier.height(80.dp))
+            Spacer(modifier = Modifier.height(100.dp))
         }
     }
 }
 
 @Composable
-private fun PhotoPreviewWithGrid(
-    backgroundColor: BackgroundOption
+private fun PhotoPreviewWithImage(
+    imageUri: Uri?,
+    bitmap: Bitmap?,
+    backgroundColor: BackgroundOption,
+    scale: Float,
+    offsetX: Float,
+    offsetY: Float,
+    onTransform: (Float, Float, Float) -> Unit,
+    onReset: () -> Unit
 ) {
+    val context = LocalContext.current
+    
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(0.8f)
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.Gray.copy(alpha = 0.2f)),
+            .border(2.dp, BorderLight, RoundedCornerShape(16.dp)),
         contentAlignment = Alignment.Center
     ) {
         // Background color layer
@@ -167,73 +238,176 @@ private fun PhotoPreviewWithGrid(
                     when (backgroundColor) {
                         BackgroundOption.WHITE -> Color.White
                         BackgroundOption.LIGHT_BLUE -> PhotoBgLightBlue
-                        BackgroundOption.REMOVE -> Color.Transparent
+                        BackgroundOption.REMOVE -> Color.LightGray.copy(alpha = 0.3f)
                     }
                 )
         )
         
-        // Placeholder for actual image
-        Icon(
-            imageVector = Icons.Default.Person,
-            contentDescription = null,
-            tint = Color.Gray.copy(alpha = 0.5f),
-            modifier = Modifier.size(120.dp)
-        )
+        // Actual image display
+        if (imageUri != null) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(imageUri)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Selected photo",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(
+                        scaleX = scale,
+                        scaleY = scale,
+                        translationX = offsetX,
+                        translationY = offsetY
+                    )
+                    .pointerInput(Unit) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            onTransform(zoom, pan.x, pan.y)
+                        }
+                    },
+                contentScale = ContentScale.Crop
+            )
+        } else if (bitmap != null) {
+            // Display bitmap from camera
+            androidx.compose.foundation.Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = "Captured photo",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(
+                        scaleX = scale,
+                        scaleY = scale,
+                        translationX = offsetX,
+                        translationY = offsetY
+                    )
+                    .pointerInput(Unit) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            onTransform(zoom, pan.x, pan.y)
+                        }
+                    },
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            // Placeholder when no image
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Image,
+                    contentDescription = null,
+                    tint = TextSecondaryLight,
+                    modifier = Modifier.size(64.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "No image selected",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondaryLight
+                )
+            }
+        }
         
         // Grid overlay
-        Box(
+        Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(8.dp)
+                .padding(16.dp)
         ) {
-            // Grid lines would be drawn here
+            val strokeWidth = 1f
+            val gridColor = Color.White.copy(alpha = 0.3f)
+            
+            // Vertical lines (rule of thirds)
+            drawLine(
+                color = gridColor,
+                start = Offset(size.width / 3, 0f),
+                end = Offset(size.width / 3, size.height),
+                strokeWidth = strokeWidth
+            )
+            drawLine(
+                color = gridColor,
+                start = Offset(2 * size.width / 3, 0f),
+                end = Offset(2 * size.width / 3, size.height),
+                strokeWidth = strokeWidth
+            )
+            
+            // Horizontal lines
+            drawLine(
+                color = gridColor,
+                start = Offset(0f, size.height / 3),
+                end = Offset(size.width, size.height / 3),
+                strokeWidth = strokeWidth
+            )
+            drawLine(
+                color = gridColor,
+                start = Offset(0f, 2 * size.height / 3),
+                end = Offset(size.width, 2 * size.height / 3),
+                strokeWidth = strokeWidth
+            )
         }
         
         // Face oval guide
         Box(
             modifier = Modifier
-                .fillMaxWidth(0.6f)
-                .aspectRatio(0.8f)
-                .offset(y = (-20).dp)
+                .fillMaxWidth(0.5f)
+                .aspectRatio(0.75f)
+                .offset(y = (-10).dp)
                 .border(
                     width = 2.dp,
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = Color.White.copy(alpha = 0.6f),
                     shape = RoundedCornerShape(50)
                 )
         )
         
-        // Undo/Redo buttons
+        // Control buttons row
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
-                .padding(16.dp),
+                .padding(12.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
+            // Reset button
             FloatingActionButton(
-                onClick = { /* Undo */ },
-                modifier = Modifier.size(40.dp),
-                containerColor = Color.Black.copy(alpha = 0.4f),
+                onClick = onReset,
+                modifier = Modifier.size(44.dp),
+                containerColor = Color.Black.copy(alpha = 0.5f),
                 contentColor = Color.White,
-                shape = CircleShape
+                shape = CircleShape,
+                elevation = FloatingActionButtonDefaults.elevation(0.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Undo,
-                    contentDescription = stringResource(R.string.undo),
-                    modifier = Modifier.size(20.dp)
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Reset position",
+                    modifier = Modifier.size(22.dp)
                 )
             }
+            
+            // Zoom indicator
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = Color.Black.copy(alpha = 0.5f)
+            ) {
+                Text(
+                    text = "${(scale * 100).toInt()}%",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+            
+            // Crop button placeholder
             FloatingActionButton(
-                onClick = { /* Redo */ },
-                modifier = Modifier.size(40.dp),
-                containerColor = Color.Black.copy(alpha = 0.4f),
+                onClick = { /* Crop action */ },
+                modifier = Modifier.size(44.dp),
+                containerColor = Color.Black.copy(alpha = 0.5f),
                 contentColor = Color.White,
-                shape = CircleShape
+                shape = CircleShape,
+                elevation = FloatingActionButtonDefaults.elevation(0.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Redo,
-                    contentDescription = stringResource(R.string.redo),
-                    modifier = Modifier.size(20.dp)
+                    imageVector = Icons.Default.Crop,
+                    contentDescription = "Crop",
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
@@ -279,19 +453,24 @@ private fun BackgroundOptionItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val bgColor = when (option) {
+        BackgroundOption.WHITE -> Color.White
+        BackgroundOption.LIGHT_BLUE -> PhotoBgLightBlue
+        BackgroundOption.REMOVE -> Color.Transparent
+    }
+    
     Surface(
-        modifier = modifier
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
+        modifier = modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
         border = if (isSelected) {
-            ButtonDefaults.outlinedButtonBorder.copy(width = 2.dp)
+            androidx.compose.foundation.BorderStroke(2.dp, Primary)
         } else {
-            ButtonDefaults.outlinedButtonBorder
+            androidx.compose.foundation.BorderStroke(1.dp, BorderLight)
         },
-        color = if (isSelected) PrimaryContainer.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surface
+        color = if (isSelected) PrimaryContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(
@@ -300,15 +479,9 @@ private fun BackgroundOptionItem(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
+                        .size(56.dp)
                         .clip(CircleShape)
-                        .background(
-                            when (option) {
-                                BackgroundOption.WHITE -> Color.White
-                                BackgroundOption.LIGHT_BLUE -> PhotoBgLightBlue
-                                BackgroundOption.REMOVE -> Color.Transparent
-                            }
-                        )
+                        .background(bgColor)
                         .border(1.dp, BorderLight, CircleShape)
                         .align(Alignment.Center),
                     contentAlignment = Alignment.Center
@@ -318,7 +491,7 @@ private fun BackgroundOptionItem(
                             imageVector = Icons.Default.GridOff,
                             contentDescription = null,
                             tint = TextSecondaryLight,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(28.dp)
                         )
                     }
                 }
@@ -327,13 +500,13 @@ private fun BackgroundOptionItem(
                     Icon(
                         imageVector = Icons.Default.CheckCircle,
                         contentDescription = null,
-                        tint = Primary,
-                        modifier = Modifier.size(20.dp)
+                        tint = IndiaGreen,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
             
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             
             Text(
                 text = when (option) {
@@ -341,7 +514,7 @@ private fun BackgroundOptionItem(
                     BackgroundOption.LIGHT_BLUE -> stringResource(R.string.light_blue)
                     BackgroundOption.REMOVE -> stringResource(R.string.remove)
                 },
-                style = MaterialTheme.typography.labelMedium.copy(
+                style = MaterialTheme.typography.labelLarge.copy(
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                 ),
                 color = if (isSelected) Primary else TextSecondaryLight
@@ -371,15 +544,15 @@ private fun CompressionControl(
             )
             Surface(
                 shape = RoundedCornerShape(24.dp),
-                color = PrimaryContainer
+                color = IndiaGreen.copy(alpha = 0.1f)
             ) {
                 Text(
                     text = "~ $estimatedSize KB",
-                    style = MaterialTheme.typography.labelMedium.copy(
+                    style = MaterialTheme.typography.labelLarge.copy(
                         fontWeight = FontWeight.Bold
                     ),
-                    color = Primary,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    color = IndiaGreen,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
             }
         }
@@ -388,30 +561,48 @@ private fun CompressionControl(
         
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            color = BackgroundLight,
-            border = ButtonDefaults.outlinedButtonBorder
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight)
         ) {
             Column(
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(20.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(
-                        text = stringResource(R.string.quality).uppercase(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextSecondaryLight
-                    )
-                    Text(
-                        text = stringResource(R.string.max_size).uppercase(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextSecondaryLight
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.HighQuality,
+                            contentDescription = null,
+                            tint = Primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = stringResource(R.string.quality).uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextSecondaryLight
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = stringResource(R.string.max_size).uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextSecondaryLight
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.Default.Compress,
+                            contentDescription = null,
+                            tint = Saffron,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
                 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 
                 Slider(
                     value = value,
@@ -430,12 +621,12 @@ private fun CompressionControl(
                 ) {
                     Text(
                         text = "20KB",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.labelMedium,
                         color = TextSecondaryLight
                     )
                     Text(
                         text = "200KB",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.labelMedium,
                         color = TextSecondaryLight
                     )
                 }

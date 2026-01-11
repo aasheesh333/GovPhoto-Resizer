@@ -2,6 +2,7 @@ package com.govphoto.resizer.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -15,15 +16,18 @@ import com.govphoto.resizer.ui.screens.HomeScreen
 import com.govphoto.resizer.ui.screens.PhotoUploadScreen
 import com.govphoto.resizer.ui.screens.PreviewValidationScreen
 import com.govphoto.resizer.ui.screens.SettingsScreen
+import com.govphoto.resizer.ui.viewmodel.SharedPhotoViewModel
 
 /**
  * Main navigation host for the app.
+ * Uses a shared ViewModel for passing image state between screens.
  */
 @Composable
 fun GovPhotoNavHost(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
-    startDestination: String = Screen.Home.route
+    startDestination: String = Screen.Home.route,
+    sharedPhotoViewModel: SharedPhotoViewModel = hiltViewModel()
 ) {
     NavHost(
         navController = navController,
@@ -36,6 +40,7 @@ fun GovPhotoNavHost(
                     navController.navigate(Screen.AllForms.route)
                 },
                 onNavigateToUpload = { presetId ->
+                    sharedPhotoViewModel.setSelectedPreset(presetId)
                     navController.navigate(Screen.PhotoUpload.createRoute(presetId))
                 },
                 onNavigateToHistory = {
@@ -51,6 +56,7 @@ fun GovPhotoNavHost(
             AllFormsScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onPresetSelected = { presetId ->
+                    sharedPhotoViewModel.setSelectedPreset(presetId)
                     navController.navigate(Screen.PhotoUpload.createRoute(presetId))
                 },
                 onNavigateToHistory = {
@@ -71,6 +77,7 @@ fun GovPhotoNavHost(
             val presetId = backStackEntry.arguments?.getString("presetId") ?: ""
             PhotoUploadScreen(
                 presetId = presetId,
+                sharedViewModel = sharedPhotoViewModel,
                 onNavigateBack = { navController.popBackStack() },
                 onPhotoSelected = {
                     navController.navigate(Screen.EditPhoto.route)
@@ -80,6 +87,7 @@ fun GovPhotoNavHost(
         
         composable(Screen.EditPhoto.route) {
             EditPhotoScreen(
+                sharedViewModel = sharedPhotoViewModel,
                 onNavigateBack = { navController.popBackStack() },
                 onContinue = {
                     navController.navigate(Screen.PreviewValidation.route)
@@ -89,9 +97,10 @@ fun GovPhotoNavHost(
         
         composable(Screen.PreviewValidation.route) {
             PreviewValidationScreen(
+                sharedViewModel = sharedPhotoViewModel,
                 onNavigateBack = { navController.popBackStack() },
                 onSaveComplete = {
-                    // Navigate back to home after saving
+                    sharedPhotoViewModel.clearState()
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
                     }

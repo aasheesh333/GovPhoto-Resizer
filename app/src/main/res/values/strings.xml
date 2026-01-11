@@ -86,8 +86,16 @@
     <string name="grant_permission">Grant Permission</string>
     
     <!-- Actions -->
+    <string name="upload_photo">Upload Photo</string>
     <string name="upload_from_camera">Take Photo</string>
     <string name="upload_from_gallery">Choose from Gallery</string>
+    <string name="take_new_photo">Take a new photo</string>
+    <string name="select_from_photos">Select from your photos</string>
+    <string name="choose_upload_method">Choose how to upload your photo</string>
+    <string name="photo_guidelines">Photo Guidelines</string>
+    <string name="guideline_clear_photo">Clear, front-facing photo</string>
+    <string name="guideline_good_lighting">Good lighting</string>
+    <string name="guideline_plain_background">Plain background preferred</string>
     <string name="undo">Undo</string>
     <string name="redo">Redo</string>
     <string name="cancel">Cancel</string>
