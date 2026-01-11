@@ -57,6 +57,18 @@ enum class PresetCategory(
         icon = "school",
         sortOrder = 8
     ),
+    EDUCATION(
+        displayName = "Education Entrance",
+        displayNameHi = "प्रवेश परीक्षा",
+        icon = "school",
+        sortOrder = 10
+    ),
+    JOB_EXAMS(
+        displayName = "Job Recruitment",
+        displayNameHi = "नौकरी भर्ती",
+        icon = "work",
+        sortOrder = 11
+    ),
     CUSTOM(
         displayName = "Custom Size",
         displayNameHi = "कस्टम साइज़",

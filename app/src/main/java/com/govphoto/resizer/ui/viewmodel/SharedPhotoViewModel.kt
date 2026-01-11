@@ -300,7 +300,7 @@ class SharedPhotoViewModel @Inject constructor(
             examName = "Custom Size",
             examNameHi = "मैन्युअल साइज",
             authority = "Manual",
-            category = com.govphoto.resizer.data.model.PresetCategory.OTHER,
+            category = com.govphoto.resizer.data.model.PresetCategory.CUSTOM,
             widthPx = w,
             heightPx = h,
             maxFileSizeKb = 500, // Default max for custom
