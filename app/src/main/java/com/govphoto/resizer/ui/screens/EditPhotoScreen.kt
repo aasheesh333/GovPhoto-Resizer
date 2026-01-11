@@ -78,6 +78,9 @@ fun EditPhotoScreen(
                 BackgroundOption.REMOVE -> BackgroundColor.TRANSPARENT
             }
         )
+        if (selectedBackground == BackgroundOption.REMOVE) {
+            sharedViewModel.removeBackground()
+        }
     }
     
     // Sync compression with ViewModel
@@ -203,6 +206,12 @@ fun EditPhotoScreen(
             
             Spacer(modifier = Modifier.height(24.dp))
             
+            // Custom Preset Inputs (Only if Manual)
+            if (selectedPreset?.id == com.govphoto.resizer.data.model.PhotoPreset.MANUAL_PRESET_ID) {
+                CustomPresetInputs(sharedViewModel)
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
             // Compression Section
             CompressionControl(
                 value = compressionValue,
@@ -663,4 +672,90 @@ private fun CompressionControl(
 
 enum class BackgroundOption {
     WHITE, LIGHT_BLUE, REMOVE
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CustomPresetInputs(viewModel: SharedPhotoViewModel) {
+    val width by viewModel.customWidth.collectAsState()
+    val height by viewModel.customHeight.collectAsState()
+    val format by viewModel.customFormat.collectAsState()
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "Custom Dimensions",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Width Input
+            OutlinedTextField(
+                value = width,
+                onValueChange = { 
+                    viewModel.updateCustomWidth(it)
+                    viewModel.applyCustomPreset()
+                },
+                label = { Text("Width (px)") },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                )
+            )
+
+            // Height Input
+            OutlinedTextField(
+                value = height,
+                onValueChange = { 
+                    viewModel.updateCustomHeight(it)
+                    viewModel.applyCustomPreset()
+                },
+                label = { Text("Height (px)") },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                )
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        // Format Selection
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "Format:",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            // JPG Chip
+            FilterChip(
+                selected = format.equals("jpg", ignoreCase = true),
+                onClick = { 
+                    viewModel.updateCustomFormat("jpg")
+                    viewModel.applyCustomPreset()
+                },
+                label = { Text("JPG") }
+            )
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            // PNG Chip
+            FilterChip(
+                selected = format.equals("png", ignoreCase = true),
+                onClick = { 
+                    viewModel.updateCustomFormat("png")
+                    viewModel.applyCustomPreset()
+                },
+                label = { Text("PNG") }
+            )
+        }
+    }
 }

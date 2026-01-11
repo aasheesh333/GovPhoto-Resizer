@@ -311,6 +311,14 @@ private fun DocumentTypeSection(
                 subtitle = "Standard Size",
                 onClick = { onPresetClick("pan_card") }
             )
+
+            // Custom Size Card
+            DocumentTypeCard(
+                icon = Icons.Default.Edit,
+                title = "Custom Size",
+                subtitle = "Manual Width & Height",
+                onClick = { onPresetClick(com.govphoto.resizer.data.model.PhotoPreset.MANUAL_PRESET_ID) }
+            )
             
             // Browse All Forms Button
             BrowseAllFormsButton(onClick = onViewAllClick)

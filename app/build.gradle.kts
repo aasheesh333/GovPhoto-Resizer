@@ -99,6 +99,7 @@ dependencies {
 
     // ML Kit Face Detection
     implementation("com.google.mlkit:face-detection:16.1.6")
+    implementation("com.google.mlkit:segmentation-selfie:16.0.0-beta4")
 
     // Image Loading - Coil
     implementation("io.coil-kt:coil-compose:2.5.0")
