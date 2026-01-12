@@ -19,11 +19,16 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.govphoto.resizer.R
+import com.govphoto.resizer.data.model.PhotoPreset
+import com.govphoto.resizer.data.model.PresetCategory
 import com.govphoto.resizer.ui.theme.*
+import com.govphoto.resizer.ui.viewmodel.AllFormsViewModel
 
 /**
  * All Forms Screen - Shows all government form types organized by category.
+ * Now loads presets dynamically from the repository.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,10 +36,28 @@ fun AllFormsScreen(
     onNavigateBack: () -> Unit,
     onPresetSelected: (String) -> Unit,
     onNavigateToHistory: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    viewModel: AllFormsViewModel = hiltViewModel()
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedNavItem by remember { mutableIntStateOf(0) }
+    
+    val allPresets by viewModel.presets.collectAsState()
+    
+    // Group presets by category
+    val groupedPresets = remember(allPresets, searchQuery) {
+        val filtered = if (searchQuery.isBlank()) {
+            allPresets
+        } else {
+            allPresets.filter {
+                it.examName.contains(searchQuery, ignoreCase = true) ||
+                it.authority.contains(searchQuery, ignoreCase = true) ||
+                (it.examNameHi?.contains(searchQuery) == true)
+            }
+        }
+        filtered.groupBy { it.category }
+            .toSortedMap(compareBy { it.sortOrder })
+    }
     
     Scaffold(
         topBar = {
@@ -76,6 +99,14 @@ fun AllFormsScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                         .padding(bottom = 16.dp)
+                )
+                
+                // Preset count indicator
+                Text(
+                    text = "${allPresets.size} presets available",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextSecondaryLight,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
                 
                 Divider(color = DividerLight)
@@ -140,64 +171,29 @@ fun AllFormsScreen(
                 .background(MaterialTheme.colorScheme.background),
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
-            // Identity Cards Section
-            item {
-                CategoryHeader(title = stringResource(R.string.identity_cards))
-            }
-            items(identityCardsPresets) { preset ->
-                FormListItem(
-                    icon = preset.icon,
-                    iconBgColor = CategoryBlue,
-                    iconTint = Primary,
-                    title = preset.title,
-                    subtitle = preset.dimensions,
-                    onClick = { onPresetSelected(preset.id) }
-                )
-            }
-            
-            // Travel & Visas Section
-            item {
-                CategoryHeader(title = stringResource(R.string.travel_visas))
-            }
-            items(travelVisasPresets) { preset ->
-                FormListItem(
-                    icon = preset.icon,
-                    iconBgColor = CategoryTeal,
-                    iconTint = Color(0xFF0D9488),
-                    title = preset.title,
-                    subtitle = preset.dimensions,
-                    onClick = { onPresetSelected(preset.id) }
-                )
-            }
-            
-            // Job & Exams Section
-            item {
-                CategoryHeader(title = stringResource(R.string.job_exams))
-            }
-            items(jobExamsPresets) { preset ->
-                FormListItem(
-                    icon = preset.icon,
-                    iconBgColor = CategoryOrange,
-                    iconTint = Color(0xFFEA580C),
-                    title = preset.title,
-                    subtitle = preset.dimensions,
-                    onClick = { onPresetSelected(preset.id) }
-                )
-            }
-            
-            // Education Section
-            item {
-                CategoryHeader(title = stringResource(R.string.education))
-            }
-            items(educationPresets) { preset ->
-                FormListItem(
-                    icon = preset.icon,
-                    iconBgColor = CategoryPurple,
-                    iconTint = Color(0xFF9333EA),
-                    title = preset.title,
-                    subtitle = preset.dimensions,
-                    onClick = { onPresetSelected(preset.id) }
-                )
+            groupedPresets.forEach { (category, presets) ->
+                // Category Header
+                item(key = "header_${category.name}") {
+                    CategoryHeader(
+                        title = category.displayName,
+                        count = presets.size
+                    )
+                }
+                
+                // Presets in this category
+                items(
+                    items = presets,
+                    key = { it.id }
+                ) { preset ->
+                    FormListItem(
+                        icon = getCategoryIcon(category),
+                        iconBgColor = getCategoryBgColor(category),
+                        iconTint = getCategoryTint(category),
+                        title = preset.examName,
+                        subtitle = preset.getFormattedDimensions(),
+                        onClick = { onPresetSelected(preset.id) }
+                    )
+                }
             }
         }
     }
@@ -229,6 +225,17 @@ private fun SearchBar(
                 tint = TextSecondaryLight
             )
         },
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                IconButton(onClick = { onQueryChange("") }) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Clear",
+                        tint = TextSecondaryLight
+                    )
+                }
+            }
+        },
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = Primary,
@@ -241,15 +248,33 @@ private fun SearchBar(
 }
 
 @Composable
-private fun CategoryHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleMedium.copy(
-            fontWeight = FontWeight.Bold
-        ),
-        color = MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
-    )
+private fun CategoryHeader(title: String, count: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold
+            ),
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = Primary.copy(alpha = 0.1f)
+        ) {
+            Text(
+                text = "$count",
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                color = Primary,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+            )
+        }
+    }
 }
 
 @Composable
@@ -320,34 +345,51 @@ private fun FormListItem(
     }
 }
 
-// Sample preset data
-private data class PresetItem(
-    val id: String,
-    val title: String,
-    val dimensions: String,
-    val icon: ImageVector
-)
+// Helper functions to get category-specific styling
+private fun getCategoryIcon(category: PresetCategory): ImageVector {
+    return when (category) {
+        PresetCategory.IDENTITY_CARDS -> Icons.Default.Fingerprint
+        PresetCategory.TRAVEL_VISAS -> Icons.Default.Public
+        PresetCategory.CENTRAL_EXAMS -> Icons.Default.AccountBalance
+        PresetCategory.STATE_EXAMS -> Icons.Default.LocationCity
+        PresetCategory.BANKING -> Icons.Default.AccountBalanceWallet
+        PresetCategory.DEFENCE -> Icons.Default.Shield
+        PresetCategory.RAILWAYS -> Icons.Default.Train
+        PresetCategory.TEACHING -> Icons.Default.School
+        PresetCategory.EDUCATION -> Icons.Default.School
+        PresetCategory.JOB_EXAMS -> Icons.Default.Work
+        PresetCategory.CUSTOM -> Icons.Default.Tune
+    }
+}
 
-private val identityCardsPresets = listOf(
-    PresetItem("aadhaar", "Aadhaar Card", "3.5cm x 4.5cm", Icons.Default.Fingerprint),
-    PresetItem("pan_card", "PAN Card", "2.5cm x 3.5cm", Icons.Default.CreditCard),
-    PresetItem("voter_id", "Voter ID", "3.5cm x 4.5cm", Icons.Default.HowToVote)
-)
+private fun getCategoryBgColor(category: PresetCategory): Color {
+    return when (category) {
+        PresetCategory.IDENTITY_CARDS -> CategoryBlue
+        PresetCategory.TRAVEL_VISAS -> CategoryTeal
+        PresetCategory.CENTRAL_EXAMS -> CategoryOrange
+        PresetCategory.STATE_EXAMS -> CategoryPurple
+        PresetCategory.BANKING -> Color(0xFFDCFCE7) // Green tint
+        PresetCategory.DEFENCE -> Color(0xFFFEF3C7) // Amber tint
+        PresetCategory.RAILWAYS -> Color(0xFFE0E7FF) // Indigo tint
+        PresetCategory.TEACHING -> CategoryPurple
+        PresetCategory.EDUCATION -> CategoryBlue
+        PresetCategory.JOB_EXAMS -> CategoryOrange
+        PresetCategory.CUSTOM -> Color(0xFFF3F4F6) // Gray tint
+    }
+}
 
-private val travelVisasPresets = listOf(
-    PresetItem("passport", "Indian Passport", "2in x 2in (51mm x 51mm)", Icons.Default.Book),
-    PresetItem("schengen_visa", "Schengen Visa", "35mm x 45mm", Icons.Default.Public),
-    PresetItem("us_visa", "US Visa", "2in x 2in (Digital)", Icons.Default.FlightTakeoff)
-)
-
-private val jobExamsPresets = listOf(
-    PresetItem("upsc_cse", "UPSC Civil Services", "3.5cm x 4.5cm", Icons.Default.AccountBalance),
-    PresetItem("ssc_cgl", "SSC CGL", "3.5cm x 4.5cm", Icons.Default.Work),
-    PresetItem("ibps_po", "IBPS PO", "4.5cm x 3.5cm", Icons.Default.AccountBalanceWallet),
-    PresetItem("rrb_ntpc", "Railway RRB NTPC", "3.5cm x 4.5cm", Icons.Default.Train)
-)
-
-private val educationPresets = listOf(
-    PresetItem("ctet", "CTET", "3.5cm x 4.5cm", Icons.Default.School),
-    PresetItem("ugc_net", "UGC NET", "10KB - 200KB (JPG)", Icons.Default.EditNote)
-)
+private fun getCategoryTint(category: PresetCategory): Color {
+    return when (category) {
+        PresetCategory.IDENTITY_CARDS -> Primary
+        PresetCategory.TRAVEL_VISAS -> Color(0xFF0D9488)
+        PresetCategory.CENTRAL_EXAMS -> Color(0xFFEA580C)
+        PresetCategory.STATE_EXAMS -> Color(0xFF9333EA)
+        PresetCategory.BANKING -> Color(0xFF16A34A)
+        PresetCategory.DEFENCE -> Color(0xFFD97706)
+        PresetCategory.RAILWAYS -> Color(0xFF4F46E5)
+        PresetCategory.TEACHING -> Color(0xFF9333EA)
+        PresetCategory.EDUCATION -> Primary
+        PresetCategory.JOB_EXAMS -> Color(0xFFEA580C)
+        PresetCategory.CUSTOM -> Color(0xFF6B7280)
+    }
+}

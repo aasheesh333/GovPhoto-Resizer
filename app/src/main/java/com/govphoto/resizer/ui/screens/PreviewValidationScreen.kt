@@ -158,13 +158,19 @@ fun PreviewValidationScreen(
                             if (!isSaving) {
                                 isSaving = true
                                 scope.launch {
-                                    val result = sharedViewModel.savePhotoToGallery()
-                                    isSaving = false
-                                    result.onSuccess {
-                                        Toast.makeText(context, "Photo saved to Gallery!", Toast.LENGTH_SHORT).show()
-                                        onSaveComplete()
-                                    }.onFailure {
-                                        Toast.makeText(context, "Failed to save: ${it.message}", Toast.LENGTH_LONG).show()
+                                    try {
+                                        val result = sharedViewModel.savePhotoToGallery()
+                                        isSaving = false
+                                        result.onSuccess {
+                                            Toast.makeText(context, "Photo saved to Gallery!", Toast.LENGTH_SHORT).show()
+                                            onSaveComplete()
+                                        }.onFailure { error ->
+                                            Toast.makeText(context, "Failed to save: ${error.message}", Toast.LENGTH_LONG).show()
+                                        }
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                        isSaving = false
+                                        Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
                                     }
                                 }
                             }

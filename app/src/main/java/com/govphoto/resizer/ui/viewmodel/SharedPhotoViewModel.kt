@@ -29,6 +29,9 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
+import android.util.Log
+
+private const val TAG = "SharedPhotoViewModel"
 
 /**
  * Shared ViewModel for managing photo state across screens.
@@ -300,11 +303,15 @@ class SharedPhotoViewModel @Inject constructor(
      * STRICTLY enforces file size limit and format.
      */
     suspend fun savePhotoToGallery(): Result<Uri> {
+        Log.d(TAG, "savePhotoToGallery: Starting save process")
         return withContext(Dispatchers.IO) {
             try {
+                Log.d(TAG, "savePhotoToGallery: URI=${_selectedImageUri.value}, Bitmap=${_capturedBitmap.value != null}")
+                
                 // Get the bitmap to save
                 val originalBitmap = _capturedBitmap.value ?: run {
                     _selectedImageUri.value?.let { uri ->
+                        Log.d(TAG, "savePhotoToGallery: Loading bitmap from URI")
                         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
                             val source = android.graphics.ImageDecoder.createSource(context.contentResolver, uri)
                             android.graphics.ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
@@ -318,10 +325,11 @@ class SharedPhotoViewModel @Inject constructor(
                 }
                 
                 if (originalBitmap == null) {
+                    Log.e(TAG, "savePhotoToGallery: No bitmap available!")
                     return@withContext Result.failure(Exception("No image to save"))
                 }
-
-                // Target dimensions
+                
+                Log.d(TAG, "savePhotoToGallery: Bitmap loaded: ${originalBitmap.width}x${originalBitmap.height}")
                 var targetW = targetWidth
                 var targetH = targetHeight
                 
