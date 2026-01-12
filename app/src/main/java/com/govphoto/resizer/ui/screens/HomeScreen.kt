@@ -494,13 +494,13 @@ private fun BottomNavigationBar(
             onClick = { onItemSelected(2) },
             icon = {
                 Icon(
-                    imageVector = if (selectedItem == 2) Icons.Filled.AccountCircle else Icons.Outlined.AccountCircle,
-                    contentDescription = stringResource(R.string.nav_profile)
+                    imageVector = if (selectedItem == 2) Icons.Filled.Settings else Icons.Outlined.Settings,
+                    contentDescription = stringResource(R.string.nav_settings)
                 )
             },
             label = {
                 Text(
-                    text = stringResource(R.string.nav_profile),
+                    text = stringResource(R.string.nav_settings),
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontWeight = if (selectedItem == 2) FontWeight.Bold else FontWeight.Medium
                     )
