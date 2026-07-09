@@ -16,7 +16,7 @@
 }
 
 # Keep preset model classes
--keep class com.govphoto.resizer.data.model.** { *; }
+-keep class com.dhanuk.govphoto_resizer.data.model.** { *; }
 
 # ML Kit
 -keep class com.google.mlkit.** { *; }

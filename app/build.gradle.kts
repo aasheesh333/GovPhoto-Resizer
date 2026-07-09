@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.govphoto.resizer"
+    namespace = "com.dhanuk.govphoto_resizer"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.govphoto.resizer"
+        applicationId = "com.dhanuk.govphoto_resizer"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
