@@ -3,11 +3,12 @@ package com.dhanuk.govphoto_resizer.ui.viewmodel
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.MediaStore
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dhanuk.govphoto_resizer.data.ml.BackgroundRemover
 import com.dhanuk.govphoto_resizer.data.model.PhotoPreset
 import com.dhanuk.govphoto_resizer.data.repository.HistoryRepository
 import com.dhanuk.govphoto_resizer.data.repository.PresetRepository
@@ -21,17 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
-import java.nio.ByteBuffer
 import javax.inject.Inject
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.segmentation.Segmentation
-import com.google.mlkit.vision.segmentation.selfie.SelfieSegmenterOptions
-import android.graphics.Color
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffXfermode
-import android.util.Log
 
 private const val TAG = "SharedPhotoViewModel"
 
@@ -44,7 +35,8 @@ class SharedPhotoViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val presetRepository: PresetRepository,
     private val historyRepo: HistoryRepository,
-    private val recentPresetRepo: RecentPresetRepository
+    private val recentPresetRepo: RecentPresetRepository,
+    private val backgroundRemover: BackgroundRemover,
 ) : ViewModel() {
     
     // Selected image state
@@ -78,6 +70,9 @@ class SharedPhotoViewModel @Inject constructor(
     // Background Removal State
     private val _isRemovingBackground = MutableStateFlow(false)
     val isRemovingBackground: StateFlow<Boolean> = _isRemovingBackground.asStateFlow()
+
+    private val _removalState = MutableStateFlow<RemovalState>(RemovalState.Idle)
+    val removalState: StateFlow<RemovalState> = _removalState.asStateFlow()
 
     // Custom/Manual Preset State
     private val _customWidth = MutableStateFlow("350")
@@ -178,81 +173,27 @@ class SharedPhotoViewModel @Inject constructor(
     }
     
     /**
-     * Remove background using ML Kit Selfie Segmentation
+     * Remove background using ML Kit Selfie Segmentation via [BackgroundRemover].
      */
     fun removeBackground() {
         val bitmap = _capturedBitmap.value ?: return
-        if (_isRemovingBackground.value) return
+        if (_removalState.value is RemovalState.Working) return
 
+        _removalState.value = RemovalState.Working
         _isRemovingBackground.value = true
-        
-        viewModelScope.launch(Dispatchers.Default) {
-             try {
-                // Configure options for Selfie Segmenter
-                val options = SelfieSegmenterOptions.Builder()
-                    .setDetectorMode(SelfieSegmenterOptions.SINGLE_IMAGE_MODE)
-                    .build()
-                
-                val segmenter = Segmentation.getClient(options)
-                val inputImage = InputImage.fromBitmap(bitmap, 0)
 
-                segmenter.process(inputImage)
-                    .addOnSuccessListener { segmentationMask ->
-                        val mask = segmentationMask.buffer
-                        val maskWidth = segmentationMask.width
-                        val maskHeight = segmentationMask.height
-                        
-                        // Process the mask and replace background
-                        val resultBitmap = applyBackgroundToBitmap(bitmap, mask, maskWidth, maskHeight) // Helper needed
-                        
-                        _capturedBitmap.value = resultBitmap
-                        _isRemovingBackground.value = false
-                    }
-                    .addOnFailureListener { e ->
-                        e.printStackTrace()
-                        _isRemovingBackground.value = false
-                    }
+        viewModelScope.launch(Dispatchers.Default) {
+            try {
+                val result = backgroundRemover.remove(bitmap, _backgroundColor.value)
+                _capturedBitmap.value = result
+                _removalState.value = RemovalState.Done
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.w(TAG, "Background removal failed", e)
+                _removalState.value = RemovalState.Error(e.message ?: "Unknown error")
+            } finally {
                 _isRemovingBackground.value = false
             }
         }
-    }
-
-    private fun applyBackgroundToBitmap(original: Bitmap, mask: ByteBuffer, maskW: Int, maskH: Int): Bitmap {
-        return original
-        
-        /*
-        // Scale mask if needed (ML Kit mask might be different size)
-        // For simplicity assuming mask matches input or handling scaling simply
-        // Ideally we should map mask pixels to image pixels
-
-        val result = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(result)
-        
-        // Draw original image
-        // To implement this properly with raw ByteBuffer mask is complex.
-        
-        mask.rewind()
-        val maskPixels = FloatArray(maskW * maskH)
-        mask.asFloatBuffer().get(maskPixels) // Check if getFloat is supported for buffer type
-
-        val intColors = IntArray(maskW * maskH)
-        val bgColor = if (_backgroundColor.value == BackgroundColor.WHITE) Color.WHITE 
-                      else if (_backgroundColor.value == BackgroundColor.LIGHT_BLUE) Color.parseColor("#ADD8E6")
-                      else Color.TRANSPARENT
-
-        for (i in 0 until maskW * maskH) {
-             val confidence = maskPixels[i]
-             if (confidence > 0.5f) {
-                 intColors[i] = Color.TRANSPARENT // Marker to REPLACE with original
-             } else {
-                 intColors[i] = bgColor
-             }
-        }
-        
-        return original 
-        */
     }
 
     // Setters for custom manual preset
@@ -297,6 +238,7 @@ class SharedPhotoViewModel @Inject constructor(
         _processedImageUri.value = null
         _fileSizeKb.value = 0
         _isRemovingBackground.value = false
+        _removalState.value = RemovalState.Idle
     }
     
     /**
@@ -449,6 +391,15 @@ class SharedPhotoViewModel @Inject constructor(
 
 enum class BackgroundColor {
     WHITE,
-    LIGHT_BLUE,
-    TRANSPARENT
+    STUDIO_BLUE,
+    LIGHT_GREY,
+    GRADIENT,
+    TRANSPARENT,
+}
+
+sealed class RemovalState {
+    data object Idle : RemovalState()
+    data object Working : RemovalState()
+    data object Done : RemovalState()
+    data class Error(val message: String) : RemovalState()
 }

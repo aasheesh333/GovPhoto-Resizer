@@ -331,7 +331,9 @@ private fun PreviewCard(
     
     val bgColor = when (backgroundColor) {
         BackgroundColor.WHITE -> Color.White
-        BackgroundColor.LIGHT_BLUE -> PhotoBgLightBlue
+        BackgroundColor.STUDIO_BLUE -> Color(0xFFB8D4E8)
+        BackgroundColor.LIGHT_GREY -> Color(0xFFE8E8E8)
+        BackgroundColor.GRADIENT -> Color(0xFFB8D4E8)
         BackgroundColor.TRANSPARENT -> Color.LightGray.copy(alpha = 0.3f)
     }
     

@@ -69,18 +69,18 @@ fun EditPhotoScreen(
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
     
-    // Sync background with ViewModel
+    // Sync background with ViewModel — any option change re-composites subject over chosen bg
     LaunchedEffect(selectedBackground) {
         sharedViewModel.setBackgroundColor(
             when (selectedBackground) {
                 BackgroundOption.WHITE -> BackgroundColor.WHITE
-                BackgroundOption.LIGHT_BLUE -> BackgroundColor.LIGHT_BLUE
-                BackgroundOption.REMOVE -> BackgroundColor.TRANSPARENT
+                BackgroundOption.STUDIO_BLUE -> BackgroundColor.STUDIO_BLUE
+                BackgroundOption.LIGHT_GREY -> BackgroundColor.LIGHT_GREY
+                BackgroundOption.GRADIENT -> BackgroundColor.GRADIENT
+                BackgroundOption.TRANSPARENT -> BackgroundColor.TRANSPARENT
             }
         )
-        if (selectedBackground == BackgroundOption.REMOVE) {
-            sharedViewModel.removeBackground()
-        }
+        sharedViewModel.removeBackground()
     }
     
     // Sync compression with ViewModel
@@ -255,8 +255,10 @@ private fun PhotoPreviewWithImage(
                 .background(
                     when (backgroundColor) {
                         BackgroundOption.WHITE -> Color.White
-                        BackgroundOption.LIGHT_BLUE -> PhotoBgLightBlue
-                        BackgroundOption.REMOVE -> Color.LightGray.copy(alpha = 0.3f)
+                        BackgroundOption.STUDIO_BLUE -> Color(0xFFB8D4E8)
+                        BackgroundOption.LIGHT_GREY -> Color(0xFFE8E8E8)
+                        BackgroundOption.GRADIENT -> Color(0xFFB8D4E8)
+                        BackgroundOption.TRANSPARENT -> Color.LightGray.copy(alpha = 0.3f)
                     }
                 )
         )
@@ -473,8 +475,10 @@ private fun BackgroundOptionItem(
 ) {
     val bgColor = when (option) {
         BackgroundOption.WHITE -> Color.White
-        BackgroundOption.LIGHT_BLUE -> PhotoBgLightBlue
-        BackgroundOption.REMOVE -> Color.Transparent
+        BackgroundOption.STUDIO_BLUE -> Color(0xFFB8D4E8)
+        BackgroundOption.LIGHT_GREY -> Color(0xFFE8E8E8)
+        BackgroundOption.GRADIENT -> Color(0xFFB8D4E8)
+        BackgroundOption.TRANSPARENT -> Color.Transparent
     }
     
     Surface(
@@ -504,7 +508,7 @@ private fun BackgroundOptionItem(
                         .align(Alignment.Center),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (option == BackgroundOption.REMOVE) {
+                    if (option == BackgroundOption.TRANSPARENT) {
                         Icon(
                             imageVector = Icons.Default.GridOff,
                             contentDescription = null,
@@ -529,8 +533,10 @@ private fun BackgroundOptionItem(
             Text(
                 text = when (option) {
                     BackgroundOption.WHITE -> stringResource(R.string.white)
-                    BackgroundOption.LIGHT_BLUE -> stringResource(R.string.light_blue)
-                    BackgroundOption.REMOVE -> stringResource(R.string.remove)
+                    BackgroundOption.STUDIO_BLUE -> "Studio Blue"
+                    BackgroundOption.LIGHT_GREY -> "Light Grey"
+                    BackgroundOption.GRADIENT -> "Gradient"
+                    BackgroundOption.TRANSPARENT -> "Transparent"
                 },
                 style = MaterialTheme.typography.labelLarge.copy(
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
@@ -671,7 +677,7 @@ private fun CompressionControl(
 }
 
 enum class BackgroundOption {
-    WHITE, LIGHT_BLUE, REMOVE
+    WHITE, STUDIO_BLUE, LIGHT_GREY, GRADIENT, TRANSPARENT
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
