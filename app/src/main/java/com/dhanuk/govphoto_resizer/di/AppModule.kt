@@ -1,5 +1,7 @@
 package com.dhanuk.govphoto_resizer.di
 
+import com.dhanuk.govphoto_resizer.data.ml.FaceDetectorClient
+import com.dhanuk.govphoto_resizer.data.ml.MlKitFaceDetectorClient
 import com.dhanuk.govphoto_resizer.data.ml.MlKitSegmenterClient
 import com.dhanuk.govphoto_resizer.data.ml.SegmenterClient
 import com.google.gson.Gson
@@ -23,4 +25,8 @@ object AppModule {
     @Provides
     @Singleton
     fun provideSegmenterClient(): SegmenterClient = MlKitSegmenterClient()
+
+    @Provides
+    @Singleton
+    fun provideFaceDetectorClient(): FaceDetectorClient = MlKitFaceDetectorClient()
 }
