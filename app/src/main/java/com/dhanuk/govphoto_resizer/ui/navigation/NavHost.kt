@@ -1,5 +1,6 @@
 package com.dhanuk.govphoto_resizer.ui.navigation
 
+import androidx.annotation.SuppressLint
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -27,6 +28,7 @@ import com.dhanuk.govphoto_resizer.ui.screens.SettingsScreen
 import com.dhanuk.govphoto_resizer.ui.viewmodel.SettingsViewModel
 import com.dhanuk.govphoto_resizer.ui.viewmodel.SharedPhotoViewModel
 
+@SuppressLint("UnrememberedGetBackStackEntry")
 @Composable
 fun GovPhotoNavHost(
     modifier: Modifier = Modifier,
