@@ -48,7 +48,7 @@ fun HistoryScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Primary,
+                    containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )
@@ -67,7 +67,7 @@ fun HistoryScreen(
             Icon(
                 imageVector = Icons.Default.History,
                 contentDescription = null,
-                tint = TextSecondaryLight,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(80.dp)
             )
             
@@ -76,7 +76,7 @@ fun HistoryScreen(
             Text(
                 text = stringResource(R.string.no_history),
                 style = MaterialTheme.typography.titleMedium,
-                color = TextSecondaryLight,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
             
@@ -85,7 +85,7 @@ fun HistoryScreen(
             Text(
                 text = "Photos you resize will appear here",
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondaryLight.copy(alpha = 0.7f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center
             )
         }

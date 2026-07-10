@@ -132,7 +132,7 @@ fun PhotoUploadScreen(
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Primary,
+                    containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )
@@ -163,7 +163,7 @@ fun PhotoUploadScreen(
             Text(
                 text = "Select a clear, front-facing photo",
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondaryLight,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
             
@@ -174,8 +174,8 @@ fun PhotoUploadScreen(
                 icon = Icons.Default.CameraAlt,
                 title = stringResource(R.string.upload_from_camera),
                 subtitle = stringResource(R.string.take_new_photo),
-                backgroundColor = IndiaGreen.copy(alpha = 0.1f),
-                iconTint = IndiaGreen,
+                backgroundColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                iconTint = MaterialTheme.colorScheme.primary,
                 onClick = { launchCamera() }
             )
             
@@ -186,8 +186,8 @@ fun PhotoUploadScreen(
                 icon = Icons.Default.PhotoLibrary,
                 title = stringResource(R.string.upload_from_gallery),
                 subtitle = stringResource(R.string.select_from_photos),
-                backgroundColor = Primary.copy(alpha = 0.1f),
-                iconTint = Primary,
+                backgroundColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                iconTint = MaterialTheme.colorScheme.primary,
                 onClick = { galleryLauncher.launch("image/*") }
             )
             
@@ -197,7 +197,7 @@ fun PhotoUploadScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = PrimaryContainer
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
                 ),
                 shape = RoundedCornerShape(16.dp)
             ) {
@@ -209,13 +209,13 @@ fun PhotoUploadScreen(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Primary.copy(alpha = 0.2f)),
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Lightbulb,
                             contentDescription = null,
-                            tint = Primary,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -225,13 +225,13 @@ fun PhotoUploadScreen(
                             style = MaterialTheme.typography.titleSmall.copy(
                                 fontWeight = FontWeight.Bold
                             ),
-                            color = Primary
+                            color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "• ${stringResource(R.string.guideline_clear_photo)}\n• ${stringResource(R.string.guideline_good_lighting)}\n• ${stringResource(R.string.guideline_plain_background)}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Primary.copy(alpha = 0.8f),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
                             lineHeight = MaterialTheme.typography.bodySmall.lineHeight * 1.3f
                         )
                     }
@@ -291,7 +291,7 @@ private fun UploadOptionCard(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondaryLight
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Box(

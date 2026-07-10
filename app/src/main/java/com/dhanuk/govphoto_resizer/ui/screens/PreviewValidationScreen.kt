@@ -112,7 +112,7 @@ fun PreviewValidationScreen(
                         Text(
                             text = "Step 3 of 3",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondaryLight
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     // Share Button (Visible if processed image exists)
@@ -121,7 +121,7 @@ fun PreviewValidationScreen(
                             Icon(
                                 imageVector = Icons.Default.Share,
                                 contentDescription = "Share",
-                                tint = Primary
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         }
                     } else {
@@ -144,7 +144,7 @@ fun PreviewValidationScreen(
                                 .height(4.dp)
                                 .clip(RoundedCornerShape(2.dp))
                                 .background(
-                                    if (index <= 2) IndiaGreen else DividerLight
+                                    if (index <= 2) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
                                 )
                         )
                         if (index < 2) Spacer(modifier = Modifier.width(8.dp))
@@ -191,7 +191,7 @@ fun PreviewValidationScreen(
                             .height(56.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Saffron
+                            containerColor = MaterialTheme.colorScheme.tertiary
                         ),
                         elevation = ButtonDefaults.buttonElevation(
                             defaultElevation = 4.dp
@@ -200,14 +200,14 @@ fun PreviewValidationScreen(
                         if (isSaving) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(24.dp),
-                                color = Primary,
+                                color = MaterialTheme.colorScheme.primary,
                                 strokeWidth = 2.dp
                             )
                         } else {
                             Icon(
                                 imageVector = Icons.Default.SaveAlt,
                                 contentDescription = null,
-                                tint = Primary,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -216,7 +216,7 @@ fun PreviewValidationScreen(
                                 style = MaterialTheme.typography.titleSmall.copy(
                                     fontWeight = FontWeight.Bold
                                 ),
-                                color = Primary
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
@@ -228,12 +228,12 @@ fun PreviewValidationScreen(
                             .fillMaxWidth()
                             .height(48.dp),
                         shape = RoundedCornerShape(12.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight)
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Edit,
                             contentDescription = null,
-                            tint = TextSecondaryLight,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -242,7 +242,7 @@ fun PreviewValidationScreen(
                             style = MaterialTheme.typography.labelLarge.copy(
                                 fontWeight = FontWeight.Medium
                             ),
-                            color = TextSecondaryLight
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -253,7 +253,7 @@ fun PreviewValidationScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(BackgroundLight)
+                .background(MaterialTheme.colorScheme.background)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
@@ -296,7 +296,7 @@ private fun TabSelector(
             .height(48.dp),
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight)
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
             modifier = Modifier
@@ -312,7 +312,7 @@ private fun TabSelector(
                         .weight(1f)
                         .fillMaxHeight(),
                     shape = RoundedCornerShape(8.dp),
-                    color = if (selectedTab == index) Primary else Color.Transparent,
+                    color = if (selectedTab == index) MaterialTheme.colorScheme.primary else Color.Transparent,
                     onClick = { onTabSelected(index) }
                 ) {
                     Box(
@@ -323,7 +323,7 @@ private fun TabSelector(
                             style = MaterialTheme.typography.labelLarge.copy(
                                 fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium
                             ),
-                            color = if (selectedTab == index) Color.White else TextSecondaryLight
+                            color = if (selectedTab == index) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -373,7 +373,7 @@ private fun PreviewCard(
                         .width(200.dp) // Fixed width basis
                         .aspectRatio(aspectRatio) // Dynamic height based on ratio
                         .background(bgColor)
-                        .border(1.dp, BorderLight),
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     contentAlignment = Alignment.Center
                 ) {
                     if (imageUri != null) {
@@ -419,7 +419,7 @@ private fun PreviewCard(
                         Icon(
                             imageVector = Icons.Default.Verified,
                             contentDescription = null,
-                            tint = IndiaGreen,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
@@ -427,14 +427,14 @@ private fun PreviewCard(
                             style = MaterialTheme.typography.labelMedium.copy(
                                 fontWeight = FontWeight.Bold
                             ),
-                            color = IndiaGreen
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
             }
             
             // Info Row
-            Divider(color = DividerLight)
+            Divider(color = MaterialTheme.colorScheme.outlineVariant)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -453,19 +453,19 @@ private fun PreviewCard(
                     Text(
                         text = preset?.getFormattedDimensions() ?: "Custom Size",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondaryLight
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = IndiaGreen.copy(alpha = 0.1f)
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                 ) {
                     Text(
                         text = "$fileSizeKb KB",
                         style = MaterialTheme.typography.labelMedium.copy(
                             fontWeight = FontWeight.Bold
                         ),
-                        color = IndiaGreen,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                 }
@@ -528,7 +528,7 @@ private fun ValidationChecklist(
                     .padding(top = 16.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = SuccessLight
+                    containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
                 Row(
@@ -539,7 +539,7 @@ private fun ValidationChecklist(
                     Icon(
                         imageVector = Icons.Default.CheckCircle,
                         contentDescription = null,
-                        tint = Success,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp)
                     )
                     Text(
@@ -547,7 +547,7 @@ private fun ValidationChecklist(
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.Medium
                         ),
-                        color = Success
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -579,7 +579,7 @@ private fun ValidationItem(
                     .width(4.dp)
                     .height(72.dp)
                     .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
-                    .background(if (isSuccess) Success else Warning)
+                    .background(if (isSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary)
             )
             
             Row(
@@ -593,13 +593,13 @@ private fun ValidationItem(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .background(if (isSuccess) SuccessLight else WarningLight),
+                        .background(if (isSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = if (isSuccess) Success else Warning,
+                        tint = if (isSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -615,14 +615,14 @@ private fun ValidationItem(
                     Text(
                         text = description,
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondaryLight
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 
                 Icon(
                     imageVector = if (isSuccess) Icons.Default.CheckCircle else Icons.Default.Warning,
                     contentDescription = null,
-                    tint = if (isSuccess) Success else Warning,
+                    tint = if (isSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
                     modifier = Modifier.size(24.dp)
                 )
             }

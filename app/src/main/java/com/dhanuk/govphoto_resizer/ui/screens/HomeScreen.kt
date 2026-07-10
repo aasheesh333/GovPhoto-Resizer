@@ -110,7 +110,7 @@ private fun HomeHeader(settingsViewModel: SettingsViewModel) {
                         modifier = Modifier
                             .size(32.dp)
                             .clip(RoundedCornerShape(6.dp))
-                            .background(Primary),
+                            .background(MaterialTheme.colorScheme.primary),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -147,7 +147,7 @@ private fun HomeHeader(settingsViewModel: SettingsViewModel) {
             Text(
                 text = "Compliant with all government standards",
                 style = MaterialTheme.typography.bodySmall,
-                color = TextSecondaryLight
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -171,7 +171,7 @@ private fun LanguageToggle(settingsViewModel: SettingsViewModel) {
             imageVector = Icons.Default.Translate,
             contentDescription = null,
             modifier = Modifier.size(18.dp),
-            tint = Primary
+            tint = MaterialTheme.colorScheme.primary
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
@@ -179,13 +179,13 @@ private fun LanguageToggle(settingsViewModel: SettingsViewModel) {
             style = MaterialTheme.typography.labelMedium.copy(
                 fontWeight = FontWeight.Bold
             ),
-            color = Primary
+            color = MaterialTheme.colorScheme.primary
         )
         Icon(
             imageVector = Icons.Default.ArrowDropDown,
             contentDescription = null,
             modifier = Modifier.size(18.dp),
-            tint = Primary
+            tint = MaterialTheme.colorScheme.primary
         )
     }
 }
@@ -201,12 +201,12 @@ private fun QuickUploadButton(onClick: () -> Unit) {
             .shadow(
                 elevation = 8.dp,
                 shape = RoundedCornerShape(16.dp),
-                ambientColor = IndiaGreen.copy(alpha = 0.3f),
-                spotColor = IndiaGreen.copy(alpha = 0.3f)
+                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
             ),
         shape = RoundedCornerShape(16.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = IndiaGreen
+            containerColor = MaterialTheme.colorScheme.primary
         ),
         contentPadding = PaddingValues(horizontal = 20.dp)
     ) {
@@ -284,13 +284,13 @@ private fun DocumentTypeSection(
                 Text(
                     text = stringResource(R.string.view_all),
                     style = MaterialTheme.typography.labelLarge,
-                    color = Primary
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Icon(
                     imageVector = Icons.Default.ArrowForward,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
-                    tint = Primary
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -365,13 +365,13 @@ private fun DocumentTypeCard(
                     modifier = Modifier
                         .size(56.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(CategoryBlue),
+                        .background(MaterialTheme.colorScheme.primary),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = Primary,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -386,7 +386,7 @@ private fun DocumentTypeCard(
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondaryLight
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -394,7 +394,7 @@ private fun DocumentTypeCard(
                 onClick = onClick,
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Primary
+                    containerColor = MaterialTheme.colorScheme.primary
                 ),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
             ) {
@@ -419,7 +419,7 @@ private fun BrowseAllFormsButton(onClick: () -> Unit) {
             onClick = onClick,
             shape = RoundedCornerShape(24.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Primary
+                containerColor = MaterialTheme.colorScheme.primary
             ),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
             elevation = ButtonDefaults.buttonElevation(
@@ -469,9 +469,9 @@ private fun BottomNavigationBar(
                 )
             },
             colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = Primary,
-                selectedTextColor = Primary,
-                indicatorColor = PrimaryContainer
+                selectedIconColor = MaterialTheme.colorScheme.primary,
+                selectedTextColor = MaterialTheme.colorScheme.primary,
+                indicatorColor = MaterialTheme.colorScheme.primaryContainer
             )
         )
         NavigationBarItem(
@@ -492,9 +492,9 @@ private fun BottomNavigationBar(
                 )
             },
             colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = Primary,
-                selectedTextColor = Primary,
-                indicatorColor = PrimaryContainer
+                selectedIconColor = MaterialTheme.colorScheme.primary,
+                selectedTextColor = MaterialTheme.colorScheme.primary,
+                indicatorColor = MaterialTheme.colorScheme.primaryContainer
             )
         )
         NavigationBarItem(
@@ -515,9 +515,9 @@ private fun BottomNavigationBar(
                 )
             },
             colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = Primary,
-                selectedTextColor = Primary,
-                indicatorColor = PrimaryContainer
+                selectedIconColor = MaterialTheme.colorScheme.primary,
+                selectedTextColor = MaterialTheme.colorScheme.primary,
+                indicatorColor = MaterialTheme.colorScheme.primaryContainer
             )
         )
     }

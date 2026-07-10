@@ -114,39 +114,4 @@ val govDarkColorScheme = darkColorScheme(
     outline = GovOutlineDark, outlineVariant = GovOutlineVariantDark,
 )
 
-// === Legacy aliases (DEPRECATED — removed in P3 once screens re-skinned) ===
-// Existing screens reference the old Navy/Saffron/Green constant names directly.
-// These aliases keep them compiling; P3 re-skins all screens and P3.8 deletes this block.
-val Primary = GovPrimary
-val PrimaryDark = GovPrimaryDark
-val PrimaryLight = GovPrimaryDark
-val PrimaryContainer = GovPrimaryContainer
-val IndiaGreen = GovSuccess
-val Saffron = Color(0xFFFF9933)
-val IndiaWhite = GovPhotoBgWhite
-val BackgroundLight = GovBackground
-val BackgroundDark = GovBackgroundDark
-val SurfaceLight = GovSurface
-val SurfaceDark = GovSurfaceDark
-val TextMainLight = GovOnBackground
-val TextMainDark = GovOnBackgroundDark
-val TextSecondaryLight = GovOnSurfaceVariant
-val TextSecondaryDark = GovOnSurfaceVariantDark
-val Success = GovSuccess
-val SuccessLight = GovSuccessContainer
-val Warning = GovWarning
-val WarningLight = GovWarningContainer
-val Error = GovError
-val ErrorLight = GovErrorContainer
-val CategoryBlue = Color(0xFF49A6CC)
-val CategoryTeal = Color(0xFF49A69E)
-val CategoryOrange = Color(0xFFE07A3F)
-val CategoryPurple = GovTertiary
-val PhotoBgWhite = GovPhotoBgWhite
-val PhotoBgLightBlue = GovPhotoBgStudioBlue
-val PhotoBgTransparent = GovPhotoBgTransparent
-val BorderLight = GovOutlineVariant
-val BorderDark = GovOutlineVariantDark
-val DividerLight = GovOutlineVariant
-val DividerDark = GovOutlineVariantDark
-val CardDark = GovSurfaceDark
+

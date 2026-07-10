@@ -114,7 +114,7 @@ fun EditPhotoScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBackIosNew,
+                            imageVector = Icons.Default.ArrowBack,
                             contentDescription = stringResource(R.string.back)
                         )
                     }
@@ -128,7 +128,7 @@ fun EditPhotoScreen(
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Primary,
+                    containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )
@@ -148,7 +148,7 @@ fun EditPhotoScreen(
                         .height(56.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = IndiaGreen
+                        containerColor = MaterialTheme.colorScheme.primary
                     ),
                     elevation = ButtonDefaults.buttonElevation(
                         defaultElevation = 4.dp
@@ -206,7 +206,7 @@ fun EditPhotoScreen(
             Text(
                 text = stringResource(R.string.align_face),
                 style = MaterialTheme.typography.bodySmall,
-                color = TextSecondaryLight
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -259,7 +259,7 @@ private fun PhotoPreviewWithImage(
             .fillMaxWidth()
             .aspectRatio(aspectRatio) // Use dynamic aspect ratio
             .clip(RoundedCornerShape(16.dp))
-            .border(2.dp, BorderLight, RoundedCornerShape(16.dp)),
+            .border(2.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp)),
         contentAlignment = Alignment.Center
     ) {
         // Background color layer
@@ -329,14 +329,14 @@ private fun PhotoPreviewWithImage(
                 Icon(
                     imageVector = Icons.Default.Image,
                     contentDescription = null,
-                    tint = TextSecondaryLight,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(64.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "No image selected",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondaryLight
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -522,11 +522,11 @@ private fun BackgroundOptionItem(
         modifier = modifier.clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         border = if (isSelected) {
-            androidx.compose.foundation.BorderStroke(2.dp, Primary)
+            androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
         } else {
-            androidx.compose.foundation.BorderStroke(1.dp, BorderLight)
+            androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         },
-        color = if (isSelected) PrimaryContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -541,7 +541,7 @@ private fun BackgroundOptionItem(
                         .size(56.dp)
                         .clip(CircleShape)
                         .background(bgColor)
-                        .border(1.dp, BorderLight, CircleShape)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
                         .align(Alignment.Center),
                     contentAlignment = Alignment.Center
                 ) {
@@ -549,7 +549,7 @@ private fun BackgroundOptionItem(
                         Icon(
                             imageVector = Icons.Default.GridOff,
                             contentDescription = null,
-                            tint = TextSecondaryLight,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(28.dp)
                         )
                     }
@@ -559,7 +559,7 @@ private fun BackgroundOptionItem(
                     Icon(
                         imageVector = Icons.Default.CheckCircle,
                         contentDescription = null,
-                        tint = IndiaGreen,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -578,7 +578,7 @@ private fun BackgroundOptionItem(
                 style = MaterialTheme.typography.labelLarge.copy(
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                 ),
-                color = if (isSelected) Primary else TextSecondaryLight
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -609,27 +609,27 @@ private fun CompressionControl(
                 Spacer(modifier = Modifier.width(8.dp))
                 Surface(
                     shape = RoundedCornerShape(4.dp),
-                    color = Primary.copy(alpha = 0.1f),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Primary.copy(alpha = 0.5f))
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
                 ) {
                     Text(
                         text = format,
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = Primary,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                     )
                 }
             }
             Surface(
                 shape = RoundedCornerShape(24.dp),
-                color = IndiaGreen.copy(alpha = 0.1f)
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
             ) {
                 Text(
                     text = "~ $estimatedSize KB",
                     style = MaterialTheme.typography.labelLarge.copy(
                         fontWeight = FontWeight.Bold
                     ),
-                    color = IndiaGreen,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
             }
@@ -641,7 +641,7 @@ private fun CompressionControl(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface,
-            border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight)
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         ) {
             Column(
                 modifier = Modifier.padding(20.dp)
@@ -654,27 +654,27 @@ private fun CompressionControl(
                         Icon(
                             imageVector = Icons.Default.HighQuality,
                             contentDescription = null,
-                            tint = Primary,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = stringResource(R.string.quality).uppercase(),
                             style = MaterialTheme.typography.labelSmall,
-                            color = TextSecondaryLight
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = stringResource(R.string.max_size).uppercase(),
                             style = MaterialTheme.typography.labelSmall,
-                            color = TextSecondaryLight
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Icon(
                             imageVector = Icons.Default.Compress,
                             contentDescription = null,
-                            tint = Saffron,
+                            tint = MaterialTheme.colorScheme.tertiary,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -687,9 +687,9 @@ private fun CompressionControl(
                     onValueChange = onValueChange,
                     modifier = Modifier.fillMaxWidth(),
                     colors = SliderDefaults.colors(
-                        thumbColor = Primary,
-                        activeTrackColor = Primary,
-                        inactiveTrackColor = DividerLight
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
                     )
                 )
                 
@@ -700,12 +700,12 @@ private fun CompressionControl(
                     Text(
                         text = "10KB",
                         style = MaterialTheme.typography.labelMedium,
-                        color = TextSecondaryLight
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = "${maxSize}KB",
                         style = MaterialTheme.typography.labelMedium,
-                        color = TextSecondaryLight
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

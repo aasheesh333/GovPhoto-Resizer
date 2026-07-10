@@ -64,7 +64,7 @@ fun GovPhotoNavHost(
             ) { backStackEntry ->
                 val presetId = backStackEntry.arguments?.getString("presetId") ?: ""
                 val sharedPhotoViewModel: SharedPhotoViewModel = hiltViewModel(
-                    backStackEntry = navController.getBackStackEntry("upload_edit_preview")
+                    viewModelStoreOwner = navController.getBackStackEntry("upload_edit_preview")
                 )
                 sharedPhotoViewModel.setSelectedPreset(presetId)
                 PhotoUploadScreen(
@@ -77,7 +77,7 @@ fun GovPhotoNavHost(
 
             composable(Screen.EditPhoto.route) { backStackEntry ->
                 val sharedPhotoViewModel: SharedPhotoViewModel = hiltViewModel(
-                    backStackEntry = navController.getBackStackEntry("upload_edit_preview")
+                    viewModelStoreOwner = navController.getBackStackEntry("upload_edit_preview")
                 )
                 EditPhotoScreen(
                     sharedViewModel = sharedPhotoViewModel,
@@ -88,7 +88,7 @@ fun GovPhotoNavHost(
 
             composable(Screen.PreviewValidation.route) { backStackEntry ->
                 val sharedPhotoViewModel: SharedPhotoViewModel = hiltViewModel(
-                    backStackEntry = navController.getBackStackEntry("upload_edit_preview")
+                    viewModelStoreOwner = navController.getBackStackEntry("upload_edit_preview")
                 )
                 PreviewValidationScreen(
                     sharedViewModel = sharedPhotoViewModel,

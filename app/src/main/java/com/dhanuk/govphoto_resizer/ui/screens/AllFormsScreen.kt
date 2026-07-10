@@ -96,7 +96,7 @@ fun AllFormsScreen(
                         Icon(
                             imageVector = Icons.Outlined.Notifications,
                             contentDescription = null,
-                            tint = Primary
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -115,11 +115,11 @@ fun AllFormsScreen(
                 Text(
                     text = "${allPresets.size} presets available",
                     style = MaterialTheme.typography.labelMedium,
-                    color = TextSecondaryLight,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
                 
-                Divider(color = DividerLight)
+                Divider(color = MaterialTheme.colorScheme.outlineVariant)
             }
         },
         bottomBar = {
@@ -138,9 +138,9 @@ fun AllFormsScreen(
                     },
                     label = { Text(stringResource(R.string.nav_forms)) },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = Primary,
-                        selectedTextColor = Primary,
-                        indicatorColor = PrimaryContainer
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer
                     )
                 )
                 NavigationBarItem(
@@ -225,14 +225,14 @@ private fun SearchBar(
             Text(
                 text = stringResource(R.string.search_placeholder),
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondaryLight
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
         leadingIcon = {
             Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = null,
-                tint = TextSecondaryLight
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
         trailingIcon = {
@@ -241,15 +241,15 @@ private fun SearchBar(
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Clear",
-                        tint = TextSecondaryLight
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         },
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = Primary,
-            unfocusedBorderColor = BorderLight,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
             focusedContainerColor = MaterialTheme.colorScheme.surface,
             unfocusedContainerColor = MaterialTheme.colorScheme.surface
         ),
@@ -275,12 +275,12 @@ private fun CategoryHeader(title: String, count: Int) {
         )
         Surface(
             shape = RoundedCornerShape(12.dp),
-            color = Primary.copy(alpha = 0.1f)
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
         ) {
             Text(
                 text = "$count",
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                color = Primary,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
             )
         }
@@ -338,19 +338,19 @@ private fun FormListItem(
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondaryLight
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = TextSecondaryLight
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Divider(
             modifier = Modifier.padding(start = 80.dp),
-            color = DividerLight
+            color = MaterialTheme.colorScheme.outlineVariant
         )
     }
 }
@@ -374,23 +374,23 @@ private fun getCategoryIcon(category: PresetCategory): ImageVector {
 
 private fun getCategoryBgColor(category: PresetCategory): Color {
     return when (category) {
-        PresetCategory.IDENTITY_CARDS -> CategoryBlue
-        PresetCategory.TRAVEL_VISAS -> CategoryTeal
-        PresetCategory.CENTRAL_EXAMS -> CategoryOrange
-        PresetCategory.STATE_EXAMS -> CategoryPurple
+        PresetCategory.IDENTITY_CARDS -> MaterialTheme.colorScheme.primary
+        PresetCategory.TRAVEL_VISAS -> MaterialTheme.colorScheme.secondary
+        PresetCategory.CENTRAL_EXAMS -> MaterialTheme.colorScheme.tertiary
+        PresetCategory.STATE_EXAMS -> MaterialTheme.colorScheme.tertiary
         PresetCategory.BANKING -> Color(0xFFDCFCE7) // Green tint
         PresetCategory.DEFENCE -> Color(0xFFFEF3C7) // Amber tint
         PresetCategory.RAILWAYS -> Color(0xFFE0E7FF) // Indigo tint
-        PresetCategory.TEACHING -> CategoryPurple
-        PresetCategory.EDUCATION -> CategoryBlue
-        PresetCategory.JOB_EXAMS -> CategoryOrange
+        PresetCategory.TEACHING -> MaterialTheme.colorScheme.tertiary
+        PresetCategory.EDUCATION -> MaterialTheme.colorScheme.primary
+        PresetCategory.JOB_EXAMS -> MaterialTheme.colorScheme.tertiary
         PresetCategory.CUSTOM -> Color(0xFFF3F4F6) // Gray tint
     }
 }
 
 private fun getCategoryTint(category: PresetCategory): Color {
     return when (category) {
-        PresetCategory.IDENTITY_CARDS -> Primary
+        PresetCategory.IDENTITY_CARDS -> MaterialTheme.colorScheme.primary
         PresetCategory.TRAVEL_VISAS -> Color(0xFF0D9488)
         PresetCategory.CENTRAL_EXAMS -> Color(0xFFEA580C)
         PresetCategory.STATE_EXAMS -> Color(0xFF9333EA)
@@ -398,7 +398,7 @@ private fun getCategoryTint(category: PresetCategory): Color {
         PresetCategory.DEFENCE -> Color(0xFFD97706)
         PresetCategory.RAILWAYS -> Color(0xFF4F46E5)
         PresetCategory.TEACHING -> Color(0xFF9333EA)
-        PresetCategory.EDUCATION -> Primary
+        PresetCategory.EDUCATION -> MaterialTheme.colorScheme.primary
         PresetCategory.JOB_EXAMS -> Color(0xFFEA580C)
         PresetCategory.CUSTOM -> Color(0xFF6B7280)
     }

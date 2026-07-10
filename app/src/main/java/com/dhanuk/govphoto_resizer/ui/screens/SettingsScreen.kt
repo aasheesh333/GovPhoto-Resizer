@@ -85,7 +85,7 @@ fun SettingsScreen(
                 )
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
 
             // Language Section
             SettingsSection(title = stringResource(R.string.language)) {
@@ -107,7 +107,7 @@ fun SettingsScreen(
                 )
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
 
             // Accessibility Section
             SettingsSection(title = stringResource(R.string.accessibility)) {
@@ -127,7 +127,7 @@ fun SettingsScreen(
                 )
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
 
             // About Section
             SettingsSection(title = stringResource(R.string.about)) {
@@ -167,6 +167,7 @@ private fun SettingsSection(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ThemeSelector(
     selected: DarkModePref,
