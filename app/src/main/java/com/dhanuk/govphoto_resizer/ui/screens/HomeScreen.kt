@@ -3,6 +3,8 @@ package com.dhanuk.govphoto_resizer.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,12 +21,15 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dhanuk.govphoto_resizer.R
 import com.dhanuk.govphoto_resizer.data.datastore.AppLanguage
 import com.dhanuk.govphoto_resizer.ui.theme.*
+import com.dhanuk.govphoto_resizer.ui.viewmodel.HomeViewModel
+import com.dhanuk.govphoto_resizer.ui.viewmodel.RecentPresetUiItem
 import com.dhanuk.govphoto_resizer.ui.viewmodel.SettingsViewModel
 
 /**
@@ -36,9 +41,11 @@ fun HomeScreen(
     onNavigateToUpload: (String) -> Unit,
     onNavigateToHistory: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    settingsViewModel: SettingsViewModel = hiltViewModel()
+    settingsViewModel: SettingsViewModel = hiltViewModel(),
+    homeViewModel: HomeViewModel = hiltViewModel()
 ) {
     var selectedNavItem by remember { mutableIntStateOf(0) }
+    val recentPresets by homeViewModel.recentPresets.collectAsState()
     
     Scaffold(
         bottomBar = {
@@ -71,6 +78,15 @@ fun HomeScreen(
             QuickUploadButton(
                 onClick = { onNavigateToUpload("quick_upload") }
             )
+            
+            // Recent Presets Row (only shown when not empty)
+            if (recentPresets.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(20.dp))
+                RecentPresetsRow(
+                    recentPresets = recentPresets,
+                    onPresetClick = onNavigateToUpload
+                )
+            }
             
             Spacer(modifier = Modifier.height(24.dp))
             
@@ -252,6 +268,132 @@ private fun QuickUploadButton(onClick: () -> Unit) {
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
                 tint = Color.White
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecentPresetsRow(
+    recentPresets: List<RecentPresetUiItem>,
+    onPresetClick: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+    ) {
+        // Section Header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.recent_presets),
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold
+                ),
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Icon(
+                imageVector = Icons.Default.History,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(horizontal = 2.dp)
+        ) {
+            items(recentPresets, key = { it.presetId }) { item ->
+                RecentPresetChip(item = item, onClick = { onPresetClick(item.presetId) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecentPresetChip(
+    item: RecentPresetUiItem,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .width(160.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+        shadowElevation = 1.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Description,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+                if (item.useCount > 1) {
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Text(
+                            text = "x${item.useCount}",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = item.examName,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontWeight = FontWeight.SemiBold
+                ),
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (item.dimensions.isNotEmpty()) {
+                Text(
+                    text = item.dimensions,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
+            Text(
+                text = item.category,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
