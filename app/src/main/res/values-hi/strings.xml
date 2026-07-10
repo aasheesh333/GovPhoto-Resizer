@@ -114,4 +114,46 @@
     <string name="cd_undo_button">पिछली क्रिया पूर्ववत करें</string>
     <string name="cd_redo_button">पिछली क्रिया फिर से करें</string>
     <string name="cd_photo_preview">फोटो प्रीव्यू</string>
+
+    <!-- Save Success Screen -->
+    <string name="save_success_title">फोटो सेव हुई!</string>
+    <string name="save_success_compliant">%1$s के अनुरूप</string>
+    <string name="save_success_custom">कस्टम साइज</string>
+    <string name="save_success_details">%1$dcm x %2$dcm - %3$dKB - %4$s</string>
+    <string name="share">शेयर</string>
+    <string name="save_another">एक और सेव करें</string>
+    <string name="view_in_gallery">गैलरी में देखें</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_title_1">अपना दस्तावेज़ चुनें</string>
+    <string name="onboarding_desc_1">भारतीय सरकारी फॉर्म के लिए 110+ प्रीसेट</string>
+    <string name="onboarding_title_2">लें या अपलोड करें</string>
+    <string name="onboarding_desc_2">हम ऑटो-क्रॉप और चेहरा सत्यापन करते हैं</string>
+    <string name="onboarding_title_3">ऑटो बैकग्राउंड हटाना</string>
+    <string name="onboarding_desc_3">ग्रेडिएंट और पारदर्शी सहित 5 विकल्प</string>
+    <string name="onboarding_skip">छोड़ें</string>
+    <string name="onboarding_next">आगे</string>
+    <string name="onboarding_get_started">शुरू करें</string>
+
+    <!-- Help Screen -->
+    <string name="help_title">सहायता और अक्सर पूछे जाने वाले प्रश्न</string>
+    <string name="help_search_placeholder">अक्सर पूछे जाने वाले प्रश्न खोजें</string>
+    <string name="help_category_getting_started">शुरू करना</string>
+    <string name="help_category_photos">आपकी फोटो</string>
+    <string name="help_category_background">बैकग्राउंड और क्रॉपिंग</string>
+    <string name="help_category_file_sizes">फ़ाइल साइज</string>
+    <string name="help_category_troubleshooting">समस्या निवारण</string>
+    <string name="help_welcome">GovPhoto Resizer में आपका स्वागत है</string>
+    <string name="help_welcome_desc">अपनी पहली सरकारी-फोटो बनाने के लिए शुरू करें बटन दबाएं।</string>
+    <string name="help_get_started">शुरू करें</string>
+
+    <!-- Batch Screen -->
+    <string name="batch_title">बैच प्रोसेस</string>
+    <string name="batch_select_presets">प्रोसेस करने के लिए प्रीसेट चुनें</string>
+    <string name="batch_process">%1$d वेरिएंट प्रोसेस करें</string>
+    <string name="batch_results_title">बैच परिणाम</string>
+    <string name="batch_save_all">सभी गैलरी में सेव करें</string>
+    <string name="batch_retry">पुनः प्रयास</string>
+    <string name="batch_no_source">कोई फोटो चयनित नहीं। पहले फोटो चुनने के लिए वापस जाएं।</string>
 </resources>
+

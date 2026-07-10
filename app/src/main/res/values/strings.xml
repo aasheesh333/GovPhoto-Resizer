@@ -122,4 +122,46 @@
     <string name="cd_undo_button">Undo last action</string>
     <string name="cd_redo_button">Redo last action</string>
     <string name="cd_photo_preview">Photo preview</string>
+
+    <!-- Save Success Screen -->
+    <string name="save_success_title">Photo Saved!</string>
+    <string name="save_success_compliant">Compliant with %1$s</string>
+    <string name="save_success_custom">Custom Size</string>
+    <string name="save_success_details">%1$dcm x %2$dcm - %3$dKB - %4$s</string>
+    <string name="share">Share</string>
+    <string name="save_another">Save Another</string>
+    <string name="view_in_gallery">View in Gallery</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_title_1">Choose Your Document</string>
+    <string name="onboarding_desc_1">110+ presets for Indian government forms</string>
+    <string name="onboarding_title_2">Snap or Upload</string>
+    <string name="onboarding_desc_2">We auto-crop and validate facial compliance</string>
+    <string name="onboarding_title_3">Auto Background Removal</string>
+    <string name="onboarding_desc_3">5 options including gradient and transparent</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_get_started">Get Started</string>
+
+    <!-- Help Screen -->
+    <string name="help_title">Help and FAQ</string>
+    <string name="help_search_placeholder">Search FAQ</string>
+    <string name="help_category_getting_started">Getting Started</string>
+    <string name="help_category_photos">Your Photos</string>
+    <string name="help_category_background">Background and Cropping</string>
+    <string name="help_category_file_sizes">File Sizes</string>
+    <string name="help_category_troubleshooting">Troubleshooting</string>
+    <string name="help_welcome">Welcome to GovPhoto Resizer</string>
+    <string name="help_welcome_desc">Tap Get Started to create your first government-ready photo.</string>
+    <string name="help_get_started">Get Started</string>
+
+    <!-- Batch Screen -->
+    <string name="batch_title">Batch Process</string>
+    <string name="batch_select_presets">Select presets to process</string>
+    <string name="batch_process">Process %1$d Variants</string>
+    <string name="batch_results_title">Batch Results</string>
+    <string name="batch_save_all">Save All to Gallery</string>
+    <string name="batch_retry">Retry</string>
+    <string name="batch_no_source">No photo selected. Go back to pick a photo first.</string>
 </resources>
+

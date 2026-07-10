@@ -1,6 +1,8 @@
 package com.dhanuk.govphoto_resizer.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
@@ -11,25 +13,44 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.dhanuk.govphoto_resizer.ui.screens.AllFormsScreen
+import com.dhanuk.govphoto_resizer.ui.screens.BatchScreen
 import com.dhanuk.govphoto_resizer.ui.screens.EditPhotoScreen
+import com.dhanuk.govphoto_resizer.ui.screens.HelpScreen
 import com.dhanuk.govphoto_resizer.ui.screens.HistoryScreen
 import com.dhanuk.govphoto_resizer.ui.screens.HomeScreen
+import com.dhanuk.govphoto_resizer.ui.screens.OnboardingScreen
 import com.dhanuk.govphoto_resizer.ui.screens.PhotoUploadScreen
 import com.dhanuk.govphoto_resizer.ui.screens.PreviewValidationScreen
+import com.dhanuk.govphoto_resizer.ui.screens.SaveSuccessScreen
 import com.dhanuk.govphoto_resizer.ui.screens.SettingsScreen
+import com.dhanuk.govphoto_resizer.ui.viewmodel.SettingsViewModel
 import com.dhanuk.govphoto_resizer.ui.viewmodel.SharedPhotoViewModel
 
 @Composable
 fun GovPhotoNavHost(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
-    startDestination: String = Screen.Home.route,
+    settingsViewModel: SettingsViewModel = hiltViewModel(),
 ) {
+    val settings by settingsViewModel.state.collectAsState()
+    val startDest = if (settings.onboardingComplete) Screen.Home.route else Screen.Onboarding.route
+
     NavHost(
         navController = navController,
-        startDestination = startDestination,
+        startDestination = startDest,
         modifier = modifier
     ) {
+        composable(Screen.Onboarding.route) {
+            OnboardingScreen(
+                onComplete = {
+                    settingsViewModel.setOnboardingComplete(true)
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         composable(Screen.Home.route) {
             HomeScreen(
                 onNavigateToAllForms = { navController.navigate(Screen.AllForms.route) },
@@ -52,8 +73,6 @@ fun GovPhotoNavHost(
             )
         }
 
-        // Nested graph: Upload -> Edit -> Preview
-        // ViewModel scoped here so it dies when the flow ends
         navigation(
             startDestination = Screen.PhotoUpload.route,
             route = "upload_edit_preview"
@@ -94,11 +113,25 @@ fun GovPhotoNavHost(
                     sharedViewModel = sharedPhotoViewModel,
                     onNavigateBack = { navController.popBackStack() },
                     onSaveComplete = {
-                        navController.navigate(Screen.Home.route) {
-                            popUpTo(Screen.Home.route) { inclusive = true }
+                        navController.navigate(Screen.SaveSuccess.route) {
+                            popUpTo(Screen.PreviewValidation.route) { inclusive = true }
                         }
                     },
                     onRetakeEdit = { navController.popBackStack() }
+                )
+            }
+
+            composable(Screen.SaveSuccess.route) { backStackEntry ->
+                val sharedPhotoViewModel: SharedPhotoViewModel = hiltViewModel(
+                    viewModelStoreOwner = navController.getBackStackEntry("upload_edit_preview")
+                )
+                SaveSuccessScreen(
+                    sharedViewModel = sharedPhotoViewModel,
+                    onNavigateHome = {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Home.route) { inclusive = true }
+                        }
+                    }
                 )
             }
         }
@@ -113,6 +146,24 @@ fun GovPhotoNavHost(
         composable(Screen.Settings.route) {
             SettingsScreen(
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Help.route) {
+            HelpScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Batch.route) { backStackEntry ->
+            val sharedPhotoViewModel: SharedPhotoViewModel = hiltViewModel(
+                viewModelStoreOwner = navController.getBackStackEntry("upload_edit_preview")
+            )
+            BatchScreen(
+                sharedViewModel = sharedPhotoViewModel,
+                presets = emptyList(),
+                onNavigateBack = { navController.popBackStack() },
+                onProcessComplete = { navController.popBackStack() }
             )
         }
     }

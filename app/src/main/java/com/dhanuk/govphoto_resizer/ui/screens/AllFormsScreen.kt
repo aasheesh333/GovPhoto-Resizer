@@ -372,22 +372,24 @@ private fun getCategoryIcon(category: PresetCategory): ImageVector {
     }
 }
 
+@Composable
 private fun getCategoryBgColor(category: PresetCategory): Color {
     return when (category) {
         PresetCategory.IDENTITY_CARDS -> MaterialTheme.colorScheme.primary
         PresetCategory.TRAVEL_VISAS -> MaterialTheme.colorScheme.secondary
         PresetCategory.CENTRAL_EXAMS -> MaterialTheme.colorScheme.tertiary
         PresetCategory.STATE_EXAMS -> MaterialTheme.colorScheme.tertiary
-        PresetCategory.BANKING -> Color(0xFFDCFCE7) // Green tint
-        PresetCategory.DEFENCE -> Color(0xFFFEF3C7) // Amber tint
-        PresetCategory.RAILWAYS -> Color(0xFFE0E7FF) // Indigo tint
+        PresetCategory.BANKING -> Color(0xFFDCFCE7)
+        PresetCategory.DEFENCE -> Color(0xFFFEF3C7)
+        PresetCategory.RAILWAYS -> Color(0xFFE0E7FF)
         PresetCategory.TEACHING -> MaterialTheme.colorScheme.tertiary
         PresetCategory.EDUCATION -> MaterialTheme.colorScheme.primary
         PresetCategory.JOB_EXAMS -> MaterialTheme.colorScheme.tertiary
-        PresetCategory.CUSTOM -> Color(0xFFF3F4F6) // Gray tint
+        PresetCategory.CUSTOM -> Color(0xFFF3F4F6)
     }
 }
 
+@Composable
 private fun getCategoryTint(category: PresetCategory): Color {
     return when (category) {
         PresetCategory.IDENTITY_CARDS -> MaterialTheme.colorScheme.primary
