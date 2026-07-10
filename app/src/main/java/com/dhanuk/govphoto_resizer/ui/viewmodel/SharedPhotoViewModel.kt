@@ -79,6 +79,7 @@ class SharedPhotoViewModel @Inject constructor(
     val removalState: StateFlow<RemovalState> = _removalState.asStateFlow()
 
     private var faceAnalysisJob: Job? = null
+    private var decodeJob: Job? = null
 
     private val _faceAnalysis = MutableStateFlow<FaceAnalysisResult?>(null)
     val faceAnalysis: StateFlow<FaceAnalysisResult?> = _faceAnalysis.asStateFlow()
@@ -129,20 +130,40 @@ class SharedPhotoViewModel @Inject constructor(
         analyzeFace()
     }
 
-    private fun decodeUriToOriginalBitmap(uri: Uri) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val bmp = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                    val source = android.graphics.ImageDecoder.createSource(context.contentResolver, uri)
-                    android.graphics.ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
-                        decoder.isMutableRequired = true
-                    }
-                } else {
-                    context.contentResolver.openInputStream(uri)?.use { stream ->
-                        BitmapFactory.decodeStream(stream)
-                    }
-                }
-                _originalBitmap.value = bmp
+private fun decodeUriToOriginalBitmap(uri: Uri) {
+    decodeJob?.cancel()
+    decodeJob = viewModelScope.launch(Dispatchers.IO) {
+      if (!isActive) return@launch
+      try {
+        val options = BitmapFactory.Options().apply {
+            inJustDecodeBounds = true
+        }
+        context.contentResolver.openInputStream(uri)?.use { stream ->
+            BitmapFactory.decodeStream(stream, null, options)
+        }
+        val maxDim = 4096
+        val sampleSize = sequenceOf(1, 2, 4, 8).firstOrNull {
+            (options.outWidth / it) <= maxDim && (options.outHeight / it) <= maxDim
+        } ?: 8
+
+        val bmp = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+          val source = android.graphics.ImageDecoder.createSource(context.contentResolver, uri)
+          android.graphics.ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+            decoder.allocator = android.graphics.ImageDecoder.ALLOCATOR_SOFTWARE
+            decoder.setTargetSize(maxDim, maxDim)
+            decoder.isMutableRequired = true
+          }
+        } else {
+          val decodeOptions = BitmapFactory.Options().apply {
+              inSampleSize = sampleSize
+              inMutable = true
+          }
+          context.contentResolver.openInputStream(uri)?.use { stream ->
+            BitmapFactory.decodeStream(stream, null, decodeOptions)
+          }
+        }
+        if (!isActive) return@launch
+        _originalBitmap.value = bmp
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -229,13 +250,17 @@ fun analyzeFace() {
         _fileSizeKb.value = (estimatedBytes / 1024).coerceAtLeast(10)
     }
 
-    fun removeBackground() {
-        val bitmap = _originalBitmap.value ?: run {
-            _selectedImageUri.value?.let { uri ->
-                decodeSelectedUri()
-            }
-        } ?: return
-        if (_removalState.value is RemovalState.Working) return
+fun removeBackground() {
+    val bitmap = _originalBitmap.value ?: run {
+      _selectedImageUri.value?.let { uri ->
+        decodeSelectedUri()
+      }
+    } ?: return
+    if (bitmap.isRecycled) {
+      Log.w(TAG, "Original bitmap recycled, skipping removal")
+      return
+    }
+    if (_removalState.value is RemovalState.Working) return
 
         _removalState.value = RemovalState.Working
         _isRemovingBackground.value = true
@@ -308,17 +333,19 @@ fun analyzeFace() {
         _faceAnalysis.value = null
     }
 
-    private fun recycleBitmaps() {
-        _originalBitmap.value?.recycle()
-        _originalBitmap.value = null
-    }
+private fun recycleBitmaps() {
+    _originalBitmap.value?.let { if (!it.isRecycled) it.recycle() }
+    _originalBitmap.value = null
+    _displayedBitmap.value?.let { if (!it.isRecycled && it != _originalBitmap.value) it.recycle() }
+    _displayedBitmap.value = null
+  }
 
-    override fun onCleared() {
-        super.onCleared()
-        recycleBitmaps()
-        _displayedBitmap.value?.recycle()
-        _displayedBitmap.value = null
-    }
+override fun onCleared() {
+    super.onCleared()
+    faceAnalysisJob?.cancel()
+    decodeJob?.cancel()
+    recycleBitmaps()
+  }
 
     suspend fun savePhotoToGallery(): Result<Uri> {
         Log.d(TAG, "savePhotoToGallery: Starting save process")
@@ -339,10 +366,10 @@ fun analyzeFace() {
                         }
                     }
 
-                    if (bitmapToSave == null) {
-                        Log.e(TAG, "savePhotoToGallery: No bitmap available!")
-                        return@withLock Result.failure(Exception("No image to save"))
-                    }
+if (bitmapToSave == null || bitmapToSave.isRecycled) {
+        Log.e(TAG, "savePhotoToGallery: No bitmap available!")
+        return@withLock Result.failure(Exception("No image to save"))
+      }
 
                     Log.d(TAG, "savePhotoToGallery: Bitmap loaded: ${bitmapToSave.width}x${bitmapToSave.height}")
                     var targetW = targetWidth
@@ -376,19 +403,23 @@ fun analyzeFace() {
 
                         attempts++
 
-                        if (format == "png") {
-                            targetW = (targetW * 0.9f).toInt()
-                            targetH = (targetH * 0.9f).toInt()
-                            currentBitmap = Bitmap.createScaledBitmap(bitmapToSave, targetW, targetH, true)
-                        } else {
-                            if (quality > 10) {
-                                quality -= 5
-                            } else {
-                                targetW = (targetW * 0.9f).toInt()
-                                targetH = (targetH * 0.9f).toInt()
-                                currentBitmap = Bitmap.createScaledBitmap(bitmapToSave, targetW, targetH, true)
-                            }
-                        }
+if (format == "png") {
+          targetW = (targetW * 0.9f).toInt()
+          targetH = (targetH * 0.9f).toInt()
+          val oldBitmap = currentBitmap
+          currentBitmap = Bitmap.createScaledBitmap(bitmapToSave, targetW, targetH, true)
+          if (oldBitmap != bitmapToSave) oldBitmap.recycle()
+        } else {
+          if (quality > 10) {
+            quality -= 5
+          } else {
+            targetW = (targetW * 0.9f).toInt()
+            targetH = (targetH * 0.9f).toInt()
+            val oldBitmap2 = currentBitmap
+            currentBitmap = Bitmap.createScaledBitmap(bitmapToSave, targetW, targetH, true)
+            if (oldBitmap2 != bitmapToSave) oldBitmap2.recycle()
+          }
+        }
                     }
 
                     val imageBytes = outputStream.toByteArray()

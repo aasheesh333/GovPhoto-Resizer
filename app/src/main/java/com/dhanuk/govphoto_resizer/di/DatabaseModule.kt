@@ -19,7 +19,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): GovPhotoDatabase =
         Room.databaseBuilder(context, GovPhotoDatabase::class.java, "govphoto.db")
-            .build()
+            .fallbackToDestructiveMigration().build()
 
     @Provides
     fun providePhotoHistoryDao(db: GovPhotoDatabase): PhotoHistoryDao = db.photoHistoryDao()

@@ -1,12 +1,20 @@
 package com.dhanuk.govphoto_resizer.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
  * Entity representing a processed photo stored in the history.
  */
-@Entity(tableName = "photo_history")
+@Entity(
+    tableName = "photo_history",
+    indices = [
+        Index(value = ["createdAt"]),
+        Index(value = ["presetId"]),
+        Index(value = ["examName"])
+    ]
+)
 data class PhotoHistoryEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,

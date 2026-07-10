@@ -153,7 +153,7 @@ fun SaveSuccessScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.cd_validation_status),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .size(84.dp)
@@ -197,7 +197,7 @@ fun SaveSuccessScreen(
                                     .data(uri)
                                     .crossfade(true)
                                     .build(),
-                                contentDescription = null,
+                                contentDescription = stringResource(R.string.cd_saved_thumbnail),
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )

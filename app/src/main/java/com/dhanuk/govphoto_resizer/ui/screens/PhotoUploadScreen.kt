@@ -78,6 +78,8 @@ fun PhotoUploadScreen(
     ) { granted ->
         if (granted) {
             val tempFile = File(context.cacheDir, "gov_camera_${System.currentTimeMillis()}.jpg")
+            tempFile.parentFile?.mkdirs()
+            tempFile.createNewFile()
             val uri = FileProvider.getUriForFile(
                 context,
                 "${context.packageName}.fileprovider",
@@ -92,6 +94,8 @@ fun PhotoUploadScreen(
         val granted = context.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
         if (granted) {
             val tempFile = File(context.cacheDir, "gov_camera_${System.currentTimeMillis()}.jpg")
+            tempFile.parentFile?.mkdirs()
+            tempFile.createNewFile()
             val uri = FileProvider.getUriForFile(
                 context,
                 "${context.packageName}.fileprovider",
@@ -212,9 +216,9 @@ fun PhotoUploadScreen(
                             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Lightbulb,
-                            contentDescription = null,
+Icon(
+                        imageVector = Icons.Default.Lightbulb,
+                        contentDescription = stringResource(R.string.cd_lightbulb_tips),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(24.dp)
                         )
@@ -272,11 +276,11 @@ private fun UploadOptionCard(
                     .background(backgroundColor),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = iconTint,
-                    modifier = Modifier.size(32.dp)
+Icon(
+                imageVector = icon,
+                contentDescription = stringResource(R.string.cd_upload_option),
+                tint = iconTint,
+                modifier = Modifier.size(32.dp)
                 )
             }
             Column(modifier = Modifier.weight(1f)) {
@@ -301,9 +305,9 @@ private fun UploadOptionCard(
                     .background(iconTint.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowForward,
-                    contentDescription = null,
+Icon(
+                imageVector = Icons.Default.ArrowForward,
+                contentDescription = stringResource(R.string.cd_navigate_forward),
                     tint = iconTint,
                     modifier = Modifier.size(20.dp)
                 )

@@ -161,9 +161,9 @@ fun EditPhotoScreen(
                         )
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Icon(
-                        imageVector = Icons.Default.ArrowForward,
-                        contentDescription = null,
+Icon(
+                    imageVector = Icons.Default.ArrowForward,
+                    contentDescription = stringResource(R.string.cd_navigate_forward),
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -328,7 +328,7 @@ private fun PhotoPreviewWithImage(
             ) {
                 Icon(
                     imageVector = Icons.Default.Image,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.cd_no_image),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(64.dp)
                 )
@@ -424,9 +424,9 @@ private fun PhotoPreviewWithImage(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             // Reset button
-            FloatingActionButton(
-                onClick = onReset,
-                modifier = Modifier.size(44.dp),
+FloatingActionButton(
+            onClick = onReset,
+            modifier = Modifier.size(48.dp),
                 containerColor = Color.Black.copy(alpha = 0.5f),
                 contentColor = Color.White,
                 shape = CircleShape,
@@ -453,9 +453,9 @@ private fun PhotoPreviewWithImage(
             }
             
             // Crop button placeholder
-            FloatingActionButton(
-                onClick = { /* Crop action */ },
-                modifier = Modifier.size(44.dp),
+FloatingActionButton(
+            onClick = { /* Crop action */ },
+            modifier = Modifier.size(48.dp),
                 containerColor = Color.Black.copy(alpha = 0.5f),
                 contentColor = Color.White,
                 shape = CircleShape,
@@ -546,9 +546,9 @@ private fun BackgroundOptionItem(
                     contentAlignment = Alignment.Center
                 ) {
                     if (option == BackgroundOption.TRANSPARENT) {
-                        Icon(
-                            imageVector = Icons.Default.GridOff,
-                            contentDescription = null,
+Icon(
+                        imageVector = Icons.Default.GridOff,
+                        contentDescription = stringResource(R.string.cd_background_transparent),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(28.dp)
                         )
@@ -556,9 +556,9 @@ private fun BackgroundOptionItem(
                 }
                 
                 if (isSelected) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = null,
+Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = stringResource(R.string.cd_validation_status),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp)
                     )
@@ -651,9 +651,9 @@ private fun CompressionControl(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.HighQuality,
-                            contentDescription = null,
+Icon(
+                        imageVector = Icons.Default.HighQuality,
+                        contentDescription = stringResource(R.string.cd_compression_quality),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(18.dp)
                         )
@@ -671,9 +671,9 @@ private fun CompressionControl(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            imageVector = Icons.Default.Compress,
-                            contentDescription = null,
+Icon(
+                        imageVector = Icons.Default.Compress,
+                        contentDescription = stringResource(R.string.cd_compression_size),
                             tint = MaterialTheme.colorScheme.tertiary,
                             modifier = Modifier.size(18.dp)
                         )

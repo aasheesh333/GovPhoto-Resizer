@@ -131,7 +131,7 @@ private fun HomeHeader(settingsViewModel: SettingsViewModel) {
                     ) {
                         Icon(
                             imageVector = Icons.Default.PhotoCamera,
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.cd_app_logo),
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
                         )
@@ -185,7 +185,7 @@ private fun LanguageToggle(settingsViewModel: SettingsViewModel) {
     ) {
         Icon(
             imageVector = Icons.Default.Translate,
-            contentDescription = null,
+            contentDescription = stringResource(R.string.cd_language_selector),
             modifier = Modifier.size(18.dp),
             tint = MaterialTheme.colorScheme.primary
         )
@@ -199,7 +199,7 @@ private fun LanguageToggle(settingsViewModel: SettingsViewModel) {
         )
         Icon(
             imageVector = Icons.Default.ArrowDropDown,
-            contentDescription = null,
+            contentDescription = stringResource(R.string.cd_language_dropdown),
             modifier = Modifier.size(18.dp),
             tint = MaterialTheme.colorScheme.primary
         )
@@ -244,7 +244,7 @@ private fun QuickUploadButton(onClick: () -> Unit) {
                 ) {
                     Icon(
                         imageVector = Icons.Default.AddAPhoto,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.cd_quick_upload),
                         tint = Color.White,
                         modifier = Modifier.size(26.dp)
                     )
@@ -266,7 +266,7 @@ private fun QuickUploadButton(onClick: () -> Unit) {
             }
             Icon(
                 imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
+                contentDescription = stringResource(R.string.cd_navigate_forward),
                 tint = Color.White
             )
         }
@@ -298,7 +298,7 @@ private fun RecentPresetsRow(
             )
             Icon(
                 imageVector = Icons.Default.History,
-                contentDescription = null,
+                contentDescription = stringResource(R.string.cd_recent_presets),
                 modifier = Modifier.size(20.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -349,7 +349,7 @@ private fun RecentPresetChip(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Description,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.cd_recent_preset_item),
                         modifier = Modifier.size(18.dp),
                         tint = MaterialTheme.colorScheme.onPrimaryContainer
                     )
@@ -430,7 +430,7 @@ private fun DocumentTypeSection(
                 )
                 Icon(
                     imageVector = Icons.Default.ArrowForward,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.cd_navigate_forward),
                     modifier = Modifier.size(18.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -512,7 +512,7 @@ private fun DocumentTypeCard(
       ) {
         Icon(
           imageVector = icon,
-          contentDescription = null,
+          contentDescription = stringResource(R.string.cd_document_type),
           tint = MaterialTheme.colorScheme.onPrimary,
           modifier = Modifier.size(32.dp)
         )
@@ -570,7 +570,7 @@ private fun BrowseAllFormsButton(onClick: () -> Unit) {
         ) {
             Icon(
                 imageVector = Icons.Default.Search,
-                contentDescription = null,
+                contentDescription = stringResource(R.string.cd_search_icon),
                 modifier = Modifier.size(22.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))

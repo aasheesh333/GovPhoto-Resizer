@@ -200,14 +200,14 @@ fun PreviewValidationScreen(
                         if (isSaving) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(24.dp),
-                                color = MaterialTheme.colorScheme.primary,
+                                color = MaterialTheme.colorScheme.onTertiary,
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Icon(
-                                imageVector = Icons.Default.SaveAlt,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
+Icon(
+                            imageVector = Icons.Default.SaveAlt,
+                            contentDescription = stringResource(R.string.cd_save_button),
+                                tint = MaterialTheme.colorScheme.onTertiary,
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -216,7 +216,7 @@ fun PreviewValidationScreen(
                                 style = MaterialTheme.typography.titleSmall.copy(
                                     fontWeight = FontWeight.Bold
                                 ),
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.onTertiary
                             )
                         }
                     }
@@ -232,7 +232,7 @@ fun PreviewValidationScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Edit,
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.cd_retake_photo),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(18.dp)
                         )
@@ -396,7 +396,7 @@ private fun PreviewCard(
                     } else {
                         Icon(
                             imageVector = Icons.Default.Person,
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.cd_person_placeholder),
                             tint = Color.Gray,
                             modifier = Modifier.size(80.dp)
                         )
@@ -408,7 +408,7 @@ private fun PreviewCard(
                     modifier = Modifier
                         .align(Alignment.TopEnd),
                     shape = RoundedCornerShape(24.dp),
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.surface,
                     shadowElevation = 4.dp
                 ) {
                     Row(
@@ -418,8 +418,8 @@ private fun PreviewCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Verified,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
+                            contentDescription = stringResource(R.string.cd_valid_badge),
+                            tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
@@ -536,10 +536,10 @@ private fun ValidationChecklist(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = stringResource(R.string.cd_validation_status),
+                    tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(24.dp)
                     )
                     Text(
@@ -547,7 +547,7 @@ private fun ValidationChecklist(
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.Medium
                         ),
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 }
             }
@@ -598,8 +598,8 @@ private fun ValidationItem(
                 ) {
                     Icon(
                         imageVector = icon,
-                        contentDescription = null,
-                        tint = if (isSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
+                        contentDescription = stringResource(R.string.cd_validation_status),
+                        tint = if (isSuccess) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiary,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -621,7 +621,7 @@ private fun ValidationItem(
                 
                 Icon(
                     imageVector = if (isSuccess) Icons.Default.CheckCircle else Icons.Default.Warning,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.cd_validation_status),
                     tint = if (isSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
                     modifier = Modifier.size(24.dp)
                 )

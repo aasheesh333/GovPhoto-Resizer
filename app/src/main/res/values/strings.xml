@@ -124,11 +124,47 @@
     <!-- Content Descriptions -->
     <string name="cd_app_logo">GovPhoto Resizer Logo</string>
     <string name="cd_language_selector">Change Language</string>
+    <string name="cd_language_dropdown">Language options</string>
     <string name="cd_notification">Notifications</string>
     <string name="cd_back_button">Go back</string>
     <string name="cd_undo_button">Undo last action</string>
     <string name="cd_redo_button">Redo last action</string>
     <string name="cd_photo_preview">Photo preview</string>
+    <string name="cd_quick_upload">Quick upload photo</string>
+    <string name="cd_navigate_forward">Navigate forward</string>
+    <string name="cd_recent_presets">Recent presets</string>
+    <string name="cd_recent_preset_item">Recent preset</string>
+    <string name="cd_view_all_forms">View all forms</string>
+    <string name="cd_document_type">Document type</string>
+    <string name="cd_search_forms">Search forms</string>
+    <string name="cd_lightbulb_tips">Photo tips</string>
+    <string name="cd_upload_option">Upload option</string>
+    <string name="cd_continue_editing">Continue editing</string>
+    <string name="cd_no_image">No image selected</string>
+    <string name="cd_background_transparent">Transparent background</string>
+    <string name="cd_background_selected">Selected background</string>
+    <string name="cd_compression_quality">Compression quality</string>
+    <string name="cd_compression_size">Compression size</string>
+    <string name="cd_save_button">Save photo</string>
+    <string name="cd_retake_photo">Retake photo</string>
+    <string name="cd_person_placeholder">Person placeholder</string>
+    <string name="cd_valid_badge">Valid badge</string>
+    <string name="cd_validation_face">Face validation</string>
+    <string name="cd_validation_aspect">Aspect ratio validation</string>
+    <string name="cd_validation_size">File size validation</string>
+    <string name="cd_validation_status">Validation status</string>
+    <string name="cd_delete_history">Delete history item</string>
+    <string name="cd_history_thumbnail">History photo thumbnail</string>
+    <string name="cd_search_icon">Search</string>
+    <string name="cd_category_icon">Category icon</string>
+    <string name="cd_settings_toggle">Settings toggle</string>
+    <string name="cd_settings_item">Settings option</string>
+    <string name="cd_onboarding_feature">Onboarding feature</string>
+    <string name="cd_history_empty">No history</string>
+    <string name="cd_help_expand">Expand FAQ item</string>
+    <string name="cd_help_search">Search FAQ</string>
+    <string name="cd_save_success">Photo saved successfully</string>
+    <string name="cd_saved_thumbnail">Saved photo thumbnail</string>
 
     <!-- Save Success Screen -->
     <string name="save_success_title">Photo Saved!</string>

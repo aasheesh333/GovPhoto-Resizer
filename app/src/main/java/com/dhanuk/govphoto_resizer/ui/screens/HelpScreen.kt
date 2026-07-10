@@ -160,7 +160,7 @@ fun HelpScreen(
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Search,
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.cd_search_icon),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     },
@@ -292,7 +292,7 @@ private fun FaqCard(
                 )
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.cd_help_expand),
                     tint = MaterialTheme.colorScheme.primary
                 )
             }

@@ -118,9 +118,9 @@ fun BatchScreen(
                     shape = RoundedCornerShape(16.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
-                    androidx.compose.foundation.Image(
-                        bitmap = sourceBitmap.asImageBitmap(),
-                        contentDescription = null,
+androidx.compose.foundation.Image(
+                    bitmap = sourceBitmap.asImageBitmap(),
+                    contentDescription = stringResource(R.string.cd_photo_preview),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(200.dp)

@@ -95,7 +95,7 @@ fun AllFormsScreen(
                     IconButton(onClick = { /* Notifications */ }) {
                         Icon(
                             imageVector = Icons.Outlined.Notifications,
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.cd_notification),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -231,7 +231,7 @@ private fun SearchBar(
         leadingIcon = {
             Icon(
                 imageVector = Icons.Default.Search,
-                contentDescription = null,
+                contentDescription = stringResource(R.string.cd_search_icon),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
@@ -322,7 +322,7 @@ private fun FormListItem(
                 ) {
                     Icon(
                         imageVector = icon,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.cd_category_icon),
                         tint = iconTint,
                         modifier = Modifier.size(24.dp)
                     )
@@ -344,7 +344,7 @@ private fun FormListItem(
             }
             Icon(
                 imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
+                contentDescription = stringResource(R.string.cd_navigate_forward),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -381,7 +381,7 @@ private fun getCategoryBgColor(category: PresetCategory): Color {
         PresetCategory.STATE_EXAMS -> MaterialTheme.colorScheme.tertiary
         PresetCategory.BANKING -> Color(0xFFDCFCE7)
         PresetCategory.DEFENCE -> Color(0xFFFEF3C7)
-        PresetCategory.RAILWAYS -> Color(0xFFE0E7FF)
+        PresetCategory.RAILWAYS -> MaterialTheme.colorScheme.secondaryContainer
         PresetCategory.TEACHING -> MaterialTheme.colorScheme.tertiary
         PresetCategory.EDUCATION -> MaterialTheme.colorScheme.primary
         PresetCategory.JOB_EXAMS -> MaterialTheme.colorScheme.tertiary
@@ -392,15 +392,15 @@ private fun getCategoryBgColor(category: PresetCategory): Color {
 @Composable
 private fun getCategoryTint(category: PresetCategory): Color {
     return when (category) {
-        PresetCategory.IDENTITY_CARDS -> MaterialTheme.colorScheme.primary
+        PresetCategory.IDENTITY_CARDS -> MaterialTheme.colorScheme.onPrimary
         PresetCategory.TRAVEL_VISAS -> Color(0xFF0D9488)
         PresetCategory.CENTRAL_EXAMS -> Color(0xFFEA580C)
-        PresetCategory.STATE_EXAMS -> Color(0xFF9333EA)
+        PresetCategory.STATE_EXAMS -> MaterialTheme.colorScheme.onTertiary
         PresetCategory.BANKING -> Color(0xFF16A34A)
         PresetCategory.DEFENCE -> Color(0xFFD97706)
         PresetCategory.RAILWAYS -> Color(0xFF4F46E5)
-        PresetCategory.TEACHING -> Color(0xFF9333EA)
-        PresetCategory.EDUCATION -> MaterialTheme.colorScheme.primary
+        PresetCategory.TEACHING -> MaterialTheme.colorScheme.onTertiary
+        PresetCategory.EDUCATION -> MaterialTheme.colorScheme.onPrimary
         PresetCategory.JOB_EXAMS -> Color(0xFFEA580C)
         PresetCategory.CUSTOM -> Color(0xFF6B7280)
     }

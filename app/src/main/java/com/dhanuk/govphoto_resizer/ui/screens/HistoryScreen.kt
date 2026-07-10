@@ -96,7 +96,7 @@ private fun EmptyHistoryState(modifier: Modifier = Modifier) {
     ) {
         Icon(
             imageVector = Icons.Default.History,
-            contentDescription = null,
+            contentDescription = stringResource(R.string.cd_history_empty),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(80.dp)
         )
@@ -150,9 +150,9 @@ private fun HistoryRow(
                     .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = null,
+Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = stringResource(R.string.cd_delete_history),
                     tint = MaterialTheme.colorScheme.onErrorContainer
                 )
             }
@@ -194,10 +194,7 @@ private fun HistoryRowContent(
                     .data(item.processedImagePath)
                     .crossfade(true)
                     .build(),
-                contentDescription = null,
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                contentDescription = stringResource(R.string.cd_history_thumbnail),
             )
 
             Column(

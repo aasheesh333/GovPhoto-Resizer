@@ -124,11 +124,47 @@
     <!-- Content Descriptions -->
     <string name="cd_app_logo">GovPhoto Resizer लोगो</string>
     <string name="cd_language_selector">भाषा बदलें</string>
+    <string name="cd_language_dropdown">भाषा विकल्प</string>
     <string name="cd_notification">सूचनाएं</string>
     <string name="cd_back_button">वापस जाएं</string>
     <string name="cd_undo_button">पिछली क्रिया पूर्ववत करें</string>
     <string name="cd_redo_button">पिछली क्रिया फिर से करें</string>
     <string name="cd_photo_preview">फोटो प्रीव्यू</string>
+    <string name="cd_quick_upload">त्वरित अपलोड फोटो</string>
+    <string name="cd_navigate_forward">आगे नेविगेट करें</string>
+    <string name="cd_recent_presets">हाल के प्रीसेट</string>
+    <string name="cd_recent_preset_item">हाल का प्रीसेट</string>
+    <string name="cd_view_all_forms">सभी फॉर्म देखें</string>
+    <string name="cd_document_type">दस्तावेज़ प्रकार</string>
+    <string name="cd_search_forms">फॉर्म खोजें</string>
+    <string name="cd_lightbulb_tips">फोटो टिप्स</string>
+    <string name="cd_upload_option">अपलोड विकल्प</string>
+    <string name="cd_continue_editing">एडिटिंग जारी रखें</string>
+    <string name="cd_no_image">कोई फोटो चयनित नहीं</string>
+    <string name="cd_background_transparent">पारदर्शी पृष्ठभूमि</string>
+    <string name="cd_background_selected">चयनित पृष्ठभूमि</string>
+    <string name="cd_compression_quality">कंप्रेशन गुणवत्ता</string>
+    <string name="cd_compression_size">कंप्रेशन आकार</string>
+    <string name="cd_save_button">फोटो सेव करें</string>
+    <string name="cd_retake_photo">फोटो दोबारा लें</string>
+    <string name="cd_person_placeholder">व्यक्ति प्लेसहोल्डर</string>
+    <string name="cd_valid_badge">वैध बैज</string>
+    <string name="cd_validation_face">चेहरा जांच</string>
+    <string name="cd_validation_aspect">अनुपात जांच</string>
+    <string name="cd_validation_size">फाइल आकार जांच</string>
+    <string name="cd_validation_status">जांच स्थिति</string>
+    <string name="cd_delete_history">हिस्ट्री आइटम हटाएं</string>
+    <string name="cd_history_thumbnail">हिस्ट्री फोटो थंबनेल</string>
+    <string name="cd_search_icon">खोज</string>
+    <string name="cd_category_icon">श्रेणी आइकन</string>
+    <string name="cd_settings_toggle">सेटिंग टॉगल</string>
+    <string name="cd_settings_item">सेटिंग विकल्प</string>
+    <string name="cd_onboarding_feature">ऑनबोर्डिंग सुविधा</string>
+    <string name="cd_history_empty">कोई हिस्ट्री नहीं</string>
+    <string name="cd_help_expand">FAQ आइटम बड़ा करें</string>
+    <string name="cd_help_search">FAQ खोजें</string>
+    <string name="cd_save_success">फोटो सफलतापूर्वक सेव हुई</string>
+    <string name="cd_saved_thumbnail">सेव की गई फोटो थंबनेल</string>
 
     <!-- Save Success Screen -->
     <string name="save_success_title">फोटो सेव हुई!</string>
