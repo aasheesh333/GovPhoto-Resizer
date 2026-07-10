@@ -81,7 +81,10 @@ data class PhotoPreset(
     /**
      * Returns aspect ratio of the photo
      */
-    fun getAspectRatio(): Float = widthPx.toFloat() / heightPx.toFloat()
+    fun getAspectRatio(): Float {
+        if (heightPx == 0) return 1f
+        return widthPx.toFloat() / heightPx.toFloat()
+    }
 
     companion object {
         const val MANUAL_PRESET_ID = "manual_custom_preset"

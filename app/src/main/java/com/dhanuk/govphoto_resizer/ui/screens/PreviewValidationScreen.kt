@@ -52,7 +52,8 @@ fun PreviewValidationScreen(
     val scope = rememberCoroutineScope()
     
     val selectedImageUri by sharedViewModel.selectedImageUri.collectAsState()
-    val capturedBitmap by sharedViewModel.capturedBitmap.collectAsState()
+    val originalBitmap by sharedViewModel.originalBitmap.collectAsState()
+    val displayedBitmap by sharedViewModel.displayedBitmap.collectAsState()
     val backgroundColor by sharedViewModel.backgroundColor.collectAsState()
     val fileSizeKb by sharedViewModel.fileSizeKb.collectAsState()
     val presetName by sharedViewModel.selectedPresetName.collectAsState()
@@ -64,8 +65,8 @@ fun PreviewValidationScreen(
     var isSaving by remember { mutableStateOf(false) }
 
     // Ensure face analysis is available when Preview opens
-    LaunchedEffect(selectedImageUri, capturedBitmap) {
-        if (faceAnalysis == null && (selectedImageUri != null || capturedBitmap != null)) {
+    LaunchedEffect(selectedImageUri, originalBitmap) {
+        if (faceAnalysis == null && (selectedImageUri != null || originalBitmap != null)) {
             sharedViewModel.analyzeFace()
         }
     }
@@ -116,7 +117,7 @@ fun PreviewValidationScreen(
                     }
                     // Share Button (Visible if processed image exists)
                     if (processedImageUri != null) {
-                        IconButton(onClick = { shareImage(processedImageUri!!) }) {
+                        IconButton(onClick = { processedImageUri?.let { shareImage(it) } }) {
                             Icon(
                                 imageVector = Icons.Default.Share,
                                 contentDescription = "Share",
@@ -266,7 +267,7 @@ fun PreviewValidationScreen(
             // Preview Card
             PreviewCard(
                 imageUri = selectedImageUri,
-                bitmap = capturedBitmap,
+                bitmap = displayedBitmap ?: originalBitmap,
                 backgroundColor = backgroundColor,
                 fileSizeKb = fileSizeKb,
                 preset = selectedPreset

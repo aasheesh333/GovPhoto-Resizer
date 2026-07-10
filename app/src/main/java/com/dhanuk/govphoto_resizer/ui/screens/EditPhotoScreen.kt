@@ -52,7 +52,8 @@ fun EditPhotoScreen(
 ) {
     val context = LocalContext.current
     val selectedImageUri by sharedViewModel.selectedImageUri.collectAsState()
-    val capturedBitmap by sharedViewModel.capturedBitmap.collectAsState()
+    val originalBitmap by sharedViewModel.originalBitmap.collectAsState()
+    val displayedBitmap by sharedViewModel.displayedBitmap.collectAsState()
     val backgroundColor by sharedViewModel.backgroundColor.collectAsState()
     val compressionQuality by sharedViewModel.compressionQuality.collectAsState()
     val fileSizeKb by sharedViewModel.fileSizeKb.collectAsState()
@@ -74,8 +75,8 @@ fun EditPhotoScreen(
     var offsetY by remember { mutableFloatStateOf(0f) }
     
     // Ensure face analysis runs when Edit screen is shown
-    LaunchedEffect(selectedImageUri, capturedBitmap) {
-        if (selectedImageUri != null || capturedBitmap != null) {
+    LaunchedEffect(selectedImageUri, originalBitmap) {
+        if (selectedImageUri != null || originalBitmap != null) {
             sharedViewModel.analyzeFace()
         }
     }
@@ -181,7 +182,7 @@ fun EditPhotoScreen(
             // Photo Preview with actual image and dynamic aspect ratio
             PhotoPreviewWithImage(
                 imageUri = selectedImageUri,
-                bitmap = capturedBitmap,
+                bitmap = displayedBitmap ?: originalBitmap,
                 backgroundColor = selectedBackground,
                 aspectRatio = aspectRatio,
                 scale = scale,

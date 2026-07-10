@@ -7,18 +7,23 @@ plugins {
 
 android {
     namespace = "com.dhanuk.govphoto_resizer"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.dhanuk.govphoto_resizer"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
+        }
+
+        // Room schema export location
+        ksp {
+            arg("room.schemaLocation", "$projectDir/schemas")
         }
     }
 

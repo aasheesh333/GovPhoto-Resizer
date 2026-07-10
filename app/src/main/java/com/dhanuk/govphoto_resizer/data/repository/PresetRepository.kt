@@ -16,6 +16,7 @@ class PresetRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val gson: Gson
 ) {
+    @Volatile
     private var cachedPresets: List<PhotoPreset>? = null
 
     /**
@@ -45,7 +46,7 @@ class PresetRepository @Inject constructor(
             cachedPresets = presetData.presets
         } catch (e: Exception) {
             e.printStackTrace()
-            cachedPresets = emptyList()
+            // don't cache failures; leave null so next call retries
         }
     }
 }

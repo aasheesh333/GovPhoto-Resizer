@@ -18,21 +18,20 @@ import com.dhanuk.govphoto_resizer.data.repository.PresetRepository
 import com.dhanuk.govphoto_resizer.data.repository.RecentPresetRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import javax.inject.Inject
 
 private const val TAG = "SharedPhotoViewModel"
 
-/**
- * Shared ViewModel for managing photo state across screens.
- * Handles photo selection, editing, compression, and saving.
- */
 @HiltViewModel
 class SharedPhotoViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -42,36 +41,36 @@ class SharedPhotoViewModel @Inject constructor(
     private val backgroundRemover: BackgroundRemover,
     private val faceAnalyzer: FaceAnalyzer,
 ) : ViewModel() {
-    
-    // Selected image state
+
+    private val photoMutex = Mutex()
+
     private val _selectedImageUri = MutableStateFlow<Uri?>(null)
     val selectedImageUri: StateFlow<Uri?> = _selectedImageUri.asStateFlow()
-    
-    private val _capturedBitmap = MutableStateFlow<Bitmap?>(null)
-    val capturedBitmap: StateFlow<Bitmap?> = _capturedBitmap.asStateFlow()
-    
-    // Preset configuration
+
+    private val _originalBitmap = MutableStateFlow<Bitmap?>(null)
+    val originalBitmap: StateFlow<Bitmap?> = _originalBitmap.asStateFlow()
+
+    private val _displayedBitmap = MutableStateFlow<Bitmap?>(null)
+    val displayedBitmap: StateFlow<Bitmap?> = _displayedBitmap.asStateFlow()
+
     private val _selectedPreset = MutableStateFlow<PhotoPreset?>(null)
     val selectedPreset: StateFlow<PhotoPreset?> = _selectedPreset.asStateFlow()
-    
+
     private val _selectedPresetName = MutableStateFlow<String?>(null)
     val selectedPresetName: StateFlow<String?> = _selectedPresetName.asStateFlow()
-    
-    // Editing parameters
+
     private val _backgroundColor = MutableStateFlow(BackgroundColor.WHITE)
     val backgroundColor: StateFlow<BackgroundColor> = _backgroundColor.asStateFlow()
-    
+
     private val _compressionQuality = MutableStateFlow(0.7f)
     val compressionQuality: StateFlow<Float> = _compressionQuality.asStateFlow()
-    
-    // Result state
+
     private val _processedImageUri = MutableStateFlow<Uri?>(null)
     val processedImageUri: StateFlow<Uri?> = _processedImageUri.asStateFlow()
-    
+
     private val _fileSizeKb = MutableStateFlow(0)
     val fileSizeKb: StateFlow<Int> = _fileSizeKb.asStateFlow()
 
-    // Background Removal State
     private val _isRemovingBackground = MutableStateFlow(false)
     val isRemovingBackground: StateFlow<Boolean> = _isRemovingBackground.asStateFlow()
 
@@ -81,7 +80,6 @@ class SharedPhotoViewModel @Inject constructor(
     private val _faceAnalysis = MutableStateFlow<FaceAnalysisResult?>(null)
     val faceAnalysis: StateFlow<FaceAnalysisResult?> = _faceAnalysis.asStateFlow()
 
-    // Custom/Manual Preset State
     private val _customWidth = MutableStateFlow("350")
     val customWidth: StateFlow<String> = _customWidth.asStateFlow()
 
@@ -91,51 +89,76 @@ class SharedPhotoViewModel @Inject constructor(
     private val _customFormat = MutableStateFlow("jpg")
     val customFormat: StateFlow<String> = _customFormat.asStateFlow()
 
-    
-    // Derived properties
     val aspectRatio: Float
-        get() = _selectedPreset.value?.getAspectRatio() ?: 0.8f // Default to 4:5 if no preset
-        
+        get() = _selectedPreset.value?.getAspectRatio() ?: 0.8f
+
     val targetWidth: Int
         get() = _selectedPreset.value?.widthPx ?: 600
-        
+
     val targetHeight: Int
         get() = _selectedPreset.value?.heightPx ?: 750
 
     /**
-     * Set the selected image URI from gallery
+     * The current bitmap to display in UI: composited if available, else original.
      */
+    val displayBitmap: StateFlow<Bitmap?>
+        get() = _displayedBitmap
+
     fun setSelectedImageUri(uri: Uri?) {
         _selectedImageUri.value = uri
-        _capturedBitmap.value = null
+        recycleBitmaps()
+        _displayedBitmap.value = null
         _faceAnalysis.value = null
-        calculateEstimatedFileSize()
-        analyzeFace()
-    }
-    
-    /**
-     * Set the captured bitmap from camera
-     */
-    fun setCapturedBitmap(bitmap: Bitmap?) {
-        _capturedBitmap.value = bitmap
-        _selectedImageUri.value = null
-        _faceAnalysis.value = null
+        _removalState.value = RemovalState.Idle
+        uri?.let { decodeUriToOriginalBitmap(it) }
         calculateEstimatedFileSize()
         analyzeFace()
     }
 
-    /**
-     * Run face analysis on the current image (bitmap preferred, else decode URI).
-     */
+    fun setCapturedBitmap(bitmap: Bitmap?) {
+        _selectedImageUri.value = null
+        recycleBitmaps()
+        _originalBitmap.value = bitmap
+        _displayedBitmap.value = null
+        _faceAnalysis.value = null
+        _removalState.value = RemovalState.Idle
+        calculateEstimatedFileSize()
+        analyzeFace()
+    }
+
+    private fun decodeUriToOriginalBitmap(uri: Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val bmp = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                    val source = android.graphics.ImageDecoder.createSource(context.contentResolver, uri)
+                    android.graphics.ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+                        decoder.isMutableRequired = true
+                    }
+                } else {
+                    context.contentResolver.openInputStream(uri)?.use { stream ->
+                        BitmapFactory.decodeStream(stream)
+                    }
+                }
+                _originalBitmap.value = bmp
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to decode URI to originalBitmap", e)
+            }
+        }
+    }
+
     fun analyzeFace() {
         viewModelScope.launch(Dispatchers.Default) {
             try {
-                val bitmap = _capturedBitmap.value ?: decodeSelectedUri()
+                val bitmap = _displayedBitmap.value ?: _originalBitmap.value ?: decodeSelectedUri()
                 if (bitmap == null) {
                     _faceAnalysis.value = null
                     return@launch
                 }
                 _faceAnalysis.value = faceAnalyzer.analyze(bitmap)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.w(TAG, "Face analysis failed", e)
                 _faceAnalysis.value = null
@@ -149,15 +172,14 @@ class SharedPhotoViewModel @Inject constructor(
             context.contentResolver.openInputStream(uri)?.use { stream ->
                 BitmapFactory.decodeStream(stream)
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "Failed to decode image URI for face analysis", e)
             null
         }
     }
-    
-    /**
-     * Set the selected preset by ID
-     */
+
     fun setSelectedPreset(presetId: String, presetName: String? = null) {
         viewModelScope.launch {
             val preset = withContext(Dispatchers.IO) {
@@ -165,42 +187,31 @@ class SharedPhotoViewModel @Inject constructor(
             }
             _selectedPreset.value = preset
             _selectedPresetName.value = preset?.examName ?: presetName
-            
-            // Set default background from preset if available
+
             preset?.backgroundColor?.let { colorCode ->
-                // Simple logic for now - can be expanded to parse hex codes
                 if (colorCode.equals("#FFFFFF", ignoreCase = true)) {
                     _backgroundColor.value = BackgroundColor.WHITE
                 }
             }
-            
+
             calculateEstimatedFileSize()
         }
     }
-    
+
     fun setBackgroundColor(color: BackgroundColor) {
         _backgroundColor.value = color
     }
-    
+
     fun setCompressionQuality(quality: Float) {
         _compressionQuality.value = quality.coerceIn(0.1f, 1f)
         calculateEstimatedFileSize()
     }
-    
-    /**
-     * Calculate estimated file size based on dimensions and compression
-     */
+
     private fun calculateEstimatedFileSize() {
         val width = targetWidth
         val height = targetHeight
         val quality = _compressionQuality.value
-        
-        // Approximation: Size = (Pixels * 3 bytes * Quality_Factor) / 1024
-        // JPEG compression curve is non-linear, this is a rough estimate
-        // quality 1.0 -> ~0.3 bytes per pixel for complex images
-        // quality 0.5 -> ~0.05 bytes per pixel
-        
-        // Improved estimation
+
         val pixels = width * height
         val bytesPerPixel = when {
             quality > 0.9 -> 0.4
@@ -209,42 +220,48 @@ class SharedPhotoViewModel @Inject constructor(
             quality > 0.4 -> 0.10
             else -> 0.05
         }
-        
+
         val estimatedBytes = (pixels * bytesPerPixel).toInt()
-        _fileSizeKb.value = (estimatedBytes / 1024).coerceAtLeast(10) // Min 10KB
+        _fileSizeKb.value = (estimatedBytes / 1024).coerceAtLeast(10)
     }
-    
-    /**
-     * Remove background using ML Kit Selfie Segmentation via [BackgroundRemover].
-     */
+
     fun removeBackground() {
-        val bitmap = _capturedBitmap.value ?: return
+        val bitmap = _originalBitmap.value ?: run {
+            _selectedImageUri.value?.let { uri ->
+                decodeSelectedUri()
+            }
+        } ?: return
         if (_removalState.value is RemovalState.Working) return
 
         _removalState.value = RemovalState.Working
         _isRemovingBackground.value = true
 
         viewModelScope.launch(Dispatchers.Default) {
-            try {
-                val result = backgroundRemover.remove(bitmap, _backgroundColor.value)
-                _capturedBitmap.value = result
-                _removalState.value = RemovalState.Done
-                // Re-analyze face on the composited result
+            photoMutex.withLock {
                 try {
-                    _faceAnalysis.value = faceAnalyzer.analyze(result)
-                } catch (fe: Exception) {
-                    Log.w(TAG, "Face analysis after bg removal failed", fe)
+                    val result = backgroundRemover.remove(bitmap, _backgroundColor.value)
+                    _displayedBitmap.value = result
+                    _removalState.value = RemovalState.Done
+                    try {
+                        _faceAnalysis.value = faceAnalyzer.analyze(result)
+                    } catch (fe: CancellationException) {
+                        throw fe
+                    } catch (fe: Exception) {
+                        Log.w(TAG, "Face analysis after bg removal failed", fe)
+                    }
+                } catch (e: CancellationException) {
+                    _removalState.value = RemovalState.Idle
+                    throw e
+                } catch (e: Exception) {
+                    Log.w(TAG, "Background removal failed", e)
+                    _removalState.value = RemovalState.Error(e.message ?: "Unknown error")
+                } finally {
+                    _isRemovingBackground.value = false
                 }
-            } catch (e: Exception) {
-                Log.w(TAG, "Background removal failed", e)
-                _removalState.value = RemovalState.Error(e.message ?: "Unknown error")
-            } finally {
-                _isRemovingBackground.value = false
             }
         }
     }
 
-    // Setters for custom manual preset
     fun updateCustomWidth(w: String) { _customWidth.value = w }
     fun updateCustomHeight(h: String) { _customHeight.value = h }
     fun updateCustomFormat(f: String) { _customFormat.value = f }
@@ -253,8 +270,7 @@ class SharedPhotoViewModel @Inject constructor(
         val w = _customWidth.value.toIntOrNull() ?: 350
         val h = _customHeight.value.toIntOrNull() ?: 450
         val fmt = _customFormat.value.lowercase()
-        
-        // Create a transient preset for manual mode
+
         val manualPreset = PhotoPreset(
             id = PhotoPreset.MANUAL_PRESET_ID,
             examName = "Custom Size",
@@ -263,22 +279,20 @@ class SharedPhotoViewModel @Inject constructor(
             category = com.dhanuk.govphoto_resizer.data.model.PresetCategory.CUSTOM,
             widthPx = w,
             heightPx = h,
-            maxFileSizeKb = 500, // Default max for custom
+            maxFileSizeKb = 500,
             format = fmt,
             lastUpdated = System.currentTimeMillis().toString()
         )
-        
+
         _selectedPreset.value = manualPreset
         _selectedPresetName.value = "Custom ($w x $h)"
         calculateEstimatedFileSize()
     }
 
-    /**
-     * Clear all state
-     */
     fun clearState() {
         _selectedImageUri.value = null
-        _capturedBitmap.value = null
+        recycleBitmaps()
+        _displayedBitmap.value = null
         _selectedPreset.value = null
         _selectedPresetName.value = null
         _backgroundColor.value = BackgroundColor.WHITE
@@ -289,150 +303,155 @@ class SharedPhotoViewModel @Inject constructor(
         _removalState.value = RemovalState.Idle
         _faceAnalysis.value = null
     }
-    
-    /**
-     * Save the processed photo to Gallery using MediaStore
-     */
-    /**
-     * Save the processed photo to Gallery using MediaStore
-     * STRICTLY enforces file size limit and format.
-     */
+
+    private fun recycleBitmaps() {
+        _originalBitmap.value?.recycle()
+        _originalBitmap.value = null
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        recycleBitmaps()
+        _displayedBitmap.value?.recycle()
+        _displayedBitmap.value = null
+    }
+
     suspend fun savePhotoToGallery(): Result<Uri> {
         Log.d(TAG, "savePhotoToGallery: Starting save process")
         return withContext(Dispatchers.IO) {
-            try {
-                Log.d(TAG, "savePhotoToGallery: URI=${_selectedImageUri.value}, Bitmap=${_capturedBitmap.value != null}")
-                
-                // Get the bitmap to save
-                val originalBitmap = _capturedBitmap.value ?: run {
-                    _selectedImageUri.value?.let { uri ->
-                        Log.d(TAG, "savePhotoToGallery: Loading bitmap from URI")
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                            val source = android.graphics.ImageDecoder.createSource(context.contentResolver, uri)
-                            android.graphics.ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
-                                decoder.isMutableRequired = true
+            photoMutex.withLock {
+                try {
+                    val bitmapToSave = _displayedBitmap.value ?: _originalBitmap.value ?: run {
+                        _selectedImageUri.value?.let { uri ->
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                                val source = android.graphics.ImageDecoder.createSource(context.contentResolver, uri)
+                                android.graphics.ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+                                    decoder.isMutableRequired = true
+                                }
+                            } else {
+                                @Suppress("DEPRECATION")
+                                MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
                             }
-                        } else {
-                            @Suppress("DEPRECATION")
-                            MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
                         }
                     }
-                }
-                
-                if (originalBitmap == null) {
-                    Log.e(TAG, "savePhotoToGallery: No bitmap available!")
-                    return@withContext Result.failure(Exception("No image to save"))
-                }
-                
-                Log.d(TAG, "savePhotoToGallery: Bitmap loaded: ${originalBitmap.width}x${originalBitmap.height}")
-                var targetW = targetWidth
-                var targetH = targetHeight
-                
-                // Target Format
-                val format = _selectedPreset.value?.format?.lowercase() ?: "jpg"
-                val compressFormat = if (format == "png") {
-                    Bitmap.CompressFormat.PNG
-                } else {
-                    Bitmap.CompressFormat.JPEG
-                }
-                
-                // Target File Size
-                val maxFileSizeBytes = (_selectedPreset.value?.maxFileSizeKb ?: 500) * 1024
-                
-                // Iterative Compression & Resizing Loop
-                var quality = (_compressionQuality.value * 100).toInt()
-                val outputStream = ByteArrayOutputStream()
-                var attempts = 0
-                val maxAttempts = 15 // Prevent infinite loops
-                
-                var currentBitmap = Bitmap.createScaledBitmap(originalBitmap, targetW, targetH, true)
-                
-                while (attempts < maxAttempts) {
-                    outputStream.reset()
-                    currentBitmap.compress(compressFormat, quality, outputStream)
-                    
-                    val currentSize = outputStream.size()
-                    
-                    if (currentSize <= maxFileSizeBytes) {
-                        break // Success!
+
+                    if (bitmapToSave == null) {
+                        Log.e(TAG, "savePhotoToGallery: No bitmap available!")
+                        return@withLock Result.failure(Exception("No image to save"))
                     }
-                    
-                    // Size exceeded, need to reduce
-                    attempts++
-                    
-                    if (format == "png") {
-                        // PNG is lossless, quality param deals with filter/compression level but usually doesn't reduce size much.
-                        // We must reduce dimensions for PNG if size is too big.
-                        targetW = (targetW * 0.9f).toInt()
-                        targetH = (targetH * 0.9f).toInt()
-                        currentBitmap = Bitmap.createScaledBitmap(originalBitmap, targetW, targetH, true)
+
+                    Log.d(TAG, "savePhotoToGallery: Bitmap loaded: ${bitmapToSave.width}x${bitmapToSave.height}")
+                    var targetW = targetWidth
+                    var targetH = targetHeight
+
+                    val format = _selectedPreset.value?.format?.lowercase() ?: "jpg"
+                    val compressFormat = if (format == "png") {
+                        Bitmap.CompressFormat.PNG
                     } else {
-                        // JPG: Reduce quality first, then dimensions if quality gets too low
-                        if (quality > 10) {
-                            quality -= 5 // Reduce quality by 5%
-                        } else {
-                            // Quality already very low, start reducing dimensions
+                        Bitmap.CompressFormat.JPEG
+                    }
+
+                    val maxFileSizeBytes = (_selectedPreset.value?.maxFileSizeKb ?: 500) * 1024
+
+                    var quality = (_compressionQuality.value * 100).toInt()
+                    val outputStream = ByteArrayOutputStream()
+                    var attempts = 0
+                    val maxAttempts = 15
+
+                    var currentBitmap = Bitmap.createScaledBitmap(bitmapToSave, targetW, targetH, true)
+
+                    while (attempts < maxAttempts) {
+                        outputStream.reset()
+                        currentBitmap.compress(compressFormat, quality, outputStream)
+
+                        val currentSize = outputStream.size()
+
+                        if (currentSize <= maxFileSizeBytes) {
+                            break
+                        }
+
+                        attempts++
+
+                        if (format == "png") {
                             targetW = (targetW * 0.9f).toInt()
                             targetH = (targetH * 0.9f).toInt()
-                            currentBitmap = Bitmap.createScaledBitmap(originalBitmap, targetW, targetH, true)
+                            currentBitmap = Bitmap.createScaledBitmap(bitmapToSave, targetW, targetH, true)
+                        } else {
+                            if (quality > 10) {
+                                quality -= 5
+                            } else {
+                                targetW = (targetW * 0.9f).toInt()
+                                targetH = (targetH * 0.9f).toInt()
+                                currentBitmap = Bitmap.createScaledBitmap(bitmapToSave, targetW, targetH, true)
+                            }
                         }
                     }
-                }
-                
-                val imageBytes = outputStream.toByteArray()
-                
-                // Save to MediaStore
-                val extension = if (format == "png") "png" else "jpg"
-                val mimeType = if (format == "png") "image/png" else "image/jpeg"
-                val filename = "GovPhoto_${System.currentTimeMillis()}.$extension"
-                
-                val contentValues = ContentValues().apply {
-                    put(MediaStore.Images.Media.DISPLAY_NAME, filename)
-                    put(MediaStore.Images.Media.MIME_TYPE, mimeType)
-                    put(MediaStore.Images.Media.WIDTH, targetW)
-                    put(MediaStore.Images.Media.HEIGHT, targetH)
-                    put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/GovPhoto Resizer")
-                }
-                
-                val imageUri = context.contentResolver.insert(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                    contentValues
-                ) ?: return@withContext Result.failure(Exception("Failed to create MediaStore entry"))
-                
-                context.contentResolver.openOutputStream(imageUri)?.use { stream ->
-                    stream.write(imageBytes)
-                }
-                
-                // Update final size
-                _fileSizeKb.value = imageBytes.size / 1024
-                _processedImageUri.value = imageUri
 
-                try {
-                    historyRepo.recordSave(
-                        HistoryRepository.HistorySave(
+                    val imageBytes = outputStream.toByteArray()
+
+                    val extension = if (format == "png") "png" else "jpg"
+                    val mimeType = if (format == "png") "image/png" else "image/jpeg"
+                    val filename = "GovPhoto_${System.currentTimeMillis()}.$extension"
+
+                    val contentValues = ContentValues().apply {
+                        put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+                        put(MediaStore.Images.Media.MIME_TYPE, mimeType)
+                        put(MediaStore.Images.Media.WIDTH, targetW)
+                        put(MediaStore.Images.Media.HEIGHT, targetH)
+                        put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/GovPhoto Resizer")
+                    }
+
+                    val imageUri = context.contentResolver.insert(
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                        contentValues
+                    ) ?: return@withLock Result.failure(Exception("Failed to create MediaStore entry"))
+
+                    val written = context.contentResolver.openOutputStream(imageUri)?.use { stream ->
+                        stream.write(imageBytes)
+                        true
+                    } ?: run {
+                        context.contentResolver.delete(imageUri, null, null)
+                        false
+                    }
+
+                    if (!written) {
+                        return@withLock Result.failure(Exception("Failed to write image to MediaStore"))
+                    }
+
+                    _fileSizeKb.value = imageBytes.size / 1024
+                    _processedImageUri.value = imageUri
+
+                    try {
+                        historyRepo.recordSave(
+                            HistoryRepository.HistorySave(
+                                presetId = _selectedPreset.value?.id ?: "unknown",
+                                examName = _selectedPreset.value?.examName ?: "Custom",
+                                originalImagePath = _selectedImageUri.value?.toString() ?: "",
+                                processedImagePath = imageUri.toString(),
+                                fileSizeKb = imageBytes.size / 1024,
+                                widthPx = targetW,
+                                heightPx = targetH
+                            )
+                        )
+                        recentPresetRepo.recordUse(
                             presetId = _selectedPreset.value?.id ?: "unknown",
                             examName = _selectedPreset.value?.examName ?: "Custom",
-                            originalImagePath = _selectedImageUri.value?.toString() ?: "",
-                            processedImagePath = imageUri.toString(),
-                            fileSizeKb = imageBytes.size / 1024,
-                            widthPx = targetW,
-                            heightPx = targetH
+                            category = _selectedPreset.value?.category?.name ?: "CUSTOM"
                         )
-                    )
-                    recentPresetRepo.recordUse(
-                        presetId = _selectedPreset.value?.id ?: "unknown",
-                        examName = _selectedPreset.value?.examName ?: "Custom",
-                        category = _selectedPreset.value?.category?.name ?: "CUSTOM"
-                    )
-                } catch (e: Exception) {
-                    Log.w(TAG, "Failed to record history/recent preset", e)
-                }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to record history/recent preset", e)
+                    }
 
-                Result.success(imageUri)
-                
-            } catch (e: Exception) {
-                e.printStackTrace()
-                Result.failure(e)
+                    Result.success(imageUri)
+
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    Result.failure(e)
+                }
             }
         }
     }

@@ -1,5 +1,8 @@
 package com.dhanuk.govphoto_resizer.ui.screens
 
+import android.content.Context
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -22,11 +25,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.dhanuk.govphoto_resizer.R
 import com.dhanuk.govphoto_resizer.ui.theme.*
 import com.dhanuk.govphoto_resizer.ui.viewmodel.SharedPhotoViewModel
+import java.io.File
 
 /**
  * Photo Upload Screen - Camera and Gallery options for selecting a photo.
@@ -41,8 +46,9 @@ fun PhotoUploadScreen(
 ) {
     val context = LocalContext.current
     val selectedImageUri by sharedViewModel.selectedImageUri.collectAsState()
-    val capturedBitmap by sharedViewModel.capturedBitmap.collectAsState()
-    
+    val originalBitmap by sharedViewModel.originalBitmap.collectAsState()
+    val displayedBitmap by sharedViewModel.displayedBitmap.collectAsState()
+
     // Gallery picker launcher
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -52,14 +58,49 @@ fun PhotoUploadScreen(
             onPhotoSelected()
         }
     }
-    
-    // Camera launcher - uses TakePicture for full resolution
+
+    // Camera launcher — TakePicture for full resolution via FileProvider
+    val cameraImageUri = remember { mutableStateOf<Uri?>(null) }
     val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview()
-    ) { bitmap ->
-        bitmap?.let {
-            sharedViewModel.setCapturedBitmap(it)
-            onPhotoSelected()
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            cameraImageUri.value?.let { uri ->
+                sharedViewModel.setSelectedImageUri(uri)
+                onPhotoSelected()
+            }
+        }
+    }
+
+    // Camera permission launcher
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            val tempFile = File(context.cacheDir, "gov_camera_${System.currentTimeMillis()}.jpg")
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                tempFile
+            )
+            cameraImageUri.value = uri
+            cameraLauncher.launch(uri)
+        }
+    }
+
+    fun launchCamera() {
+        val granted = context.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        if (granted) {
+            val tempFile = File(context.cacheDir, "gov_camera_${System.currentTimeMillis()}.jpg")
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                tempFile
+            )
+            cameraImageUri.value = uri
+            cameraLauncher.launch(uri)
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
     
@@ -135,7 +176,7 @@ fun PhotoUploadScreen(
                 subtitle = stringResource(R.string.take_new_photo),
                 backgroundColor = IndiaGreen.copy(alpha = 0.1f),
                 iconTint = IndiaGreen,
-                onClick = { cameraLauncher.launch(null) }
+                onClick = { launchCamera() }
             )
             
             Spacer(modifier = Modifier.height(16.dp))

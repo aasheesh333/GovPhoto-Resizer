@@ -18,6 +18,16 @@
 # Keep preset model classes
 -keep class com.dhanuk.govphoto_resizer.data.model.** { *; }
 
+# Keep Room entities
+-keep class com.dhanuk.govphoto_resizer.data.local.entity.** { *; }
+
+# Keep Hilt
+-keep @dagger.hilt.android.HiltAndroidApp class *
+-keep class * extends androidx.lifecycle.ViewModel { *; }
+
+# Keep Room Database
+-keep class * extends androidx.room.RoomDatabase { *; }
+
 # ML Kit
 -keep class com.google.mlkit.** { *; }
 -dontwarn com.google.mlkit.**

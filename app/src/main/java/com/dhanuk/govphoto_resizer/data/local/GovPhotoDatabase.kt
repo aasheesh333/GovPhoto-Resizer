@@ -10,7 +10,7 @@ import com.dhanuk.govphoto_resizer.data.local.entity.RecentPresetEntity
 @Database(
     entities = [PhotoHistoryEntity::class, RecentPresetEntity::class],
     version = 1,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class GovPhotoDatabase : RoomDatabase() {
     abstract fun photoHistoryDao(): PhotoHistoryDao
