@@ -63,7 +63,7 @@ fastlane/screenshots
 fastlane/test_output
 fastlane/readme.md
 
-# SDD scratch / per-run memos
+# SDD scratch / per-run memos (kept ignored; do not modify)
 app/src/main/assets/_od_tokens_notes.md
 app/src/main/assets/_od_failures.txt
 
