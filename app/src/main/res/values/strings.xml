@@ -68,6 +68,13 @@
     <string name="recent_photos">Recent Photos</string>
     <string name="recent_presets">Recent Presets</string>
     <string name="no_history">No photos resized yet</string>
+    <string name="no_history_subtitle">Photos you resize will appear here</string>
+    <string name="history_item_dimensions">%1$d \u00d7 %2$d</string>
+    <string name="history_item_file_size">%1$d KB</string>
+    <string name="time_just_now">just now</string>
+    <string name="time_min_ago">%1$d min ago</string>
+    <string name="time_h_ago">%1$d h ago</string>
+    <string name="time_days_ago">%1$d days ago</string>
     
     <!-- Settings -->
     <string name="language">Language</string>

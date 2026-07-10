@@ -68,6 +68,13 @@
     <string name="recent_photos">हाल की फोटो</string>
     <string name="recent_presets">हाल के प्रीसेट</string>
     <string name="no_history">अभी तक कोई फोटो रीसाइज़ नहीं की गई</string>
+    <string name="no_history_subtitle">जो फोटो आप रीसाइज़ करते हैं वे यहां दिखाई देंगी</string>
+    <string name="history_item_dimensions">%1$d \u00d7 %2$d</string>
+    <string name="history_item_file_size">%1$d KB</string>
+    <string name="time_just_now">अभी</string>
+    <string name="time_min_ago">%1$d मिनट पहले</string>
+    <string name="time_h_ago">%1$d घंटे पहले</string>
+    <string name="time_days_ago">%1$d दिन पहले</string>
     
     <!-- Settings -->
     <string name="language">भाषा</string>
@@ -98,8 +105,16 @@
     <string name="grant_permission">अनुमति दें</string>
     
     <!-- Actions -->
+    <string name="upload_photo">फोटो अपलोड करें</string>
     <string name="upload_from_camera">फोटो लें</string>
     <string name="upload_from_gallery">गैलरी से चुनें</string>
+    <string name="take_new_photo">नई फोटो लें</string>
+    <string name="select_from_photos">अपनी फोटो से चुनें</string>
+    <string name="choose_upload_method">अपनी फोटो अपलोड करने का तरीका चुनें</string>
+    <string name="photo_guidelines">फोटो दिशानिर्देश</string>
+    <string name="guideline_clear_photo">स्पष्ट, सामने की ओर देखती फोटो</string>
+    <string name="guideline_good_lighting">अच्छी रोशनी</string>
+    <string name="guideline_plain_background">सादा बैकग्राउंड पसंदीदा</string>
     <string name="undo">पूर्ववत करें</string>
     <string name="redo">फिर से करें</string>
     <string name="cancel">रद्द करें</string>

@@ -3,6 +3,7 @@ package com.dhanuk.govphoto_resizer.ui.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
@@ -83,7 +84,7 @@ fun GovPhotoNavHost(
             ) { backStackEntry ->
                 val presetId = backStackEntry.arguments?.getString("presetId") ?: ""
                 val sharedPhotoViewModel: SharedPhotoViewModel = hiltViewModel(
-                    viewModelStoreOwner = navController.getBackStackEntry("upload_edit_preview")
+                    viewModelStoreOwner = remember { navController.getBackStackEntry("upload_edit_preview") }
                 )
                 sharedPhotoViewModel.setSelectedPreset(presetId)
                 PhotoUploadScreen(
@@ -94,9 +95,9 @@ fun GovPhotoNavHost(
                 )
             }
 
-            composable(Screen.EditPhoto.route) { backStackEntry ->
+            composable(Screen.EditPhoto.route) {
                 val sharedPhotoViewModel: SharedPhotoViewModel = hiltViewModel(
-                    viewModelStoreOwner = navController.getBackStackEntry("upload_edit_preview")
+                    viewModelStoreOwner = remember { navController.getBackStackEntry("upload_edit_preview") }
                 )
                 EditPhotoScreen(
                     sharedViewModel = sharedPhotoViewModel,
@@ -105,9 +106,9 @@ fun GovPhotoNavHost(
                 )
             }
 
-            composable(Screen.PreviewValidation.route) { backStackEntry ->
+            composable(Screen.PreviewValidation.route) {
                 val sharedPhotoViewModel: SharedPhotoViewModel = hiltViewModel(
-                    viewModelStoreOwner = navController.getBackStackEntry("upload_edit_preview")
+                    viewModelStoreOwner = remember { navController.getBackStackEntry("upload_edit_preview") }
                 )
                 PreviewValidationScreen(
                     sharedViewModel = sharedPhotoViewModel,
@@ -121,9 +122,9 @@ fun GovPhotoNavHost(
                 )
             }
 
-            composable(Screen.SaveSuccess.route) { backStackEntry ->
+            composable(Screen.SaveSuccess.route) {
                 val sharedPhotoViewModel: SharedPhotoViewModel = hiltViewModel(
-                    viewModelStoreOwner = navController.getBackStackEntry("upload_edit_preview")
+                    viewModelStoreOwner = remember { navController.getBackStackEntry("upload_edit_preview") }
                 )
                 SaveSuccessScreen(
                     sharedViewModel = sharedPhotoViewModel,
@@ -155,9 +156,9 @@ fun GovPhotoNavHost(
             )
         }
 
-        composable(Screen.Batch.route) { backStackEntry ->
+        composable(Screen.Batch.route) {
             val sharedPhotoViewModel: SharedPhotoViewModel = hiltViewModel(
-                viewModelStoreOwner = navController.getBackStackEntry("upload_edit_preview")
+                viewModelStoreOwner = remember { navController.getBackStackEntry("upload_edit_preview") }
             )
             BatchScreen(
                 sharedViewModel = sharedPhotoViewModel,
