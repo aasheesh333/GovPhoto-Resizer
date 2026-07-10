@@ -133,7 +133,6 @@ class SharedPhotoViewModel @Inject constructor(
 private fun decodeUriToOriginalBitmap(uri: Uri) {
     decodeJob?.cancel()
     decodeJob = viewModelScope.launch(Dispatchers.IO) {
-      if (!isActive) return@launch
       try {
         val options = BitmapFactory.Options().apply {
             inJustDecodeBounds = true
@@ -162,7 +161,6 @@ private fun decodeUriToOriginalBitmap(uri: Uri) {
             BitmapFactory.decodeStream(stream, null, decodeOptions)
           }
         }
-        if (!isActive) return@launch
         _originalBitmap.value = bmp
             } catch (e: CancellationException) {
                 throw e
