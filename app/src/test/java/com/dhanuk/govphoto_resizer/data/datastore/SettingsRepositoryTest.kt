@@ -51,11 +51,11 @@ class SettingsRepositoryTest {
     }
 
     @Test
-    fun a_defaults_are_english_and_dynamic_true() = runTest {
+    fun a_defaults_are_english_light_and_dynamic_false() = runTest {
         val state = repo.state.first()
         assertEquals(AppLanguage.ENGLISH, state.language)
-        assertEquals(true, state.dynamicColor)
-        assertEquals(DarkModePref.SYSTEM, state.darkMode)
+        assertEquals(false, state.dynamicColor)
+        assertEquals(DarkModePref.LIGHT, state.darkMode)
     }
 
     @Test

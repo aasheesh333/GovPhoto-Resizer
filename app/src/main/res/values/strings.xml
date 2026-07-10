@@ -80,6 +80,18 @@
     <string name="version">Version</string>
     <string name="privacy_policy">Privacy Policy</string>
     
+    <!-- Settings: Appearance -->
+    <string name="appearance">Appearance</string>
+    <string name="theme">Theme</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_system">System</string>
+    <string name="dynamic_color">Dynamic Color</string>
+    <string name="dynamic_color_desc">Use wallpaper-based colors (Android 12+)</string>
+    <string name="large_buttons_desc">Increase button sizes for easier tapping</string>
+    <string name="high_contrast_desc">Improve visibility with higher contrast</string>
+    <string name="view_privacy_policy">View privacy policy</string>
+    
     <!-- Permissions -->
     <string name="camera_permission_required">Camera permission is required to take photos</string>
     <string name="storage_permission_required">Storage permission is required to save photos</string>

@@ -7,11 +7,13 @@
         <item name="postSplashScreenTheme">@style/Theme.GovPhotoResizer</item>
     </style>
 
-    <!-- Main app theme -->
-    <style name="Theme.GovPhotoResizer" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:statusBarColor">@color/primary</item>
+    <!-- Main app theme — default Light, Material3 theming handled in Compose -->
+    <style name="Theme.GovPhotoResizer" parent="android:Theme.DeviceDefault.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/surface_light</item>
         <item name="android:navigationBarColor">@color/surface_light</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:forceDarkAllowed">false</item>
+        <item name="colorPrimary">@color/primary</item>
     </style>
 </resources>

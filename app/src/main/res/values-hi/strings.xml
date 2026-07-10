@@ -80,6 +80,18 @@
     <string name="version">संस्करण</string>
     <string name="privacy_policy">गोपनीयता नीति</string>
     
+    <!-- Settings: Appearance -->
+    <string name="appearance">रूप</string>
+    <string name="theme">थीम</string>
+    <string name="theme_light">लाइट</string>
+    <string name="theme_dark">डार्क</string>
+    <string name="theme_system">सिस्टम</string>
+    <string name="dynamic_color">डायनामिक कलर</string>
+    <string name="dynamic_color_desc">वॉलपेपर आधारित रंगों का उपयोग करें (Android 12+)</string>
+    <string name="large_buttons_desc">आसान टैपिंग के लिए बटन आकार बढ़ाएं</string>
+    <string name="high_contrast_desc">उच्च कंट्रास्ट से दृश्यता बढ़ाएं</string>
+    <string name="view_privacy_policy">गोपनीयता नीति देखें</string>
+    
     <!-- Permissions -->
     <string name="camera_permission_required">फोटो लेने के लिए कैमरा अनुमति आवश्यक है</string>
     <string name="storage_permission_required">फोटो सेव करने के लिए स्टोरेज अनुमति आवश्यक है</string>

@@ -17,13 +17,13 @@ enum class AppLanguage(val tag: String) { ENGLISH("en"), HINDI("hi") }
 enum class DarkModePref(val label: String) { SYSTEM("system"), LIGHT("light"), DARK("dark") }
 
 data class SettingsState(
-    val language: AppLanguage = AppLanguage.ENGLISH,
-    val dynamicColor: Boolean = true,
-    val darkMode: DarkModePref = DarkModePref.SYSTEM,
-    val largeButtons: Boolean = false,
-    val highContrast: Boolean = false,
-    val onboardingComplete: Boolean = false,
-    val lastPresetId: String? = null,
+val language: AppLanguage = AppLanguage.ENGLISH,
+val dynamicColor: Boolean = false,
+val darkMode: DarkModePref = DarkModePref.LIGHT,
+val largeButtons: Boolean = false,
+val highContrast: Boolean = false,
+val onboardingComplete: Boolean = false,
+val lastPresetId: String? = null,
 )
 
 @Singleton
@@ -49,10 +49,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             language = prefs[Keys.LANGUAGE]?.let { tag ->
                 AppLanguage.entries.firstOrNull { it.tag == tag }
             } ?: AppLanguage.ENGLISH,
-            dynamicColor = prefs[Keys.DYNAMIC_COLOR] ?: true,
+            dynamicColor = prefs[Keys.DYNAMIC_COLOR] ?: false,
             darkMode = prefs[Keys.DARK_MODE]?.let { label ->
                 DarkModePref.entries.firstOrNull { it.label == label }
-            } ?: DarkModePref.SYSTEM,
+            } ?: DarkModePref.LIGHT,
             largeButtons = prefs[Keys.LARGE_BUTTONS] ?: false,
             highContrast = prefs[Keys.HIGH_CONTRAST] ?: false,
             onboardingComplete = prefs[Keys.ONBOARDING_DONE] ?: false,

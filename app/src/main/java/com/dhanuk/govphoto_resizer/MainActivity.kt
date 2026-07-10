@@ -19,6 +19,7 @@ import com.dhanuk.govphoto_resizer.data.datastore.DarkModePref
 import com.dhanuk.govphoto_resizer.ui.navigation.GovPhotoNavHost
 import com.dhanuk.govphoto_resizer.ui.theme.GovPhotoTheme
 import com.dhanuk.govphoto_resizer.ui.theme.LocalAppLanguage
+import com.dhanuk.govphoto_resizer.ui.theme.LocalLargeButtons
 import com.dhanuk.govphoto_resizer.ui.viewmodel.SettingsViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.Locale
@@ -58,7 +59,10 @@ class MainActivity : ComponentActivity() {
                 DarkModePref.DARK   -> true
             }
             // Apply locale to CompositionLocal for downstream string resolution
-            CompositionLocalProvider(LocalAppLanguage provides settings.language) {
+            CompositionLocalProvider(
+                LocalAppLanguage provides settings.language,
+                LocalLargeButtons provides settings.largeButtons,
+            ) {
                 GovPhotoTheme(darkTheme = isDark, dynamicColor = settings.dynamicColor) {
                     Surface(
                         modifier = Modifier.fillMaxSize(),
