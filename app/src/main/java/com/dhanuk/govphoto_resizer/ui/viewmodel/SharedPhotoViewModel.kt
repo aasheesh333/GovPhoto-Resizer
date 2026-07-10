@@ -9,7 +9,9 @@ import android.provider.MediaStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dhanuk.govphoto_resizer.data.model.PhotoPreset
+import com.dhanuk.govphoto_resizer.data.repository.HistoryRepository
 import com.dhanuk.govphoto_resizer.data.repository.PresetRepository
+import com.dhanuk.govphoto_resizer.data.repository.RecentPresetRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -40,7 +42,9 @@ private const val TAG = "SharedPhotoViewModel"
 @HiltViewModel
 class SharedPhotoViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val presetRepository: PresetRepository
+    private val presetRepository: PresetRepository,
+    private val historyRepo: HistoryRepository,
+    private val recentPresetRepo: RecentPresetRepository
 ) : ViewModel() {
     
     // Selected image state
@@ -411,7 +415,28 @@ class SharedPhotoViewModel @Inject constructor(
                 // Update final size
                 _fileSizeKb.value = imageBytes.size / 1024
                 _processedImageUri.value = imageUri
-                
+
+                try {
+                    historyRepo.recordSave(
+                        HistoryRepository.HistorySave(
+                            presetId = _selectedPreset.value?.id ?: "unknown",
+                            examName = _selectedPreset.value?.examName ?: "Custom",
+                            originalImagePath = _selectedImageUri.value?.toString() ?: "",
+                            processedImagePath = imageUri.toString(),
+                            fileSizeKb = imageBytes.size / 1024,
+                            widthPx = targetW,
+                            heightPx = targetH
+                        )
+                    )
+                    recentPresetRepo.recordUse(
+                        presetId = _selectedPreset.value?.id ?: "unknown",
+                        examName = _selectedPreset.value?.examName ?: "Custom",
+                        category = _selectedPreset.value?.category?.name ?: "CUSTOM"
+                    )
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to record history/recent preset", e)
+                }
+
                 Result.success(imageUri)
                 
             } catch (e: Exception) {

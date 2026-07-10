@@ -47,9 +47,22 @@ class RecentPresetDaoTest {
     )
 
     @Test
-    fun upsert_then_bump_increments_useCount() = runTest {
-        dao.upsert(preset("aadhaar-2x2", useCount = 1))
-        dao.bumpUse("aadhaar-2x2", now = 5000L)
+    fun upsert_inserts_new_row_when_no_conflict() = runTest {
+        val rowId = dao.upsert(preset("aadhaar-2x2", useCount = 1))
+        assertTrue(rowId > 0)
+
+        val rows = dao.observeRecent(10).first()
+        assertEquals(1, rows.size)
+        assertEquals(1, rows[0].useCount)
+    }
+
+    @Test
+    fun upsert_ignores_when_conflict_so_bump_is_required() = runTest {
+        dao.upsert(preset("aadhaar-2x2", usedAt = 1000L, useCount = 1))
+        val secondInsert = dao.upsert(preset("aadhaar-2x2", usedAt = 2000L, useCount = 1))
+        assertEquals(-1L, secondInsert)
+
+        dao.bumpUse("aadhaar-2x2", examName = "Exam", category = "doc", now = 5000L)
 
         val rows = dao.observeRecent(10).first()
         assertEquals(1, rows.size)
