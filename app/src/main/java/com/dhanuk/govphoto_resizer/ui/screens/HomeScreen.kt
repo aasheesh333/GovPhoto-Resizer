@@ -21,8 +21,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.dhanuk.govphoto_resizer.R
+import com.dhanuk.govphoto_resizer.data.datastore.AppLanguage
 import com.dhanuk.govphoto_resizer.ui.theme.*
+import com.dhanuk.govphoto_resizer.ui.viewmodel.SettingsViewModel
 
 /**
  * Home Screen - Main entry point with Quick Upload and Document Type selection.
@@ -32,7 +35,8 @@ fun HomeScreen(
     onNavigateToAllForms: () -> Unit,
     onNavigateToUpload: (String) -> Unit,
     onNavigateToHistory: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     var selectedNavItem by remember { mutableIntStateOf(0) }
     
@@ -59,7 +63,7 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             // Header Section
-            HomeHeader()
+            HomeHeader(settingsViewModel = settingsViewModel)
             
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -82,7 +86,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeHeader() {
+private fun HomeHeader(settingsViewModel: SettingsViewModel) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
@@ -127,7 +131,7 @@ private fun HomeHeader() {
                 }
                 
                 // Language Toggle
-                LanguageToggle()
+                LanguageToggle(settingsViewModel = settingsViewModel)
             }
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -150,9 +154,13 @@ private fun HomeHeader() {
 }
 
 @Composable
-private fun LanguageToggle() {
+private fun LanguageToggle(settingsViewModel: SettingsViewModel) {
+    val settings by settingsViewModel.state.collectAsState()
+    val isHindi = settings.language == AppLanguage.HINDI
     OutlinedButton(
-        onClick = { /* Toggle language */ },
+        onClick = {
+            settingsViewModel.setLanguage(if (isHindi) AppLanguage.ENGLISH else AppLanguage.HINDI)
+        },
         shape = RoundedCornerShape(24.dp),
         border = ButtonDefaults.outlinedButtonBorder.copy(
             width = 2.dp
@@ -167,7 +175,7 @@ private fun LanguageToggle() {
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
-            text = "EN / HI",
+            text = if (isHindi) "HI" else "EN",
             style = MaterialTheme.typography.labelMedium.copy(
                 fontWeight = FontWeight.Bold
             ),

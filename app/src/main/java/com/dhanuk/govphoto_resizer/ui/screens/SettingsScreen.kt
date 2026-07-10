@@ -17,8 +17,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.dhanuk.govphoto_resizer.R
+import com.dhanuk.govphoto_resizer.data.datastore.AppLanguage
 import com.dhanuk.govphoto_resizer.ui.theme.*
+import com.dhanuk.govphoto_resizer.ui.viewmodel.SettingsViewModel
 
 /**
  * Settings Screen - Language, accessibility, and app preferences.
@@ -26,11 +29,13 @@ import com.dhanuk.govphoto_resizer.ui.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
-    var selectedLanguage by remember { mutableStateOf("en") }
-    var largeButtonsEnabled by remember { mutableStateOf(false) }
-    var highContrastEnabled by remember { mutableStateOf(false) }
+    val settings by viewModel.state.collectAsState()
+    val selectedLanguage = settings.language
+    val largeButtonsEnabled = settings.largeButtons
+    val highContrastEnabled = settings.highContrast
     
     Scaffold(
         topBar = {
@@ -70,13 +75,13 @@ fun SettingsScreen(
             SettingsSection(title = stringResource(R.string.language)) {
                 LanguageOption(
                     label = stringResource(R.string.english),
-                    isSelected = selectedLanguage == "en",
-                    onClick = { selectedLanguage = "en" }
+                    isSelected = selectedLanguage == AppLanguage.ENGLISH,
+                    onClick = { viewModel.setLanguage(AppLanguage.ENGLISH) }
                 )
                 LanguageOption(
                     label = stringResource(R.string.hindi),
-                    isSelected = selectedLanguage == "hi",
-                    onClick = { selectedLanguage = "hi" }
+                    isSelected = selectedLanguage == AppLanguage.HINDI,
+                    onClick = { viewModel.setLanguage(AppLanguage.HINDI) }
                 )
             }
             
@@ -89,14 +94,14 @@ fun SettingsScreen(
                     title = stringResource(R.string.large_buttons),
                     subtitle = "Increase button sizes for easier tapping",
                     isChecked = largeButtonsEnabled,
-                    onCheckedChange = { largeButtonsEnabled = it }
+                    onCheckedChange = { viewModel.setLargeButtons(it) }
                 )
                 SettingsToggle(
                     icon = Icons.Default.Contrast,
                     title = stringResource(R.string.high_contrast),
                     subtitle = "Improve visibility with higher contrast",
                     isChecked = highContrastEnabled,
-                    onCheckedChange = { highContrastEnabled = it }
+                    onCheckedChange = { viewModel.setHighContrast(it) }
                 )
             }
             
