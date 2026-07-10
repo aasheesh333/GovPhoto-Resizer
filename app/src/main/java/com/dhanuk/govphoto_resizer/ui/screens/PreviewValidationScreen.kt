@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.dhanuk.govphoto_resizer.R
+import com.dhanuk.govphoto_resizer.data.ml.FaceAnalysisResult
 import com.dhanuk.govphoto_resizer.data.model.PhotoPreset
 import com.dhanuk.govphoto_resizer.ui.theme.*
 import com.dhanuk.govphoto_resizer.ui.viewmodel.BackgroundColor
@@ -57,9 +58,17 @@ fun PreviewValidationScreen(
     val presetName by sharedViewModel.selectedPresetName.collectAsState()
     val selectedPreset by sharedViewModel.selectedPreset.collectAsState()
     val processedImageUri by sharedViewModel.processedImageUri.collectAsState()
+    val faceAnalysis by sharedViewModel.faceAnalysis.collectAsState()
     
     var selectedTab by remember { mutableIntStateOf(1) } // 0 = Original, 1 = Processed
     var isSaving by remember { mutableStateOf(false) }
+
+    // Ensure face analysis is available when Preview opens
+    LaunchedEffect(selectedImageUri, capturedBitmap) {
+        if (faceAnalysis == null && (selectedImageUri != null || capturedBitmap != null)) {
+            sharedViewModel.analyzeFace()
+        }
+    }
     
     // Function to handle sharing
     fun shareImage(uri: Uri) {
@@ -264,7 +273,11 @@ fun PreviewValidationScreen(
             )
             
             // Validation Checklist
-            ValidationChecklist(fileSizeKb = fileSizeKb, preset = selectedPreset)
+            ValidationChecklist(
+                fileSizeKb = fileSizeKb,
+                preset = selectedPreset,
+                faceAnalysis = faceAnalysis,
+            )
             
             Spacer(modifier = Modifier.height(100.dp))
         }
@@ -461,8 +474,19 @@ private fun PreviewCard(
 }
 
 @Composable
-private fun ValidationChecklist(fileSizeKb: Int, preset: PhotoPreset?) {
+private fun ValidationChecklist(
+    fileSizeKb: Int,
+    preset: PhotoPreset?,
+    faceAnalysis: FaceAnalysisResult?,
+) {
     val isSizeValid = fileSizeKb <= (preset?.maxFileSizeKb ?: 500)
+    val faceOk = faceAnalysis?.isWithinMargin == true && (faceAnalysis.faceCount == 1)
+    val faceDesc = when {
+        faceAnalysis == null -> "Checking face…"
+        faceOk -> stringResource(R.string.face_detected_desc)
+        faceAnalysis.issues.isNotEmpty() -> faceAnalysis.issues.joinToString(" · ")
+        else -> "Face not compliant"
+    }
     
     Column {
         Text(
@@ -478,8 +502,8 @@ private fun ValidationChecklist(fileSizeKb: Int, preset: PhotoPreset?) {
             ValidationItem(
                 icon = Icons.Default.Face,
                 title = stringResource(R.string.face_detected),
-                description = stringResource(R.string.face_detected_desc),
-                isSuccess = true
+                description = faceDesc,
+                isSuccess = faceOk
             )
             ValidationItem(
                 icon = Icons.Default.AspectRatio,

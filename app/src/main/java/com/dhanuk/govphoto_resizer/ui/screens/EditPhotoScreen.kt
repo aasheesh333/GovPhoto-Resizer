@@ -20,8 +20,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -32,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.dhanuk.govphoto_resizer.R
+import com.dhanuk.govphoto_resizer.data.ml.FaceAnalysisResult
 import com.dhanuk.govphoto_resizer.ui.theme.*
 import com.dhanuk.govphoto_resizer.ui.viewmodel.BackgroundColor
 import com.dhanuk.govphoto_resizer.ui.viewmodel.SharedPhotoViewModel
@@ -54,6 +57,7 @@ fun EditPhotoScreen(
     val compressionQuality by sharedViewModel.compressionQuality.collectAsState()
     val fileSizeKb by sharedViewModel.fileSizeKb.collectAsState()
     val selectedPreset by sharedViewModel.selectedPreset.collectAsState()
+    val faceAnalysis by sharedViewModel.faceAnalysis.collectAsState()
     
     // Dynamic aspect ratio from preset
     val aspectRatio = sharedViewModel.aspectRatio
@@ -68,6 +72,13 @@ fun EditPhotoScreen(
     var scale by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
+    
+    // Ensure face analysis runs when Edit screen is shown
+    LaunchedEffect(selectedImageUri, capturedBitmap) {
+        if (selectedImageUri != null || capturedBitmap != null) {
+            sharedViewModel.analyzeFace()
+        }
+    }
     
     // Sync background with ViewModel — any option change re-composites subject over chosen bg
     LaunchedEffect(selectedBackground) {
@@ -176,6 +187,7 @@ fun EditPhotoScreen(
                 scale = scale,
                 offsetX = offsetX,
                 offsetY = offsetY,
+                faceAnalysis = faceAnalysis,
                 onTransform = { newScale, newOffsetX, newOffsetY ->
                     scale = (scale * newScale).coerceIn(0.5f, 3f)
                     offsetX += newOffsetX
@@ -235,6 +247,7 @@ private fun PhotoPreviewWithImage(
     scale: Float,
     offsetX: Float,
     offsetY: Float,
+    faceAnalysis: FaceAnalysisResult?,
     onTransform: (Float, Float, Float) -> Unit,
     onReset: () -> Unit
 ) {
@@ -365,18 +378,41 @@ private fun PhotoPreviewWithImage(
             )
         }
         
-        // Face oval guide
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.5f)
-                .aspectRatio(0.75f)
-                .offset(y = (-10).dp)
-                .border(
-                    width = 2.dp,
-                    color = Color.White.copy(alpha = 0.6f),
-                    shape = RoundedCornerShape(50)
+        // Face oval guide — green when within margin, amber otherwise
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val ovalColor = when {
+                faceAnalysis == null -> Color.White.copy(alpha = 0.6f)
+                faceAnalysis.isWithinMargin -> Color(0xFF2E7D32) // green
+                else -> Color(0xFFFFA000) // amber
+            }
+            // Prefer analyzer oval mapped into view; fall back to centered 50%×0.75 guide
+            val guide = faceAnalysis?.ovalGuide
+            val srcW = (bitmap?.width ?: 0).toFloat().takeIf { it > 0 }
+                ?: guide?.right?.takeIf { it > 0 }
+            val srcH = (bitmap?.height ?: 0).toFloat().takeIf { it > 0 }
+                ?: guide?.bottom?.takeIf { it > 0 }
+            if (guide != null && srcW != null && srcH != null && srcW > 0f && srcH > 0f) {
+                val sx = size.width / srcW
+                val sy = size.height / srcH
+                drawOval(
+                    color = ovalColor,
+                    topLeft = Offset(guide.left * sx, guide.top * sy),
+                    size = Size(guide.width() * sx, guide.height() * sy),
+                    style = Stroke(width = 3f),
                 )
-        )
+            } else {
+                val ovalW = size.width * 0.5f
+                val ovalH = ovalW / 0.75f
+                val left = (size.width - ovalW) / 2f
+                val top = (size.height - ovalH) / 2f - 10f
+                drawOval(
+                    color = ovalColor,
+                    topLeft = Offset(left, top),
+                    size = Size(ovalW, ovalH),
+                    style = Stroke(width = 3f),
+                )
+            }
+        }
         
         // Control buttons row
         Row(

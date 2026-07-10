@@ -3,12 +3,15 @@ package com.dhanuk.govphoto_resizer.ui.viewmodel
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dhanuk.govphoto_resizer.data.ml.BackgroundRemover
+import com.dhanuk.govphoto_resizer.data.ml.FaceAnalysisResult
+import com.dhanuk.govphoto_resizer.data.ml.FaceAnalyzer
 import com.dhanuk.govphoto_resizer.data.model.PhotoPreset
 import com.dhanuk.govphoto_resizer.data.repository.HistoryRepository
 import com.dhanuk.govphoto_resizer.data.repository.PresetRepository
@@ -37,6 +40,7 @@ class SharedPhotoViewModel @Inject constructor(
     private val historyRepo: HistoryRepository,
     private val recentPresetRepo: RecentPresetRepository,
     private val backgroundRemover: BackgroundRemover,
+    private val faceAnalyzer: FaceAnalyzer,
 ) : ViewModel() {
     
     // Selected image state
@@ -74,6 +78,9 @@ class SharedPhotoViewModel @Inject constructor(
     private val _removalState = MutableStateFlow<RemovalState>(RemovalState.Idle)
     val removalState: StateFlow<RemovalState> = _removalState.asStateFlow()
 
+    private val _faceAnalysis = MutableStateFlow<FaceAnalysisResult?>(null)
+    val faceAnalysis: StateFlow<FaceAnalysisResult?> = _faceAnalysis.asStateFlow()
+
     // Custom/Manual Preset State
     private val _customWidth = MutableStateFlow("350")
     val customWidth: StateFlow<String> = _customWidth.asStateFlow()
@@ -101,7 +108,9 @@ class SharedPhotoViewModel @Inject constructor(
     fun setSelectedImageUri(uri: Uri?) {
         _selectedImageUri.value = uri
         _capturedBitmap.value = null
+        _faceAnalysis.value = null
         calculateEstimatedFileSize()
+        analyzeFace()
     }
     
     /**
@@ -110,7 +119,40 @@ class SharedPhotoViewModel @Inject constructor(
     fun setCapturedBitmap(bitmap: Bitmap?) {
         _capturedBitmap.value = bitmap
         _selectedImageUri.value = null
+        _faceAnalysis.value = null
         calculateEstimatedFileSize()
+        analyzeFace()
+    }
+
+    /**
+     * Run face analysis on the current image (bitmap preferred, else decode URI).
+     */
+    fun analyzeFace() {
+        viewModelScope.launch(Dispatchers.Default) {
+            try {
+                val bitmap = _capturedBitmap.value ?: decodeSelectedUri()
+                if (bitmap == null) {
+                    _faceAnalysis.value = null
+                    return@launch
+                }
+                _faceAnalysis.value = faceAnalyzer.analyze(bitmap)
+            } catch (e: Exception) {
+                Log.w(TAG, "Face analysis failed", e)
+                _faceAnalysis.value = null
+            }
+        }
+    }
+
+    private fun decodeSelectedUri(): Bitmap? {
+        val uri = _selectedImageUri.value ?: return null
+        return try {
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to decode image URI for face analysis", e)
+            null
+        }
     }
     
     /**
@@ -187,6 +229,12 @@ class SharedPhotoViewModel @Inject constructor(
                 val result = backgroundRemover.remove(bitmap, _backgroundColor.value)
                 _capturedBitmap.value = result
                 _removalState.value = RemovalState.Done
+                // Re-analyze face on the composited result
+                try {
+                    _faceAnalysis.value = faceAnalyzer.analyze(result)
+                } catch (fe: Exception) {
+                    Log.w(TAG, "Face analysis after bg removal failed", fe)
+                }
             } catch (e: Exception) {
                 Log.w(TAG, "Background removal failed", e)
                 _removalState.value = RemovalState.Error(e.message ?: "Unknown error")
@@ -239,6 +287,7 @@ class SharedPhotoViewModel @Inject constructor(
         _fileSizeKb.value = 0
         _isRemovingBackground.value = false
         _removalState.value = RemovalState.Idle
+        _faceAnalysis.value = null
     }
     
     /**
