@@ -20,6 +20,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -76,6 +77,8 @@ class SharedPhotoViewModel @Inject constructor(
 
     private val _removalState = MutableStateFlow<RemovalState>(RemovalState.Idle)
     val removalState: StateFlow<RemovalState> = _removalState.asStateFlow()
+
+    private var faceAnalysisJob: Job? = null
 
     private val _faceAnalysis = MutableStateFlow<FaceAnalysisResult?>(null)
     val faceAnalysis: StateFlow<FaceAnalysisResult?> = _faceAnalysis.asStateFlow()
@@ -149,15 +152,14 @@ class SharedPhotoViewModel @Inject constructor(
     }
 
 fun analyzeFace() {
-    viewModelScope.launch(Dispatchers.Default) {
-      if (!isActive) return@launch
+    faceAnalysisJob?.cancel()
+    faceAnalysisJob = viewModelScope.launch(Dispatchers.Default) {
       try {
         val bitmap = _displayedBitmap.value ?: _originalBitmap.value
         if (bitmap == null || bitmap.isRecycled) {
           _faceAnalysis.value = null
           return@launch
         }
-        if (!isActive) return@launch
         _faceAnalysis.value = faceAnalyzer.analyze(bitmap)
       } catch (e: CancellationException) {
         throw e
