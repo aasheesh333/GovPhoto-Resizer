@@ -27,19 +27,9 @@ android {
         }
     }
 
-  signingConfigs {
-    getByName("debug")
-    create("release") {
-      storeFile = file(System.getenv("KEYSTORE_PATH") ?: System.getProperty("user.home") + "/.android/debug.keystore")
-      storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "android"
-      keyAlias = System.getenv("KEY_ALIAS") ?: "androiddebugkey"
-      keyPassword = System.getenv("KEY_PASSWORD") ?: "android"
-    }
-  }
-
   buildTypes {
     release {
-      signingConfig = signingConfigs.getByName("release")
+      signingConfig = signingConfigs.getByName("debug")
       isMinifyEnabled = false
       isShrinkResources = false
       proguardFiles(
