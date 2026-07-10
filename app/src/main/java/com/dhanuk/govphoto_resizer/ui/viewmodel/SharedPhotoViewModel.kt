@@ -148,23 +148,25 @@ class SharedPhotoViewModel @Inject constructor(
         }
     }
 
-    fun analyzeFace() {
-        viewModelScope.launch(Dispatchers.Default) {
-            try {
-                val bitmap = _displayedBitmap.value ?: _originalBitmap.value ?: decodeSelectedUri()
-                if (bitmap == null) {
-                    _faceAnalysis.value = null
-                    return@launch
-                }
-                _faceAnalysis.value = faceAnalyzer.analyze(bitmap)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.w(TAG, "Face analysis failed", e)
-                _faceAnalysis.value = null
-            }
+fun analyzeFace() {
+    viewModelScope.launch(Dispatchers.Default) {
+      if (!isActive) return@launch
+      try {
+        val bitmap = _displayedBitmap.value ?: _originalBitmap.value
+        if (bitmap == null || bitmap.isRecycled) {
+          _faceAnalysis.value = null
+          return@launch
         }
+        if (!isActive) return@launch
+        _faceAnalysis.value = faceAnalyzer.analyze(bitmap)
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        Log.w(TAG, "Face analysis failed", e)
+        _faceAnalysis.value = null
+      }
     }
+  }
 
     private fun decodeSelectedUri(): Bitmap? {
         val uri = _selectedImageUri.value ?: return null
