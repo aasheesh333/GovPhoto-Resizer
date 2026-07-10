@@ -114,12 +114,14 @@ class BackgroundRemover @Inject constructor(
 
     internal fun buildBackground(w: Int, h: Int, bgColor: BackgroundColor): Bitmap {
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bmp)
         when (bgColor) {
-            BackgroundColor.WHITE -> canvas.drawColor(Color.WHITE)
-            BackgroundColor.STUDIO_BLUE -> canvas.drawColor(Color.parseColor("#B8D4E8"))
-            BackgroundColor.LIGHT_GREY -> canvas.drawColor(Color.parseColor("#E8E8E8"))
+            // eraseColor is reliable under Robolectric; Canvas.drawColor is not
+            BackgroundColor.WHITE -> bmp.eraseColor(Color.WHITE)
+            BackgroundColor.STUDIO_BLUE -> bmp.eraseColor(Color.parseColor("#B8D4E8"))
+            BackgroundColor.LIGHT_GREY -> bmp.eraseColor(Color.parseColor("#E8E8E8"))
+            BackgroundColor.TRANSPARENT -> bmp.eraseColor(Color.TRANSPARENT)
             BackgroundColor.GRADIENT -> {
+                val canvas = Canvas(bmp)
                 val paint = Paint()
                 paint.shader = LinearGradient(
                     0f, 0f, 0f, h.toFloat(),
@@ -129,7 +131,6 @@ class BackgroundRemover @Inject constructor(
                 )
                 canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), paint)
             }
-            BackgroundColor.TRANSPARENT -> canvas.drawColor(Color.TRANSPARENT)
         }
         return bmp
     }
