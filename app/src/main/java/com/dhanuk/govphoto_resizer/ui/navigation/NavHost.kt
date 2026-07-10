@@ -1,6 +1,6 @@
 package com.dhanuk.govphoto_resizer.ui.navigation
 
-import androidx.annotation.SuppressLint
+import android.annotation.SuppressLint
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
