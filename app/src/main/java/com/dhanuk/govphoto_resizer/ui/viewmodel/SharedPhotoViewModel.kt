@@ -260,33 +260,33 @@ fun removeBackground() {
     }
     if (_removalState.value is RemovalState.Working) return
 
-        _removalState.value = RemovalState.Working
-        _isRemovingBackground.value = true
+    _removalState.value = RemovalState.Working
+    _isRemovingBackground.value = true
 
-        viewModelScope.launch(Dispatchers.Default) {
-            photoMutex.withLock {
-                try {
-                    val result = backgroundRemover.remove(bitmap, _backgroundColor.value)
-                    _displayedBitmap.value = result
-                    _removalState.value = RemovalState.Done
-                    try {
-                        _faceAnalysis.value = faceAnalyzer.analyze(result)
-                    } catch (fe: CancellationException) {
-                        throw fe
-                    } catch (fe: Exception) {
-                        Log.w(TAG, "Face analysis after bg removal failed", fe)
-                    }
-                } catch (e: CancellationException) {
-                    _removalState.value = RemovalState.Idle
-                    throw e
-                } catch (e: Exception) {
-                    Log.w(TAG, "Background removal failed", e)
-                    _removalState.value = RemovalState.Error(e.message ?: "Unknown error")
-                } finally {
-                    _isRemovingBackground.value = false
-                }
-            }
+    viewModelScope.launch(Dispatchers.Default) {
+      photoMutex.withLock {
+        try {
+          val result = backgroundRemover.remove(bitmap, _backgroundColor.value)
+          _displayedBitmap.value = result
+          _removalState.value = RemovalState.Done
+          try {
+            _faceAnalysis.value = faceAnalyzer.analyze(result)
+          } catch (fe: CancellationException) {
+            throw fe
+          } catch (fe: Exception) {
+            Log.w(TAG, "Face analysis after bg removal failed", fe)
+          }
+        } catch (e: CancellationException) {
+          _removalState.value = RemovalState.Idle
+          throw e
+        } catch (e: Exception) {
+          Log.w(TAG, "Background removal failed", e)
+          _removalState.value = RemovalState.Error(e.message ?: "Unknown error")
+        } finally {
+          _isRemovingBackground.value = false
         }
+      }
+    }
     }
 
     fun updateCustomWidth(w: String) { _customWidth.value = w }
