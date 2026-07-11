@@ -7,6 +7,8 @@ import javax.inject.Singleton
 import kotlin.math.abs
 import kotlin.math.min
 
+private const val MAX_FACE_DETECT_PX = 1024
+
 data class FaceAnalysisResult(
     val faceCount: Int,
     val bounds: RectF?,
@@ -24,15 +26,32 @@ class FaceAnalyzer @Inject constructor(
     /**
      * Analyze [bitmap] for passport-style face compliance.
      * Oval guide is centered, 60% of min(w,h) wide, 1.25 aspect (taller).
+     * Downscales bitmap to max 1024px before ML Kit detection to avoid OOM.
      */
     suspend fun analyze(bitmap: Bitmap): FaceAnalysisResult {
+        val maxDim = maxOf(bitmap.width, bitmap.height)
+        val detectionBitmap = if (maxDim > MAX_FACE_DETECT_PX) {
+            val scale = MAX_FACE_DETECT_PX.toFloat() / maxDim.toFloat()
+            val scaledW = (bitmap.width * scale).toInt().coerceAtLeast(1)
+            val scaledH = (bitmap.height * scale).toInt().coerceAtLeast(1)
+            Bitmap.createScaledBitmap(bitmap, scaledW, scaledH, true)
+        } else {
+            bitmap
+        }
+        val ownsDownscaled = detectionBitmap !== bitmap
+
         val w = bitmap.width.toFloat()
         val h = bitmap.height.toFloat()
         val ovalGuide = defaultOvalGuide(w, h)
 
+        val ovalScale = if (ownsDownscaled) {
+            detectionBitmap.width.toFloat() / w
+        } else 1f
+
         val faces = try {
-            detector.detect(bitmap)
+            detector.detect(detectionBitmap)
         } catch (e: Exception) {
+            if (ownsDownscaled) detectionBitmap.recycle()
             return FaceAnalysisResult(
                 faceCount = 0,
                 bounds = null,
@@ -45,6 +64,7 @@ class FaceAnalyzer @Inject constructor(
         }
 
         if (faces.isEmpty()) {
+            if (ownsDownscaled) detectionBitmap.recycle()
             return FaceAnalysisResult(
                 faceCount = 0,
                 bounds = null,
@@ -70,12 +90,23 @@ class FaceAnalyzer @Inject constructor(
         if (eyesLevel > 0.08f) issues += "Eyes not level"
         if (abs(primary.headEulerAngleZ) > 15f) issues += "Head tilted"
 
-        val within = faces.size == 1 && withinOval(primary.bounds, ovalGuide, margin = 0.05f)
+        val scaledBounds = if (ownsDownscaled) {
+            RectF(
+                primary.bounds.left / ovalScale,
+                primary.bounds.top / ovalScale,
+                primary.bounds.right / ovalScale,
+                primary.bounds.bottom / ovalScale,
+            )
+        } else primary.bounds
+
+        val within = faces.size == 1 && withinOval(scaledBounds, ovalGuide, margin = 0.05f)
         if (!within && faces.size == 1) issues += "Face not within guide oval"
+
+        if (ownsDownscaled) detectionBitmap.recycle()
 
         return FaceAnalysisResult(
             faceCount = faces.size,
-            bounds = primary.bounds,
+            bounds = scaledBounds,
             ovalGuide = ovalGuide,
             eyesLevel = eyesLevel,
             sizeRatio = sizeRatio,

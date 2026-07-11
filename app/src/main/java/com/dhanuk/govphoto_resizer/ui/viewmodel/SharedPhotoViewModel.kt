@@ -32,6 +32,7 @@ import java.io.ByteArrayOutputStream
 import javax.inject.Inject
 
 private const val TAG = "SharedPhotoViewModel"
+private const val MAX_DECODE_DIM = 2048
 
 @HiltViewModel
 class SharedPhotoViewModel @Inject constructor(
@@ -140,7 +141,7 @@ private fun decodeUriToOriginalBitmap(uri: Uri) {
         context.contentResolver.openInputStream(uri)?.use { stream ->
             BitmapFactory.decodeStream(stream, null, options)
         }
-        val maxDim = 4096
+        val maxDim = MAX_DECODE_DIM
         val sampleSize = sequenceOf(1, 2, 4, 8).firstOrNull {
             (options.outWidth / it) <= maxDim && (options.outHeight / it) <= maxDim
         } ?: 8
@@ -182,6 +183,9 @@ fun analyzeFace() {
         _faceAnalysis.value = faceAnalyzer.analyze(bitmap)
       } catch (e: CancellationException) {
         throw e
+      } catch (e: OutOfMemoryError) {
+        Log.w(TAG, "Face analysis OOM — photo too large, skipping", e)
+        _faceAnalysis.value = null
       } catch (e: Exception) {
         Log.w(TAG, "Face analysis failed", e)
         _faceAnalysis.value = null
@@ -273,6 +277,8 @@ fun removeBackground() {
             _faceAnalysis.value = faceAnalyzer.analyze(result)
           } catch (fe: CancellationException) {
             throw fe
+          } catch (fe: OutOfMemoryError) {
+            Log.w(TAG, "Face analysis after bg removal OOM", fe)
           } catch (fe: Exception) {
             Log.w(TAG, "Face analysis after bg removal failed", fe)
           }
