@@ -34,6 +34,7 @@ fun SettingsScreen(
 ) {
     val settings by viewModel.state.collectAsState()
     val context = LocalContext.current
+    var showPrivacyPolicy by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -140,13 +141,42 @@ fun SettingsScreen(
                     icon = Icons.Default.PrivacyTip,
                     title = stringResource(R.string.privacy_policy),
                     subtitle = stringResource(R.string.view_privacy_policy),
-                    onClick = { /* Open privacy policy */ }
+                    onClick = { showPrivacyPolicy = true }
                 )
             }
 
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
+
+    if (showPrivacyPolicy) {
+        PrivacyPolicyDialog(onDismiss = { showPrivacyPolicy = false })
+    }
+}
+
+@Composable
+private fun PrivacyPolicyDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.privacy_policy), fontWeight = FontWeight.Bold) },
+        text = {
+            Text(
+                text = """GovPhoto Resizer respects your privacy.
+
+All photos are processed on-device. No image data is uploaded to any server.
+
+App settings (language, theme, accessibility) are stored locally using encrypted preferences.
+
+Optional photo history is saved on your device only. No personal data is collected or transmitted.
+
+For background removal and face detection, on-device ML Kit models run entirely offline.""",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("OK") }
+        }
+    )
 }
 
 @Composable

@@ -73,6 +73,7 @@ fun EditPhotoScreen(
     var scale by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
+    var canUndoCrop by remember { mutableStateOf(false) }
     
     // Ensure face analysis runs when Edit screen is shown
     LaunchedEffect(selectedImageUri, originalBitmap) {
@@ -207,9 +208,22 @@ Icon(
                             scale = 1f
                             offsetX = 0f
                             offsetY = 0f
+                            canUndoCrop = true
                         }
                     }
-                }
+                },
+                onZoom = { factor ->
+                    scale = (scale * factor).coerceIn(0.5f, 3f)
+                },
+                onUndoCrop = {
+                    if (sharedViewModel.undoCrop()) {
+                        scale = 1f
+                        offsetX = 0f
+                        offsetY = 0f
+                        canUndoCrop = false
+                    }
+                },
+                canUndoCrop = canUndoCrop
             )
             
             Spacer(modifier = Modifier.height(8.dp))
@@ -262,7 +276,10 @@ private fun PhotoPreviewWithImage(
     faceAnalysis: FaceAnalysisResult?,
     onTransform: (Float, Float, Float) -> Unit,
     onReset: () -> Unit,
-    onCrop: () -> Unit
+    onCrop: () -> Unit,
+    onZoom: (Float) -> Unit,
+    onUndoCrop: () -> Unit,
+    canUndoCrop: Boolean
 ) {
     val context = LocalContext.current
     
@@ -436,7 +453,7 @@ private fun PhotoPreviewWithImage(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             // Reset button
-FloatingActionButton(
+            FloatingActionButton(
             onClick = onReset,
             modifier = Modifier.size(48.dp),
                 containerColor = Color.Black.copy(alpha = 0.5f),
@@ -451,6 +468,22 @@ FloatingActionButton(
                 )
             }
             
+            // Zoom out button
+            FloatingActionButton(
+            onClick = { onZoom(0.9f) },
+            modifier = Modifier.size(48.dp),
+                containerColor = Color.Black.copy(alpha = 0.5f),
+                contentColor = Color.White,
+                shape = CircleShape,
+                elevation = FloatingActionButtonDefaults.elevation(0.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ZoomOut,
+                    contentDescription = "Zoom out",
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            
             // Zoom indicator
             Surface(
                 shape = RoundedCornerShape(20.dp),
@@ -461,6 +494,38 @@ FloatingActionButton(
                     style = MaterialTheme.typography.labelMedium,
                     color = Color.White,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+            
+            // Zoom in button
+            FloatingActionButton(
+            onClick = { onZoom(1.1f) },
+            modifier = Modifier.size(48.dp),
+                containerColor = Color.Black.copy(alpha = 0.5f),
+                contentColor = Color.White,
+                shape = CircleShape,
+                elevation = FloatingActionButtonDefaults.elevation(0.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ZoomIn,
+                    contentDescription = "Zoom in",
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            
+            // Undo crop button — restores pre-crop bitmap
+            FloatingActionButton(
+            onClick = onUndoCrop,
+            modifier = Modifier.size(48.dp),
+                containerColor = if (canUndoCrop) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = 0.5f),
+                contentColor = Color.White,
+                shape = CircleShape,
+                elevation = FloatingActionButtonDefaults.elevation(0.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Undo,
+                    contentDescription = "Undo crop",
+                    modifier = Modifier.size(22.dp)
                 )
             }
             

@@ -19,6 +19,7 @@ import com.dhanuk.govphoto_resizer.data.datastore.DarkModePref
 import com.dhanuk.govphoto_resizer.ui.navigation.GovPhotoNavHost
 import com.dhanuk.govphoto_resizer.ui.theme.GovPhotoTheme
 import com.dhanuk.govphoto_resizer.ui.theme.LocalAppLanguage
+import com.dhanuk.govphoto_resizer.ui.theme.LocalHighContrast
 import com.dhanuk.govphoto_resizer.ui.theme.LocalLargeButtons
 import com.dhanuk.govphoto_resizer.ui.viewmodel.SettingsViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -62,8 +63,9 @@ class MainActivity : ComponentActivity() {
             CompositionLocalProvider(
                 LocalAppLanguage provides settings.language,
                 LocalLargeButtons provides settings.largeButtons,
+                LocalHighContrast provides settings.highContrast,
             ) {
-                GovPhotoTheme(darkTheme = isDark, dynamicColor = settings.dynamicColor) {
+                GovPhotoTheme(darkTheme = isDark, dynamicColor = settings.dynamicColor, highContrast = settings.highContrast) {
                     Surface(
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background

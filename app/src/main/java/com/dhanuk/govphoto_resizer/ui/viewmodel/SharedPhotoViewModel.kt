@@ -82,6 +82,9 @@ class SharedPhotoViewModel @Inject constructor(
     private var faceAnalysisJob: Job? = null
     private var decodeJob: Job? = null
 
+    /** Snapshot of displayedBitmap before the most recent crop, for undo. */
+    private var preCropBitmap: Bitmap? = null
+
     private val _faceAnalysis = MutableStateFlow<FaceAnalysisResult?>(null)
     val faceAnalysis: StateFlow<FaceAnalysisResult?> = _faceAnalysis.asStateFlow()
 
@@ -309,7 +312,8 @@ fun removeBackground() {
     fun updateCustomFormat(f: String) { _customFormat.value = f }
 
     /**
-     * Crop [source] to the visible region implied by the current zoom/pan.
+     * Crop [source] to the visible region implied by the current zoom/pan,
+     * preserving the preset target aspect ratio so the crop is not stretched.
      * Returns the cropped bitmap and replaces [displayedBitmap]; null on failure.
      */
     fun applyCrop(source: Bitmap, scale: Float, offsetX: Float, offsetY: Float): Bitmap? {
@@ -317,20 +321,47 @@ fun removeBackground() {
         val srcW = source.width
         val srcH = source.height
         if (srcW <= 0 || srcH <= 0) return null
-        val visibleW = (srcW / scale).toInt().coerceIn(1, srcW)
-        val visibleH = (srcH / scale).toInt().coerceIn(1, srcH)
-        val centerX = (srcW / 2 - offsetX / scale).toInt().coerceIn(visibleW / 2, srcW - visibleW / 2)
-        val centerY = (srcH / 2 - offsetY / scale).toInt().coerceIn(visibleH / 2, srcH - visibleH / 2)
-        val left = (centerX - visibleW / 2).coerceIn(0, srcW - visibleW)
-        val top = (centerY - visibleH / 2).coerceIn(0, srcH - visibleH)
+
+        val targetAR = aspectRatio
+        val minSrcDim = minOf(srcW, srcH)
+        val cropW: Int
+        val cropH: Int
+        if (targetAR >= 1f) {
+            cropW = minSrcDim
+            cropH = (cropW / targetAR).toInt().coerceIn(1, srcH)
+        } else {
+            cropH = minSrcDim
+            cropW = (cropH * targetAR).toInt().coerceIn(1, srcW)
+        }
+        val visibleSize = (minSrcDim / scale).toInt().coerceIn(cropW, srcW)
+        val halfV = visibleSize / 2
+        val centerX = (srcW / 2 - offsetX / scale).toInt().coerceIn(halfV, srcW - halfV)
+        val centerY = (srcH / 2 - offsetY / scale).toInt().coerceIn(halfV, srcH - halfV)
+        val left = (centerX - cropW / 2).coerceIn(0, srcW - cropW)
+        val top = (centerY - cropH / 2).coerceIn(0, srcH - cropH)
         return try {
-            val cropped = Bitmap.createBitmap(source, left, top, visibleW, visibleH)
+            val cropped = Bitmap.createBitmap(source, left, top, cropW, cropH)
+            preCropBitmap?.let { if (!it.isRecycled && it !== source) it.recycle() }
+            preCropBitmap = source
             _displayedBitmap.value = cropped
             cropped
         } catch (e: Exception) {
             Log.w(TAG, "applyCrop failed", e)
             null
         }
+    }
+
+    /** Undo the last crop — restores the bitmap that was visible before [applyCrop]. */
+    fun undoCrop(): Boolean {
+        val prev = preCropBitmap ?: return false
+        if (prev.isRecycled) {
+            preCropBitmap = null
+            return false
+        }
+        preCropBitmap = null
+        _displayedBitmap.value = prev
+        analyzeFace()
+        return true
     }
 
     fun applyCustomPreset() {
@@ -369,6 +400,8 @@ fun removeBackground() {
         _isRemovingBackground.value = false
         _removalState.value = RemovalState.Idle
         _faceAnalysis.value = null
+        preCropBitmap?.let { if (!it.isRecycled) it.recycle() }
+        preCropBitmap = null
     }
 
 private fun recycleBitmaps() {
@@ -376,6 +409,8 @@ private fun recycleBitmaps() {
     _originalBitmap.value = null
     _displayedBitmap.value?.let { if (!it.isRecycled && it != _originalBitmap.value) it.recycle() }
     _displayedBitmap.value = null
+    preCropBitmap?.let { if (!it.isRecycled) it.recycle() }
+    preCropBitmap = null
   }
 
 override fun onCleared() {

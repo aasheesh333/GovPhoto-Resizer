@@ -114,4 +114,39 @@ val govDarkColorScheme = darkColorScheme(
     outline = GovOutlineDark, outlineVariant = GovOutlineVariantDark,
 )
 
+// High-contrast variants (accessibility) — darker primaries, pure-white surfaces, black outlines
+val govHighContrastLight = govLightColorScheme.copy(
+    primary = Color(0xFF003B5C),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFBFE3FF),
+    onPrimaryContainer = Color(0xFF000F1A),
+    background = Color(0xFFFFFFFF),
+    onBackground = Color(0xFF000000),
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF000000),
+    surfaceVariant = Color(0xFFC8CDD4),
+    onSurfaceVariant = Color(0xFF1A1F25),
+    outline = Color(0xFF000000),
+    outlineVariant = Color(0xFF555B61),
+    error = Color(0xFF900000),
+    onError = Color(0xFFFFFFFF),
+)
+
+val govHighContrastDark = govDarkColorScheme.copy(
+    primary = Color(0xFFD0EAFF),
+    onPrimary = Color(0xFF000000),
+    primaryContainer = Color(0xFF004F73),
+    onPrimaryContainer = Color(0xFFFFFFFF),
+    background = Color(0xFF000000),
+    onBackground = Color(0xFFFFFFFF),
+    surface = Color(0xFF000000),
+    onSurface = Color(0xFFFFFFFF),
+    surfaceVariant = Color(0xFFC8CDD4),
+    onSurfaceVariant = Color(0xFFFFFFFF),
+    outline = Color(0xFFFFFFFF),
+    outlineVariant = Color(0xFFFFFFFF),
+    error = Color(0xFFFFE6E6),
+    onError = Color(0xFF000000),
+)
+
 
