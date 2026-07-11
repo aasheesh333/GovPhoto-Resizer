@@ -196,8 +196,17 @@ fun analyzeFace() {
     private fun decodeSelectedUri(): Bitmap? {
         val uri = _selectedImageUri.value ?: return null
         return try {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             context.contentResolver.openInputStream(uri)?.use { stream ->
-                BitmapFactory.decodeStream(stream)
+                BitmapFactory.decodeStream(stream, null, bounds)
+            }
+            val maxDim = MAX_DECODE_DIM
+            val sample = sequenceOf(1, 2, 4, 8, 16).firstOrNull {
+                (bounds.outWidth / it) <= maxDim && (bounds.outHeight / it) <= maxDim
+            } ?: 16
+            val opts = BitmapFactory.Options().apply { inSampleSize = sample; inMutable = true }
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream, null, opts)
             }
         } catch (e: CancellationException) {
             throw e
@@ -298,6 +307,31 @@ fun removeBackground() {
     fun updateCustomWidth(w: String) { _customWidth.value = w }
     fun updateCustomHeight(h: String) { _customHeight.value = h }
     fun updateCustomFormat(f: String) { _customFormat.value = f }
+
+    /**
+     * Crop [source] to the visible region implied by the current zoom/pan.
+     * Returns the cropped bitmap and replaces [displayedBitmap]; null on failure.
+     */
+    fun applyCrop(source: Bitmap, scale: Float, offsetX: Float, offsetY: Float): Bitmap? {
+        if (source.isRecycled || scale <= 0f) return null
+        val srcW = source.width
+        val srcH = source.height
+        if (srcW <= 0 || srcH <= 0) return null
+        val visibleW = (srcW / scale).toInt().coerceIn(1, srcW)
+        val visibleH = (srcH / scale).toInt().coerceIn(1, srcH)
+        val centerX = (srcW / 2 - offsetX / scale).toInt().coerceIn(visibleW / 2, srcW - visibleW / 2)
+        val centerY = (srcH / 2 - offsetY / scale).toInt().coerceIn(visibleH / 2, srcH - visibleH / 2)
+        val left = (centerX - visibleW / 2).coerceIn(0, srcW - visibleW)
+        val top = (centerY - visibleH / 2).coerceIn(0, srcH - visibleH)
+        return try {
+            val cropped = Bitmap.createBitmap(source, left, top, visibleW, visibleH)
+            _displayedBitmap.value = cropped
+            cropped
+        } catch (e: Exception) {
+            Log.w(TAG, "applyCrop failed", e)
+            null
+        }
+    }
 
     fun applyCustomPreset() {
         val w = _customWidth.value.toIntOrNull() ?: 350

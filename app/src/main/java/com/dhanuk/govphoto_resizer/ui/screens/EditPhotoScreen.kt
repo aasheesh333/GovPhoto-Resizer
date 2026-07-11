@@ -198,6 +198,17 @@ Icon(
                     scale = 1f
                     offsetX = 0f
                     offsetY = 0f
+                },
+                onCrop = {
+                    val src = displayedBitmap ?: originalBitmap
+                    if (src != null && !src.isRecycled) {
+                        val cropped = sharedViewModel.applyCrop(src, scale, offsetX, offsetY)
+                        if (cropped != null) {
+                            scale = 1f
+                            offsetX = 0f
+                            offsetY = 0f
+                        }
+                    }
                 }
             )
             
@@ -250,7 +261,8 @@ private fun PhotoPreviewWithImage(
     offsetY: Float,
     faceAnalysis: FaceAnalysisResult?,
     onTransform: (Float, Float, Float) -> Unit,
-    onReset: () -> Unit
+    onReset: () -> Unit,
+    onCrop: () -> Unit
 ) {
     val context = LocalContext.current
     
@@ -277,13 +289,11 @@ private fun PhotoPreviewWithImage(
                 )
         )
         
-        // Actual image display
-        if (imageUri != null) {
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(imageUri)
-                    .crossfade(true)
-                    .build(),
+        // Actual image display — prioritize displayedBitmap so that
+        // background removal / compositing results are visible to the user.
+        if (bitmap != null && !bitmap.isRecycled) {
+            androidx.compose.foundation.Image(
+                bitmap = bitmap.asImageBitmap(),
                 contentDescription = "Selected photo",
                 modifier = Modifier
                     .fillMaxSize()
@@ -300,11 +310,13 @@ private fun PhotoPreviewWithImage(
                     },
                 contentScale = ContentScale.Crop
             )
-        } else if (bitmap != null) {
-            // Display bitmap from camera
-            androidx.compose.foundation.Image(
-                bitmap = bitmap.asImageBitmap(),
-                contentDescription = "Captured photo",
+        } else if (imageUri != null) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(imageUri)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Selected photo",
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer(
@@ -452,9 +464,9 @@ FloatingActionButton(
                 )
             }
             
-            // Crop button placeholder
-FloatingActionButton(
-            onClick = { /* Crop action */ },
+            // Crop button — applies current zoom/pan as a crop to the visible region
+            FloatingActionButton(
+            onClick = onCrop,
             modifier = Modifier.size(48.dp),
                 containerColor = Color.Black.copy(alpha = 0.5f),
                 contentColor = Color.White,
