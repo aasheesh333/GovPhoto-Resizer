@@ -66,7 +66,7 @@ fun EditPhotoScreen(
     val maxSize = selectedPreset?.maxFileSizeKb ?: 500
     
     // Local UI state
-    var selectedBackground by remember { mutableStateOf(BackgroundOption.WHITE) }
+    var selectedBackground by remember { mutableStateOf(BackgroundOption.NONE) }
     var compressionValue by remember { mutableFloatStateOf(compressionQuality) }
     
     // Image transformation state
@@ -84,16 +84,23 @@ fun EditPhotoScreen(
     
     // Sync background with ViewModel — any option change re-composites subject over chosen bg
     LaunchedEffect(selectedBackground) {
-        sharedViewModel.setBackgroundColor(
-            when (selectedBackground) {
-                BackgroundOption.WHITE -> BackgroundColor.WHITE
-                BackgroundOption.STUDIO_BLUE -> BackgroundColor.STUDIO_BLUE
-                BackgroundOption.LIGHT_GREY -> BackgroundColor.LIGHT_GREY
-                BackgroundOption.GRADIENT -> BackgroundColor.GRADIENT
-                BackgroundOption.TRANSPARENT -> BackgroundColor.TRANSPARENT
-            }
-        )
-        sharedViewModel.removeBackground()
+        if (selectedBackground == BackgroundOption.NONE) {
+            // Skip background removal — keep original/source bitmap visible as-is
+            sharedViewModel.setBackgroundColor(BackgroundColor.WHITE)
+            sharedViewModel.skipBackgroundRemoval()
+        } else {
+            sharedViewModel.setBackgroundColor(
+                when (selectedBackground) {
+                    BackgroundOption.NONE -> BackgroundColor.WHITE
+                    BackgroundOption.WHITE -> BackgroundColor.WHITE
+                    BackgroundOption.STUDIO_BLUE -> BackgroundColor.STUDIO_BLUE
+                    BackgroundOption.LIGHT_GREY -> BackgroundColor.LIGHT_GREY
+                    BackgroundOption.GRADIENT -> BackgroundColor.GRADIENT
+                    BackgroundOption.TRANSPARENT -> BackgroundColor.TRANSPARENT
+                }
+            )
+            sharedViewModel.removeBackground()
+        }
     }
     
     // Sync compression with ViewModel
@@ -204,6 +211,7 @@ Icon(
                     offsetX = 0f
                     offsetY = 0f
                 },
+                onRotate = { sharedViewModel.rotate90() },
                 onCrop = {
                     val src = displayedBitmap ?: originalBitmap
                     if (src != null && !src.isRecycled) {
@@ -280,6 +288,7 @@ private fun PhotoPreviewWithImage(
     faceAnalysis: FaceAnalysisResult?,
     onTransform: (Float, Float, Float) -> Unit,
     onReset: () -> Unit,
+    onRotate: () -> Unit,
     onCrop: () -> Unit,
     onZoom: (Float) -> Unit,
     onUndoCrop: () -> Unit,
@@ -301,6 +310,7 @@ private fun PhotoPreviewWithImage(
                 .fillMaxSize()
                 .background(
                     when (backgroundColor) {
+                        BackgroundOption.NONE -> Color.Black.copy(alpha = 0.05f)
                         BackgroundOption.WHITE -> Color.White
                         BackgroundOption.STUDIO_BLUE -> Color(0xFFB8D4E8)
                         BackgroundOption.LIGHT_GREY -> Color(0xFFE8E8E8)
@@ -312,6 +322,9 @@ private fun PhotoPreviewWithImage(
         
         // Actual image display — prioritize displayedBitmap so that
         // background removal / compositing results are visible to the user.
+        // Use ContentScale.Fit so the whole image is visible (no stretching,
+        // no cropping). Users can zoom/pan to compose; bakeTransform() crops
+        // the visible region to the preset aspect ratio on Continue.
         if (bitmap != null && !bitmap.isRecycled) {
             androidx.compose.foundation.Image(
                 bitmap = bitmap.asImageBitmap(),
@@ -329,7 +342,7 @@ private fun PhotoPreviewWithImage(
                             onTransform(zoom, pan.x, pan.y)
                         }
                     },
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Fit
             )
         } else if (imageUri != null) {
             AsyncImage(
@@ -351,7 +364,7 @@ private fun PhotoPreviewWithImage(
                             onTransform(zoom, pan.x, pan.y)
                         }
                     },
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Fit
             )
         } else {
             // Placeholder when no image
@@ -456,9 +469,9 @@ private fun PhotoPreviewWithImage(
                 .padding(12.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Reset button
+            // Rotate button — rotates the bitmap 90° clockwise each tap
             FloatingActionButton(
-            onClick = onReset,
+            onClick = onRotate,
             modifier = Modifier.size(48.dp),
                 containerColor = Color.Black.copy(alpha = 0.5f),
                 contentColor = Color.White,
@@ -466,8 +479,8 @@ private fun PhotoPreviewWithImage(
                 elevation = FloatingActionButtonDefaults.elevation(0.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = "Reset position",
+                    imageVector = Icons.Default.RotateRight,
+                    contentDescription = "Rotate 90 degrees",
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -565,20 +578,25 @@ private fun BackgroundSelector(
             ),
             color = MaterialTheme.colorScheme.onBackground
         )
-        
+
         Spacer(modifier = Modifier.height(12.dp))
-        
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            BackgroundOption.entries.forEach { option ->
-                BackgroundOptionItem(
-                    option = option,
-                    isSelected = selectedOption == option,
-                    onClick = { onOptionSelected(option) },
-                    modifier = Modifier.weight(1f)
-                )
+
+        // Two rows of 3 items each — keeps labels on a single line
+        BackgroundOption.entries.chunked(3).forEach { rowOptions ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                rowOptions.forEach { option ->
+                    BackgroundOptionItem(
+                        option = option,
+                        isSelected = selectedOption == option,
+                        onClick = { onOptionSelected(option) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }
@@ -592,16 +610,35 @@ private fun BackgroundOptionItem(
     modifier: Modifier = Modifier
 ) {
     val bgColor = when (option) {
+        BackgroundOption.NONE -> MaterialTheme.colorScheme.surfaceVariant
         BackgroundOption.WHITE -> Color.White
         BackgroundOption.STUDIO_BLUE -> Color(0xFFB8D4E8)
         BackgroundOption.LIGHT_GREY -> Color(0xFFE8E8E8)
         BackgroundOption.GRADIENT -> Color(0xFFB8D4E8)
         BackgroundOption.TRANSPARENT -> Color.Transparent
     }
-    
+    val label = when (option) {
+        BackgroundOption.NONE -> "None"
+        BackgroundOption.WHITE -> stringResource(R.string.white)
+        BackgroundOption.STUDIO_BLUE -> "Studio Blue"
+        BackgroundOption.LIGHT_GREY -> "Light Grey"
+        BackgroundOption.GRADIENT -> "Gradient"
+        BackgroundOption.TRANSPARENT -> "Transparent"
+    }
+    val icon = when (option) {
+        BackgroundOption.NONE -> Icons.Default.Block
+        BackgroundOption.WHITE -> Icons.Default.Circle
+        BackgroundOption.STUDIO_BLUE -> Icons.Default.Circle
+        BackgroundOption.LIGHT_GREY -> Icons.Default.Circle
+        BackgroundOption.GRADIENT -> Icons.Default.Gradient
+        BackgroundOption.TRANSPARENT -> Icons.Default.GridOff
+    }
+
     Surface(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        modifier = modifier
+            .height(96.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
         border = if (isSelected) {
             androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
         } else {
@@ -610,56 +647,40 @@ private fun BackgroundOptionItem(
         color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.TopEnd
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(bgColor)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                        .background(bgColor)
-                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
-                        .align(Alignment.Center),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (option == BackgroundOption.TRANSPARENT) {
-Icon(
-                        imageVector = Icons.Default.GridOff,
-                        contentDescription = stringResource(R.string.cd_background_transparent),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                }
-                
-                if (isSelected) {
-Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = stringResource(R.string.cd_validation_status),
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = if (option == BackgroundOption.NONE) MaterialTheme.colorScheme.primary
+                           else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
             }
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
+
+            Spacer(modifier = Modifier.height(6.dp))
+
             Text(
-                text = when (option) {
-                    BackgroundOption.WHITE -> stringResource(R.string.white)
-                    BackgroundOption.STUDIO_BLUE -> "Studio Blue"
-                    BackgroundOption.LIGHT_GREY -> "Light Grey"
-                    BackgroundOption.GRADIENT -> "Gradient"
-                    BackgroundOption.TRANSPARENT -> "Transparent"
-                },
-                style = MaterialTheme.typography.labelLarge.copy(
+                text = label,
+                style = MaterialTheme.typography.labelSmall.copy(
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                 ),
-                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
         }
     }
@@ -795,7 +816,7 @@ Icon(
 }
 
 enum class BackgroundOption {
-    WHITE, STUDIO_BLUE, LIGHT_GREY, GRADIENT, TRANSPARENT
+    NONE, WHITE, STUDIO_BLUE, LIGHT_GREY, GRADIENT, TRANSPARENT
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

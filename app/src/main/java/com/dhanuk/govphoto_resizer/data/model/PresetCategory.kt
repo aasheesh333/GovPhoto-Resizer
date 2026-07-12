@@ -73,6 +73,6 @@ enum class PresetCategory(
         displayName = "Custom Size",
         displayNameHi = "कस्टम साइज़",
         icon = "tune",
-        sortOrder = 9
+        sortOrder = 0
     )
 }

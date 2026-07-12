@@ -158,6 +158,9 @@ fun PreviewValidationScreen(
                                         e.printStackTrace()
                                         isSaving = false
                                         Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                                    } catch (oom: OutOfMemoryError) {
+                                        isSaving = false
+                                        Toast.makeText(context, "Out of memory — try a smaller photo", Toast.LENGTH_LONG).show()
                                     }
                                 }
                             }

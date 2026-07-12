@@ -4,9 +4,11 @@ import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
+import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dhanuk.govphoto_resizer.data.ml.BackgroundRemover
@@ -162,15 +164,48 @@ private fun decodeUriToOriginalBitmap(uri: Uri) {
               inMutable = true
           }
           context.contentResolver.openInputStream(uri)?.use { stream ->
-            BitmapFactory.decodeStream(stream, null, decodeOptions)
+              BitmapFactory.decodeStream(stream, null, decodeOptions)
           }
         }
-        _originalBitmap.value = bmp
+        // Apply EXIF orientation so the bitmap matches what the user saw in the camera preview.
+        _originalBitmap.value = bmp?.let { applyExifOrientation(uri, it) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to decode URI to originalBitmap", e)
             }
+        }
+    }
+
+    /**
+     * Reads the EXIF orientation tag from [uri] and rotates [bitmap] accordingly.
+     * Returns the (possibly new) bitmap with EXIF orientation applied. If no
+     * rotation is needed, returns [bitmap] unchanged.
+     */
+    private fun applyExifOrientation(uri: Uri, bitmap: Bitmap): Bitmap {
+        return try {
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                val exif = ExifInterface(stream)
+                val orientation = exif.getAttributeInt(
+                    ExifInterface.TAG_ORIENTATION,
+                    ExifInterface.ORIENTATION_NORMAL
+                )
+                val matrix = Matrix()
+                when (orientation) {
+                    ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+                    ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+                    ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+                    ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.postScale(-1f, 1f)
+                    ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.postScale(1f, -1f)
+                    ExifInterface.ORIENTATION_TRANSPOSE -> { matrix.postRotate(90f); matrix.postScale(-1f, 1f) }
+                    ExifInterface.ORIENTATION_TRANSVERSE -> { matrix.postRotate(270f); matrix.postScale(-1f, 1f) }
+                    else -> return bitmap
+                }
+                Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            } ?: bitmap
+        } catch (e: Exception) {
+            Log.w(TAG, "EXIF orientation read failed", e)
+            bitmap
         }
     }
 
@@ -210,7 +245,7 @@ fun analyzeFace() {
             val opts = BitmapFactory.Options().apply { inSampleSize = sample; inMutable = true }
             context.contentResolver.openInputStream(uri)?.use { stream ->
                 BitmapFactory.decodeStream(stream, null, opts)
-            }
+            }?.let { applyExifOrientation(uri, it) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -305,6 +340,14 @@ fun removeBackground() {
         }
       }
     }
+    }
+
+    /** Skip background removal: keep original/source bitmap and mark state idle. */
+    fun skipBackgroundRemoval() {
+        _displayedBitmap.value = _originalBitmap.value
+        _removalState.value = RemovalState.Idle
+        _isRemovingBackground.value = false
+        analyzeFace()
     }
 
     fun updateCustomWidth(w: String) { _customWidth.value = w }
@@ -403,6 +446,35 @@ fun removeBackground() {
         }
     }
 
+    /** Rotate the currently displayed (and original) bitmap 90° clockwise. */
+    fun rotate90() {
+        viewModelScope.launch(Dispatchers.Default) {
+            photoMutex.withLock {
+                try {
+                    val src = _displayedBitmap.value ?: _originalBitmap.value ?: return@withLock
+                    if (src.isRecycled) return@withLock
+                    val matrix = Matrix().apply { postRotate(90f) }
+                    val rotated = Bitmap.createBitmap(src, 0, 0, src.width, src.height, matrix, true)
+                    _displayedBitmap.value = rotated
+                    // Also rotate the original so future bg-removal uses the corrected orientation.
+                    _originalBitmap.value?.let { orig ->
+                        if (!orig.isRecycled && orig !== src) {
+                            val m2 = Matrix().apply { postRotate(90f) }
+                            _originalBitmap.value = Bitmap.createBitmap(orig, 0, 0, orig.width, orig.height, m2, true)
+                        } else if (orig === src) {
+                            _originalBitmap.value = rotated
+                        }
+                    }
+                    analyzeFace()
+                } catch (e: Exception) {
+                    Log.w(TAG, "rotate90 failed", e)
+                } catch (oom: OutOfMemoryError) {
+                    Log.e(TAG, "rotate90 OOM", oom)
+                }
+            }
+        }
+    }
+
     fun applyCustomPreset() {
         val w = _customWidth.value.toIntOrNull() ?: 350
         val h = _customHeight.value.toIntOrNull() ?: 450
@@ -479,13 +551,13 @@ override fun onCleared() {
                     }
 
 if (bitmapToSave == null || bitmapToSave.isRecycled) {
-        Log.e(TAG, "savePhotoToGallery: No bitmap available!")
+        Log.e(TAG, "savePhotoToGallery: No bitmap available! displayed=${_displayedBitmap.value != null}, original=${_originalBitmap.value != null}")
         return@withLock Result.failure(Exception("No image to save"))
       }
 
                     Log.d(TAG, "savePhotoToGallery: Bitmap loaded: ${bitmapToSave.width}x${bitmapToSave.height}")
-                    var targetW = targetWidth
-                    var targetH = targetHeight
+                    var targetW = targetWidth.coerceAtLeast(50)
+                    var targetH = targetHeight.coerceAtLeast(50)
 
                     val format = _selectedPreset.value?.format?.lowercase() ?: "jpg"
                     val compressFormat = if (format == "png") {
@@ -496,16 +568,30 @@ if (bitmapToSave == null || bitmapToSave.isRecycled) {
 
                     val maxFileSizeBytes = (_selectedPreset.value?.maxFileSizeKb ?: 500) * 1024
 
-                    var quality = (_compressionQuality.value * 100).toInt()
+                    var quality = (_compressionQuality.value * 100).toInt().coerceIn(10, 100)
                     val outputStream = ByteArrayOutputStream()
                     var attempts = 0
                     val maxAttempts = 15
 
-                    var currentBitmap = Bitmap.createScaledBitmap(bitmapToSave, targetW, targetH, true)
+                    var currentBitmap = try {
+                        Bitmap.createScaledBitmap(bitmapToSave, targetW, targetH, true)
+                    } catch (oom: OutOfMemoryError) {
+                        Log.e(TAG, "savePhotoToGallery: OOM scaling bitmap", oom)
+                        bitmapToSave
+                    }
 
                     while (attempts < maxAttempts) {
                         outputStream.reset()
-                        currentBitmap.compress(compressFormat, quality, outputStream)
+                        try {
+                            if (currentBitmap.isRecycled) {
+                                Log.e(TAG, "savePhotoToGallery: bitmap recycled mid-compress, aborting loop")
+                                break
+                            }
+                            currentBitmap.compress(compressFormat, quality, outputStream)
+                        } catch (e: IllegalStateException) {
+                            Log.e(TAG, "savePhotoToGallery: compress failed (recycled bitmap)", e)
+                            break
+                        }
 
                         val currentSize = outputStream.size()
 
@@ -515,23 +601,32 @@ if (bitmapToSave == null || bitmapToSave.isRecycled) {
 
                         attempts++
 
-if (format == "png") {
-          targetW = (targetW * 0.9f).toInt()
-          targetH = (targetH * 0.9f).toInt()
-          val oldBitmap = currentBitmap
-          currentBitmap = Bitmap.createScaledBitmap(bitmapToSave, targetW, targetH, true)
-          if (oldBitmap != bitmapToSave) oldBitmap.recycle()
-        } else {
-          if (quality > 10) {
-            quality -= 5
-          } else {
-            targetW = (targetW * 0.9f).toInt()
-            targetH = (targetH * 0.9f).toInt()
-            val oldBitmap2 = currentBitmap
-            currentBitmap = Bitmap.createScaledBitmap(bitmapToSave, targetW, targetH, true)
-            if (oldBitmap2 != bitmapToSave) oldBitmap2.recycle()
-          }
-        }
+                        if (format == "png") {
+                            targetW = ((targetW * 0.9f).toInt()).coerceAtLeast(50)
+                            targetH = ((targetH * 0.9f).toInt()).coerceAtLeast(50)
+                            if (targetW == currentBitmap.width && targetH == currentBitmap.height) {
+                                // Cannot shrink further — accept this size
+                                break
+                            }
+                            val oldBitmap = currentBitmap
+                            currentBitmap = try {
+                                Bitmap.createScaledBitmap(bitmapToSave, targetW, targetH, true)
+                            } catch (oom: OutOfMemoryError) { oldBitmap }
+                            if (oldBitmap != bitmapToSave && oldBitmap != currentBitmap) oldBitmap.recycle()
+                        } else {
+                            if (quality > 10) {
+                                quality -= 5
+                            } else {
+                                targetW = ((targetW * 0.9f).toInt()).coerceAtLeast(50)
+                                targetH = ((targetH * 0.9f).toInt()).coerceAtLeast(50)
+                                if (targetW == currentBitmap.width && targetH == currentBitmap.height) break
+                                val oldBitmap2 = currentBitmap
+                                currentBitmap = try {
+                                    Bitmap.createScaledBitmap(bitmapToSave, targetW, targetH, true)
+                                } catch (oom: OutOfMemoryError) { oldBitmap2 }
+                                if (oldBitmap2 != bitmapToSave && oldBitmap2 != currentBitmap) oldBitmap2.recycle()
+                            }
+                        }
                     }
 
                     val imageBytes = outputStream.toByteArray()
@@ -598,6 +693,9 @@ if (format == "png") {
                 } catch (e: Exception) {
                     e.printStackTrace()
                     Result.failure(e)
+                } catch (oom: OutOfMemoryError) {
+                    Log.e(TAG, "savePhotoToGallery: OOM", oom)
+                    Result.failure(oom)
                 }
             }
         }
