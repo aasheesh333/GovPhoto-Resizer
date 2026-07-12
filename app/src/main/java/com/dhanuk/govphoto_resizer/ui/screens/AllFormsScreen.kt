@@ -75,7 +75,8 @@ fun AllFormsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
                     ) {
                         IconButton(onClick = onNavigateBack) {
                             Icon(
@@ -86,10 +87,12 @@ fun AllFormsScreen(
                         }
                         Text(
                             text = stringResource(R.string.all_government_form_types),
-                            style = MaterialTheme.typography.titleLarge.copy(
+                            style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold
                             ),
-                            color = MaterialTheme.colorScheme.onBackground
+                            color = MaterialTheme.colorScheme.onBackground,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
                     IconButton(onClick = { /* Notifications */ }) {

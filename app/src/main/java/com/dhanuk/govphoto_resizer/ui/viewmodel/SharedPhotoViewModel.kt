@@ -364,6 +364,45 @@ fun removeBackground() {
         return true
     }
 
+    /**
+     * Bake current zoom/pan transform into a new [displayedBitmap] that represents
+     * exactly what the user sees on screen (the visible region scaled back up).
+     * Use this before navigating to the processed preview so the preview reflects
+     * the user's adjustments. Returns true on success.
+     */
+    fun bakeTransform(scale: Float, offsetX: Float, offsetY: Float): Boolean {
+        val source = _displayedBitmap.value ?: _originalBitmap.value ?: return false
+        if (source.isRecycled || scale <= 0f) return false
+        val srcW = source.width
+        val srcH = source.height
+        if (srcW <= 0 || srcH <= 0) return false
+        val targetAR = aspectRatio
+        val cropW: Int
+        val cropH: Int
+        if (targetAR >= 1f) {
+            cropW = minOf(srcW, srcH)
+            cropH = (cropW / targetAR).toInt().coerceIn(1, srcH)
+        } else {
+            cropH = minOf(srcW, srcH)
+            cropW = (cropH * targetAR).toInt().coerceIn(1, srcW)
+        }
+        val halfVW = (cropW / 2f / scale).coerceAtMost(srcW / 2f)
+        val halfVH = (cropH / 2f / scale).coerceAtMost(srcH / 2f)
+        val centerX = (srcW / 2f - offsetX / scale).coerceIn(halfVW, srcW - halfVW)
+        val centerY = (srcH / 2f - offsetY / scale).coerceIn(halfVH, srcH - halfVH)
+        val left = (centerX - halfVW).toInt().coerceIn(0, srcW - cropW)
+        val top = (centerY - halfVH).toInt().coerceIn(0, srcH - cropH)
+        return try {
+            val cropped = Bitmap.createBitmap(source, left, top, cropW, cropH)
+            _displayedBitmap.value = cropped
+            analyzeFace()
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "bakeTransform failed", e)
+            false
+        }
+    }
+
     fun applyCustomPreset() {
         val w = _customWidth.value.toIntOrNull() ?: 350
         val h = _customHeight.value.toIntOrNull() ?: 450

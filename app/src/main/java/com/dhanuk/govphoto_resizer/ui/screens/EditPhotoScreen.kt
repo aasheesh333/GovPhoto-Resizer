@@ -142,10 +142,14 @@ fun EditPhotoScreen(
                 shadowElevation = 8.dp
             ) {
                 Button(
-                    onClick = onContinue,
+                    onClick = {
+                        sharedViewModel.bakeTransform(scale, offsetX, offsetY)
+                        onContinue()
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
+                        .navigationBarsPadding()
                         .height(56.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(

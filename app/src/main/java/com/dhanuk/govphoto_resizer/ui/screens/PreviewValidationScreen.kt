@@ -4,6 +4,7 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -18,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -83,74 +85,47 @@ fun PreviewValidationScreen(
     
     Scaffold(
         topBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = stringResource(R.string.preview_validation),
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                },
+                navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = stringResource(R.string.back)
                         )
                     }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = stringResource(R.string.preview_validation),
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "Step 3 of 3",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    // Share Button (Visible if processed image exists)
+                },
+                actions = {
+                    Text(
+                        text = "3/3",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.8f),
+                        modifier = Modifier.padding(end = 16.dp)
+                    )
                     if (processedImageUri != null) {
                         IconButton(onClick = { processedImageUri?.let { shareImage(it) } }) {
                             Icon(
                                 imageVector = Icons.Default.Share,
                                 contentDescription = "Share",
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = Color.White
                             )
                         }
-                    } else {
-                        Spacer(modifier = Modifier.size(48.dp))
                     }
-                }
-                
-                // Progress Indicator
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    repeat(3) { index ->
-                        Box(
-                            modifier = Modifier
-                                .width(if (index == 2) 40.dp else 32.dp)
-                                .height(4.dp)
-                                .clip(RoundedCornerShape(2.dp))
-                                .background(
-                                    if (index <= 2) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
-                                )
-                        )
-                        if (index < 2) Spacer(modifier = Modifier.width(8.dp))
-                    }
-                }
-            }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White
+                )
+            )
         },
         bottomBar = {
             Surface(
@@ -159,7 +134,9 @@ fun PreviewValidationScreen(
                 shadowElevation = 8.dp
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .navigationBarsPadding(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     // Save Button
@@ -267,10 +244,12 @@ Icon(
             // Preview Card
             PreviewCard(
                 imageUri = selectedImageUri,
-                bitmap = displayedBitmap ?: originalBitmap,
+                originalBitmap = originalBitmap,
+                processedBitmap = displayedBitmap,
                 backgroundColor = backgroundColor,
                 fileSizeKb = fileSizeKb,
-                preset = selectedPreset
+                preset = selectedPreset,
+                selectedTab = selectedTab
             )
             
             // Validation Checklist
@@ -335,14 +314,16 @@ private fun TabSelector(
 @Composable
 private fun PreviewCard(
     imageUri: Uri?,
-    bitmap: Bitmap?,
+    originalBitmap: Bitmap?,
+    processedBitmap: Bitmap?,
     backgroundColor: BackgroundColor,
     fileSizeKb: Int,
-    preset: PhotoPreset?
+    preset: PhotoPreset?,
+    selectedTab: Int
 ) {
     val context = LocalContext.current
     val aspectRatio = preset?.getAspectRatio() ?: 0.8f
-    
+
     val bgColor = when (backgroundColor) {
         BackgroundColor.WHITE -> Color.White
         BackgroundColor.STUDIO_BLUE -> Color(0xFFB8D4E8)
@@ -350,7 +331,7 @@ private fun PreviewCard(
         BackgroundColor.GRADIENT -> Color(0xFFB8D4E8)
         BackgroundColor.TRANSPARENT -> Color.LightGray.copy(alpha = 0.3f)
     }
-    
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -367,42 +348,113 @@ private fun PreviewCard(
                     .padding(24.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // Actual Photo Box with dynamic aspect ratio
-                Box(
-                    modifier = Modifier
-                        .width(200.dp) // Fixed width basis
-                        .aspectRatio(aspectRatio) // Dynamic height based on ratio
-                        .background(bgColor)
-                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (imageUri != null) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(imageUri)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "Preview photo",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else if (bitmap != null) {
-                        androidx.compose.foundation.Image(
-                            bitmap = bitmap.asImageBitmap(),
-                            contentDescription = "Preview photo",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = stringResource(R.string.cd_person_placeholder),
-                            tint = Color.Gray,
-                            modifier = Modifier.size(80.dp)
-                        )
+                if (selectedTab == 1) {
+                    // Processed view — template-shaped box with 3x3 grid
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier
+                            .width(240.dp)
+                            .aspectRatio(aspectRatio)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(bgColor)
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (processedBitmap != null && !processedBitmap.isRecycled) {
+                            androidx.compose.foundation.Image(
+                                bitmap = processedBitmap.asImageBitmap(),
+                                contentDescription = "Processed photo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else if (originalBitmap != null && !originalBitmap.isRecycled) {
+                            androidx.compose.foundation.Image(
+                                bitmap = originalBitmap.asImageBitmap(),
+                                contentDescription = "Processable photo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else if (imageUri != null) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(imageUri)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Processed photo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = stringResource(R.string.cd_person_placeholder),
+                                tint = Color.Gray,
+                                modifier = Modifier.size(80.dp)
+                            )
+                        }
+                        // 3x3 grid overlay on processed image
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                            val gridColor = Color.White.copy(alpha = 0.4f)
+                            val strokeWidth = 1f
+                            // Vertical lines
+                            drawLine(gridColor, Offset(size.width / 3, 0f), Offset(size.width / 3, size.height), strokeWidth)
+                            drawLine(gridColor, Offset(2 * size.width / 3, 0f), Offset(2 * size.width / 3, size.height), strokeWidth)
+                            // Horizontal lines
+                            drawLine(gridColor, Offset(0f, size.height / 3), Offset(size.width, size.height / 3), strokeWidth)
+                            drawLine(gridColor, Offset(0f, 2 * size.height / 3), Offset(size.width, 2 * size.height / 3), strokeWidth)
+                        }
+                    }
+                } else {
+                    // Original view — show full source image with 2x2 grid (not stretched)
+                    val srcBmp = originalBitmap
+                    val srcAR = if (srcBmp != null && srcBmp.width > 0 && srcBmp.height > 0) {
+                        srcBmp.width.toFloat() / srcBmp.height.toFloat()
+                    } else 1f
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier
+                            .width(240.dp)
+                            .aspectRatio(srcAR)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.DarkGray)
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (srcBmp != null && !srcBmp.isRecycled) {
+                            androidx.compose.foundation.Image(
+                                bitmap = srcBmp.asImageBitmap(),
+                                contentDescription = "Original photo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit
+                            )
+                        } else if (imageUri != null) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(imageUri)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Original photo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = stringResource(R.string.cd_person_placeholder),
+                                tint = Color.Gray,
+                                modifier = Modifier.size(80.dp)
+                            )
+                        }
+                        // 2x2 grid overlay on original image
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                            val gridColor = Color.White.copy(alpha = 0.4f)
+                            val strokeWidth = 1f
+                            // Vertical center line
+                            drawLine(gridColor, Offset(size.width / 2, 0f), Offset(size.width / 2, size.height), strokeWidth)
+                            // Horizontal center line
+                            drawLine(gridColor, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), strokeWidth)
+                        }
                     }
                 }
-                
+
                 // Valid Badge
                 Surface(
                     modifier = Modifier
@@ -432,7 +484,7 @@ private fun PreviewCard(
                     }
                 }
             }
-            
+
             // Info Row
             Divider(color = MaterialTheme.colorScheme.outlineVariant)
             Row(
@@ -444,7 +496,7 @@ private fun PreviewCard(
             ) {
                 Column {
                     Text(
-                        text = stringResource(R.string.processed_preview),
+                        text = if (selectedTab == 1) stringResource(R.string.processed_preview) else "Original Photo",
                         style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.Bold
                         ),
