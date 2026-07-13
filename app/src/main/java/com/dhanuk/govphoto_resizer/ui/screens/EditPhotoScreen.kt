@@ -191,6 +191,24 @@ Icon(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Custom Preset Inputs (only for MANUAL preset) — shown at top so the
+            // user can type width/height and immediately see the preview box ratio
+            // update; the live preview below reflects whatever they entered.
+            if (selectedPreset?.id == com.dhanuk.govphoto_resizer.data.model.PhotoPreset.MANUAL_PRESET_ID) {
+                CustomPresetInputs(sharedViewModel)
+                Spacer(modifier = Modifier.height(16.dp))
+                // Re-trigger auto-fit when the user changes the custom dimensions —
+                // the displayed bitmap must re-crop to the new target aspect ratio.
+                LaunchedEffect(aspectRatio) {
+                    if (originalBitmap != null && !originalBitmap.isRecycled) {
+                        scale = 1f
+                        offsetX = 0f
+                        offsetY = 0f
+                        sharedViewModel.autoFitToPreset()
+                    }
+                }
+            }
+
             // Photo Preview with actual image and dynamic aspect ratio
             PhotoPreviewWithImage(
                 imageUri = selectedImageUri,
@@ -255,12 +273,6 @@ Icon(
             )
             
             Spacer(modifier = Modifier.height(24.dp))
-            
-            // Custom Preset Inputs (Only if Manual)
-            if (selectedPreset?.id == com.dhanuk.govphoto_resizer.data.model.PhotoPreset.MANUAL_PRESET_ID) {
-                CustomPresetInputs(sharedViewModel)
-                Spacer(modifier = Modifier.height(24.dp))
-            }
 
             // Compression Section
             CompressionControl(
