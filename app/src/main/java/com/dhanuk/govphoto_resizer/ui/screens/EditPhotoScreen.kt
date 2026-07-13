@@ -200,7 +200,8 @@ Icon(
                 // Re-trigger auto-fit when the user changes the custom dimensions —
                 // the displayed bitmap must re-crop to the new target aspect ratio.
                 LaunchedEffect(aspectRatio) {
-                    if (originalBitmap != null && !originalBitmap.isRecycled) {
+                    val ob = originalBitmap
+                    if (ob != null && !ob.isRecycled) {
                         scale = 1f
                         offsetX = 0f
                         offsetY = 0f
