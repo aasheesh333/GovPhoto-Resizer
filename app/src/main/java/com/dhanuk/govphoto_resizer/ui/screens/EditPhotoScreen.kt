@@ -29,10 +29,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.dhanuk.govphoto_resizer.R
@@ -77,88 +78,111 @@ fun EditPhotoScreen(
     var selectedBackground by remember { mutableStateOf(BackgroundOption.NONE) }
     var compressionValue by remember { mutableFloatStateOf(compressionQuality) }
 
-    // Image transformation state — visual-only zoom/pan applied via graphicsLayer.
-    // scale=1f + ContentScale.Crop = cover-fill (no stretch, no blank bars).
-    var scale by remember(selectedPreset?.id, originalBitmap, rotationDegrees) {
-        mutableFloatStateOf(1f)
-    }
+    // Image transformation — scale=1 + Crop = cover-fill. Do NOT key remember on
+    // rotationDegrees (that wiped zoom/pan on every rotate and broke undo).
+    var scale by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
-    // Edit window size in px — required by bakeTransform for accurate crop math.
     var previewBoxSize by remember { mutableStateOf(IntSize.Zero) }
+    // When true, UI restores from undo/redo — do NOT push history / re-trigger bg.
+    var isRestoring by remember { mutableStateOf(false) }
 
-    // The bitmap actually rendered — pristine+rotation-corrected. Background
-    // removal (when selected) replaces the displayedBitmap too. We read the
-    // displayedBitmap; it's reset to pristine+rotated by autoFitToPreset() or
-    // applyRotationToDisplayed().
     val renderBitmap = displayedBitmap ?: pristineOriginal ?: originalBitmap
 
-    // Ensure face analysis runs when Edit screen is shown
+    fun currentEditState(
+        s: Float = scale,
+        ox: Float = offsetX,
+        oy: Float = offsetY,
+        rot: Int = rotationDegrees,
+        bg: BackgroundOption = selectedBackground,
+        comp: Float = compressionValue
+    ) = EditState(
+        scale = s, offX = ox, offY = oy,
+        rotationDegrees = rot,
+        bgOption = bg,
+        compression = comp
+    )
+
+    fun commitHistory(
+        s: Float = scale,
+        ox: Float = offsetX,
+        oy: Float = offsetY,
+        rot: Int = rotationDegrees,
+        bg: BackgroundOption = selectedBackground,
+        comp: Float = compressionValue
+    ) {
+        if (isRestoring) return
+        sharedViewModel.pushHistory(currentEditState(s, ox, oy, rot, bg, comp))
+    }
+
+    // Seed baseline once image is ready so Undo has a return point.
+    LaunchedEffect(originalBitmap) {
+        if (originalBitmap != null && !originalBitmap.isRecycled) {
+            sharedViewModel.ensureHistoryBaseline(
+                EditState(
+                    scale = 1f, offX = 0f, offY = 0f,
+                    rotationDegrees = 0,
+                    bgOption = BackgroundOption.NONE,
+                    compression = compressionQuality
+                )
+            )
+        }
+    }
+
     LaunchedEffect(selectedImageUri, originalBitmap) {
         if (selectedImageUri != null || originalBitmap != null) {
             sharedViewModel.analyzeFace()
         }
     }
 
-    // Compute the initial fill scale: image fills preset box without stretching,
-    // so the box is entirely covered (some image overflows outside, hidden by clip).
-    // scale = max(boxWPx / imgWPx, boxHPx / imgHPx). The box absorbs the preset AR.
-    // We can't know pixel dims yet (no BoxWithConstraints on outer), so we use
-    // a simpler heuristic: scale = 1f means "fit entire image inside box".
-    // Users can fine-tune by pinch / zoom buttons. Future enhancement: read actual
-    // box pixel dims via BoxWithConstraints and compute true cover-scale.
-    LaunchedEffect(selectedPreset?.id, originalBitmap, rotationDegrees) {
-        scale = 1f
-        offsetX = 0f
-        offsetY = 0f
+    // Reset framing only when image or preset changes — NOT on rotate.
+    LaunchedEffect(selectedPreset?.id, originalBitmap) {
+        if (!isRestoring) {
+            scale = 1f
+            offsetX = 0f
+            offsetY = 0f
+        }
     }
 
-    // Sync background with ViewModel — any option change re-composites subject over chosen bg
-    LaunchedEffect(selectedBackground) {
-        if (selectedBackground == BackgroundOption.NONE) {
-            // Skip background removal — keep original/source bitmap visible as-is
+    // Debounce pan/pinch into one undo step after user stops moving fingers.
+    // Skip while restoring undo/redo so we don't re-push the restored state.
+    LaunchedEffect(scale, offsetX, offsetY, isRestoring) {
+        if (isRestoring) return@LaunchedEffect
+        delay(400)
+        if (!isRestoring) commitHistory()
+    }
+
+    fun applyBackgroundOption(option: BackgroundOption) {
+        selectedBackground = option
+        if (option == BackgroundOption.NONE) {
             sharedViewModel.setBackgroundColor(BackgroundColor.WHITE)
             sharedViewModel.skipBackgroundRemoval()
         } else {
-            sharedViewModel.setBackgroundColor(
-                when (selectedBackground) {
-                    BackgroundOption.NONE -> BackgroundColor.WHITE
-                    BackgroundOption.WHITE -> BackgroundColor.WHITE
-                    BackgroundOption.STUDIO_BLUE -> BackgroundColor.STUDIO_BLUE
-                    BackgroundOption.LIGHT_GREY -> BackgroundColor.LIGHT_GREY
-                    BackgroundOption.GRADIENT -> BackgroundColor.GRADIENT
-                    BackgroundOption.TRANSPARENT -> BackgroundColor.TRANSPARENT
-                }
-            )
+            sharedViewModel.setBackgroundColor(option.toBackgroundColor())
             sharedViewModel.removeBackground()
         }
-        // Track in history — capture the current edit-window state
-        sharedViewModel.pushHistory(
-            EditState(
-                scale = scale,
-                offX = offsetX,
-                offY = offsetY,
-                rotationDegrees = rotationDegrees,
-                bgOption = selectedBackground,
-                compression = compressionValue
-            )
-        )
     }
 
-    // Sync compression with ViewModel
-    LaunchedEffect(compressionValue) {
-        sharedViewModel.setCompressionQuality(compressionValue)
-    }
-
-    // Apply undo/redo — sync local UI to the post-undo state
+    // Apply undo/redo — sync local UI; keep isRestoring true briefly so
+    // pan debounce does not immediately re-commit the restored values.
     fun applyEditState(state: EditState?) {
         if (state == null) return
+        isRestoring = true
         scale = state.scale
         offsetX = state.offX
         offsetY = state.offY
-        // rotationDegrees / bgOption / compression / custom* are restored inside the VM
         selectedBackground = state.bgOption
         compressionValue = state.compression
+        sharedViewModel.setCompressionQuality(state.compression)
+        // restoreFromState already ran inside undo/redo (rotation + bg)
+    }
+
+    // Clear restoring flag shortly after undo/redo UI sync
+    LaunchedEffect(isRestoring) {
+        if (isRestoring) {
+            delay(450)
+            isRestoring = false
+        }
     }
 
     Scaffold(
@@ -305,8 +329,8 @@ Icon(
                 onTransform = { newScale, newOffsetX, newOffsetY ->
                     val nextScale = (scale * newScale).coerceIn(1f, 4f)
                     scale = nextScale
-                    // Soft pan clamp: keep offsets within ~half box so face stays reachable
-                    val maxPan = maxOf(previewBoxSize.width, previewBoxSize.height).toFloat() * nextScale
+                    val maxPan = maxOf(previewBoxSize.width, previewBoxSize.height)
+                        .toFloat().coerceAtLeast(1f) * nextScale
                     offsetX = (offsetX + newOffsetX).coerceIn(-maxPan, maxPan)
                     offsetY = (offsetY + newOffsetY).coerceIn(-maxPan, maxPan)
                 },
@@ -319,26 +343,19 @@ Icon(
                     compressionValue = 0.7f
                 },
                 onRotate = {
+                    // Full-image rotate; reset framing so box re-covers (no crop feel).
                     sharedViewModel.rotate90()
-                    sharedViewModel.pushHistory(
-                        EditState(
-                            scale = scale, offX = offsetX, offY = offsetY,
-                            rotationDegrees = (rotationDegrees + 90) % 360,
-                            bgOption = selectedBackground,
-                            compression = compressionValue
-                        )
+                    scale = 1f
+                    offsetX = 0f
+                    offsetY = 0f
+                    commitHistory(
+                        s = 1f, ox = 0f, oy = 0f,
+                        rot = (rotationDegrees + 90) % 360
                     )
                 },
                 onZoom = { factor ->
                     scale = (scale * factor).coerceIn(1f, 4f)
-                    sharedViewModel.pushHistory(
-                        EditState(
-                            scale = scale, offX = offsetX, offY = offsetY,
-                            rotationDegrees = rotationDegrees,
-                            bgOption = selectedBackground,
-                            compression = compressionValue
-                        )
-                    )
+                    commitHistory()
                 }
             )
             
@@ -352,18 +369,26 @@ Icon(
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Background Section
             BackgroundSelector(
                 selectedOption = selectedBackground,
-                onOptionSelected = { selectedBackground = it }
+                onOptionSelected = { option ->
+                    if (option == selectedBackground) return@BackgroundSelector
+                    applyBackgroundOption(option)
+                    commitHistory(bg = option)
+                }
             )
             
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Compression Section
             CompressionControl(
                 value = compressionValue,
-                onValueChange = { compressionValue = it },
+                onValueChange = {
+                    compressionValue = it
+                    sharedViewModel.setCompressionQuality(it)
+                },
+                onValueChangeFinished = {
+                    commitHistory(comp = compressionValue)
+                },
                 estimatedSize = fileSizeKb,
                 format = format,
                 maxSize = maxSize
@@ -520,38 +545,43 @@ private fun PhotoPreviewWithImage(
             )
         }
         
-        // Face oval guide — green when within margin, amber otherwise
+        // Face oval guide fixed to the PRESET BOX (not stretched to source).
+        // Color reflects face-detection result; bounds are drawn in cover-space
+        // when available so detection is visible again.
         Canvas(modifier = Modifier.fillMaxSize()) {
             val ovalColor = when {
                 faceAnalysis == null -> Color.White.copy(alpha = 0.6f)
+                faceAnalysis.faceCount == 0 -> Color(0xFFE53935) // red — no face
                 faceAnalysis.isWithinMargin -> Color(0xFF2E7D32) // green
                 else -> Color(0xFFFFA000) // amber
             }
-            // Prefer analyzer oval mapped into view; fall back to centered 50%×0.75 guide
-            val guide = faceAnalysis?.ovalGuide
-            val srcW = (bitmap?.width ?: 0).toFloat().takeIf { it > 0 }
-                ?: guide?.right?.takeIf { it > 0 }
-            val srcH = (bitmap?.height ?: 0).toFloat().takeIf { it > 0 }
-                ?: guide?.bottom?.takeIf { it > 0 }
-            if (guide != null && srcW != null && srcH != null && srcW > 0f && srcH > 0f) {
-                val sx = size.width / srcW
-                val sy = size.height / srcH
-                drawOval(
-                    color = ovalColor,
-                    topLeft = Offset(guide.left * sx, guide.top * sy),
-                    size = Size(guide.width() * sx, guide.height() * sy),
-                    style = Stroke(width = 3f),
-                )
-            } else {
-                val ovalW = size.width * 0.5f
-                val ovalH = ovalW / 0.75f
-                val left = (size.width - ovalW) / 2f
-                val top = (size.height - ovalH) / 2f - 10f
-                drawOval(
-                    color = ovalColor,
-                    topLeft = Offset(left, top),
-                    size = Size(ovalW, ovalH),
-                    style = Stroke(width = 3f),
+            // Always draw centered passport-style oval in the edit window.
+            val ovalW = size.width * 0.55f
+            val ovalH = ovalW / 0.75f
+            val left = (size.width - ovalW) / 2f
+            val top = (size.height - ovalH) / 2f - size.height * 0.03f
+            drawOval(
+                color = ovalColor,
+                topLeft = Offset(left, top),
+                size = Size(ovalW, ovalH),
+                style = Stroke(width = 3f),
+            )
+            // Map face bounds with ContentScale.Crop + graphicsLayer transform.
+            val bounds = faceAnalysis?.bounds
+            val srcW = (bitmap?.width ?: 0).toFloat()
+            val srcH = (bitmap?.height ?: 0).toFloat()
+            if (bounds != null && srcW > 0f && srcH > 0f) {
+                val cover = maxOf(size.width / srcW, size.height / srcH)
+                val ts = cover * scale
+                val drawnW = srcW * ts
+                val drawnH = srcH * ts
+                val originX = (size.width - drawnW) / 2f + offsetX
+                val originY = (size.height - drawnH) / 2f + offsetY
+                drawRect(
+                    color = Color.Cyan.copy(alpha = 0.7f),
+                    topLeft = Offset(originX + bounds.left * ts, originY + bounds.top * ts),
+                    size = Size(bounds.width() * ts, bounds.height() * ts),
+                    style = Stroke(width = 2f),
                 )
             }
         }
@@ -771,6 +801,7 @@ private fun BackgroundOptionItem(
 private fun CompressionControl(
     value: Float,
     onValueChange: (Float) -> Unit,
+    onValueChangeFinished: () -> Unit = {},
     estimatedSize: Int,
     format: String,
     maxSize: Int
@@ -868,6 +899,7 @@ Icon(
                 Slider(
                     value = value,
                     onValueChange = onValueChange,
+                    onValueChangeFinished = onValueChangeFinished,
                     modifier = Modifier.fillMaxWidth(),
                     colors = SliderDefaults.colors(
                         thumbColor = MaterialTheme.colorScheme.primary,

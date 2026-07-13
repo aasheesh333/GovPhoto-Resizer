@@ -27,6 +27,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -124,6 +125,7 @@ class SharedPhotoViewModel @Inject constructor(
 
     private var faceAnalysisJob: Job? = null
     private var decodeJob: Job? = null
+    private var bgRemovalJob: Job? = null
 
     /**
      * Set true at image selection; cleared once autoFitToPreset() runs after
@@ -298,16 +300,32 @@ private fun decodeUriToOriginalBitmap(uri: Uri) {
      * 180/270). Recycles previous displayed if it's not the pristine itself.
      */
     private fun applyRotationToDisplayed(pristine: Bitmap, rot: Int) {
-        if (rot == 0) {
+        if (rot % 360 == 0) {
+            val prev = _displayedBitmap.value
             _displayedBitmap.value = pristine
+            if (prev != null && !prev.isRecycled &&
+                prev !== pristine &&
+                prev !== _originalBitmap.value &&
+                prev !== _pristineOriginalBitmap.value
+            ) {
+                prev.recycle()
+            }
             return
         }
         try {
-            val m = Matrix().apply { postRotate(rot.toFloat()) }
-            val rotated = Bitmap.createBitmap(pristine, 0, 0, pristine.width, pristine.height, m, true)
+            // Full-bitmap rotate — width/height swap for 90/270, no crop.
+            val m = Matrix().apply { postRotate((rot % 360).toFloat()) }
+            val rotated = Bitmap.createBitmap(
+                pristine, 0, 0, pristine.width, pristine.height, m, true
+            )
             val prev = _displayedBitmap.value
             _displayedBitmap.value = rotated
-            if (prev != null && !prev.isRecycled && prev !== pristine && prev !== _originalBitmap.value) {
+            if (prev != null && !prev.isRecycled &&
+                prev !== pristine &&
+                prev !== _originalBitmap.value &&
+                prev !== _pristineOriginalBitmap.value &&
+                prev !== rotated
+            ) {
                 prev.recycle()
             }
         } catch (oom: OutOfMemoryError) {
@@ -353,7 +371,7 @@ private fun decodeUriToOriginalBitmap(uri: Uri) {
 
 fun analyzeFace() {
     faceAnalysisJob?.cancel()
-    faceAnalysisJob = viewModelScope.launch(Dispatchers.Default) {
+    faceAnalysisJob = viewModelScope.launch(Dispatchers.Default + coroutineExceptionHandler) {
       try {
         // Wait briefly for the original bitmap to be decoded if a decode is in flight.
         var waitMs = 0
@@ -361,15 +379,31 @@ fun analyzeFace() {
           kotlinx.coroutines.delay(100)
           waitMs += 100
         }
-        val bitmap = _displayedBitmap.value ?: _originalBitmap.value
-        if (bitmap == null || bitmap.isRecycled) {
+        // Snapshot a private copy so ML Kit never races with rotate/recycle.
+        val snapshot = photoMutex.withLock {
+          val src = _displayedBitmap.value ?: _originalBitmap.value ?: _pristineOriginalBitmap.value
+          if (src == null || src.isRecycled) null
+          else try {
+            src.copy(Bitmap.Config.ARGB_8888, false) ?: src
+          } catch (_: OutOfMemoryError) {
+            src
+          }
+        }
+        if (snapshot == null) {
           _faceAnalysis.value = null
           return@launch
         }
-        _faceAnalysis.value = faceAnalyzer.analyze(bitmap)
-        // Once face analysis returns, perform the auto-fit crop to the preset ratio
-        // — this is when face bounds are now available, so the centered crop can
-        // put the face where the user expects it.
+        val ownsCopy = snapshot !== _displayedBitmap.value &&
+            snapshot !== _originalBitmap.value &&
+            snapshot !== _pristineOriginalBitmap.value
+        try {
+          _faceAnalysis.value = faceAnalyzer.analyze(snapshot)
+        } finally {
+          if (ownsCopy && !snapshot.isRecycled) {
+            try { snapshot.recycle() } catch (_: Throwable) {}
+          }
+        }
+        // After first face pass, set displayed = pristine (no physical crop).
         if (autoFitPending) {
           autoFitPending = false
           autoFitToPreset()
@@ -488,50 +522,70 @@ fun analyzeFace() {
     }
 
 fun removeBackground() {
-    val bitmap = _originalBitmap.value ?: run {
-      _selectedImageUri.value?.let { uri ->
-        decodeSelectedUri()
-      }
-    } ?: return
+    // Prefer rotated displayed (or pristine) — never force re-decode mid-edit.
+    val bitmap = _displayedBitmap.value
+        ?: _pristineOriginalBitmap.value
+        ?: _originalBitmap.value
+        ?: return
     if (bitmap.isRecycled) {
-      Log.w(TAG, "Original bitmap recycled, skipping removal")
+      Log.w(TAG, "Source bitmap recycled, skipping removal")
       return
     }
     if (_removalState.value is RemovalState.Working) return
 
     _removalState.value = RemovalState.Working
     _isRemovingBackground.value = true
+    faceAnalysisJob?.cancel()
+    bgRemovalJob?.cancel()
 
-    viewModelScope.launch(Dispatchers.Default + coroutineExceptionHandler) {
-      photoMutex.withLock {
-        try {
-          val result = backgroundRemover.remove(bitmap, _backgroundColor.value)
-          _displayedBitmap.value = result
-          _removalState.value = RemovalState.Done
-          try {
-            _faceAnalysis.value = faceAnalyzer.analyze(result)
-          } catch (fe: CancellationException) {
-            throw fe
-          } catch (fe: OutOfMemoryError) {
-            Log.w(TAG, "Face analysis after bg removal OOM", fe)
-          } catch (fe: Exception) {
-            Log.w(TAG, "Face analysis after bg removal failed", fe)
+    bgRemovalJob = viewModelScope.launch(Dispatchers.Default + coroutineExceptionHandler) {
+      // Snapshot a private copy so ML Kit never holds a shared bitmap ref.
+      val localCopy = try {
+        bitmap.copy(Bitmap.Config.ARGB_8888, false) ?: bitmap
+      } catch (oom: OutOfMemoryError) {
+        _isRemovingBackground.value = false
+        _removalState.value = RemovalState.Error("Out of memory")
+        return@launch
+      }
+      try {
+        val result = backgroundRemover.remove(localCopy, _backgroundColor.value)
+        photoMutex.withLock {
+          if (!isActive) {
+            if (result !== localCopy && !result.isRecycled) result.recycle()
+            return@withLock
           }
-        } catch (e: CancellationException) {
-          _removalState.value = RemovalState.Idle
-          throw e
-        } catch (e: Exception) {
-          Log.w(TAG, "Background removal failed", e)
-          _removalState.value = RemovalState.Error(e.message ?: "Unknown error")
-        } finally {
-          _isRemovingBackground.value = false
+          val prev = _displayedBitmap.value
+          _displayedBitmap.value = result
+          if (prev != null && !prev.isRecycled &&
+              prev !== _pristineOriginalBitmap.value &&
+              prev !== _originalBitmap.value &&
+              prev !== result
+          ) {
+            prev.recycle()
+          }
+          _removalState.value = RemovalState.Done
+        }
+      } catch (e: CancellationException) {
+        _removalState.value = RemovalState.Idle
+        throw e
+      } catch (e: Exception) {
+        Log.w(TAG, "Background removal failed", e)
+        _removalState.value = RemovalState.Error(e.message ?: "Unknown error")
+      } catch (oom: OutOfMemoryError) {
+        Log.e(TAG, "Background removal OOM", oom)
+        _removalState.value = RemovalState.Error("Out of memory")
+      } finally {
+        _isRemovingBackground.value = false
+        if (localCopy !== bitmap && localCopy !== _displayedBitmap.value && !localCopy.isRecycled) {
+          try { localCopy.recycle() } catch (_: Throwable) {}
         }
       }
     }
-    }
+}
 
     /** Skip background removal: keep original/source bitmap and mark state idle. */
     fun skipBackgroundRemoval() {
+        bgRemovalJob?.cancel()
         // Restore displayed to the rotation-correct pristine baseline (no bg removal applied)
         val pristine = _pristineOriginalBitmap.value ?: _originalBitmap.value
         if (pristine != null && !pristine.isRecycled) {
@@ -623,6 +677,12 @@ fun removeBackground() {
         boxW: Float,
         boxH: Float
     ): Boolean {
+        // Stop concurrent ML so it can't recycle source mid-crop (native crash path).
+        faceAnalysisJob?.cancel()
+        bgRemovalJob?.cancel()
+        faceAnalysisJob = null
+        bgRemovalJob = null
+
         val source = _displayedBitmap.value ?: _originalBitmap.value ?: return false
         if (source.isRecycled || userScale <= 0f) return false
         val srcW = source.width.toFloat()
@@ -655,19 +715,40 @@ fun removeBackground() {
         if (cropW < 1 || cropH < 1) return false
 
         return try {
-            val cropped = Bitmap.createBitmap(source, left, top, cropW, cropH)
+            // Copy crop under isolation — createBitmap(source, ...) is a view into
+            // source pixels; use independent ARGB copy for save safety.
+            val region = Bitmap.createBitmap(source, left, top, cropW, cropH)
+            val cropped = try {
+                region.copy(Bitmap.Config.ARGB_8888, false) ?: region
+            } catch (_: OutOfMemoryError) {
+                region
+            }
+            if (cropped !== region && !region.isRecycled) {
+                try { region.recycle() } catch (_: Throwable) {}
+            }
             val prev = _bakedBitmap.value
             _bakedBitmap.value = cropped
             if (prev != null && !prev.isRecycled && prev !== cropped) prev.recycle()
-            viewModelScope.launch(Dispatchers.Default + coroutineExceptionHandler) {
+            // Face analysis on a private copy of baked — never pass baked itself
+            // into ML Kit (save path needs an unrecycled baked bitmap).
+            faceAnalysisJob?.cancel()
+            faceAnalysisJob = viewModelScope.launch(Dispatchers.Default + coroutineExceptionHandler) {
+                val copy = try {
+                    cropped.copy(Bitmap.Config.ARGB_8888, false)
+                } catch (_: OutOfMemoryError) {
+                    null
+                }
+                if (copy == null) return@launch
                 try {
-                    _faceAnalysis.value = faceAnalyzer.analyze(cropped)
+                    _faceAnalysis.value = faceAnalyzer.analyze(copy)
                 } catch (fe: CancellationException) {
                     throw fe
                 } catch (fe: OutOfMemoryError) {
                     Log.w(TAG, "bakeTransform face analyze OOM", fe)
                 } catch (fe: Exception) {
                     Log.w(TAG, "bakeTransform face analyze failed", fe)
+                } finally {
+                    if (!copy.isRecycled) try { copy.recycle() } catch (_: Throwable) {}
                 }
             }
             true
@@ -700,26 +781,29 @@ fun removeBackground() {
         } catch (_: Throwable) {}
     }
 
-    /** Rotate the currently displayed (and original) bitmap 90° clockwise. */
+    /**
+     * Rotate 90° clockwise. Always re-derives FULL image from pristine
+     * (no crop). Does not touch scale/pan — UI should reset framing to
+     * cover-fill (scale=1, offset=0) after calling this.
+     */
     fun rotate90() {
+        faceAnalysisJob?.cancel()
         viewModelScope.launch(Dispatchers.Default + coroutineExceptionHandler) {
-            photoMutex.withLock {
-                try {
+            try {
+                photoMutex.withLock {
                     val pristine = _pristineOriginalBitmap.value
                     if (pristine == null || pristine.isRecycled) return@withLock
-                    // Increment rotation accumulator (mod 360) and re-derive the
-                    // displayed bitmap from the pristine source. Quality is
-                    // preserved across many rotations — no accumulative sampling
-                    // loss because we always rotate from the original.
                     val newRot = (_rotationDegrees.value + 90) % 360
                     _rotationDegrees.value = newRot
+                    // Full-image rotate from pristine — never crop.
                     applyRotationToDisplayed(pristine, newRot)
-                    analyzeFace()
-                } catch (oom: OutOfMemoryError) {
-                    Log.e(TAG, "rotate90 OOM", oom)
-                } catch (e: Exception) {
-                    Log.w(TAG, "rotate90 failed", e)
                 }
+                // Face detect AFTER mutex release on the new full displayed bitmap.
+                analyzeFace()
+            } catch (oom: OutOfMemoryError) {
+                Log.e(TAG, "rotate90 OOM", oom)
+            } catch (e: Exception) {
+                Log.w(TAG, "rotate90 failed", e)
             }
         }
     }
@@ -759,6 +843,17 @@ fun removeBackground() {
      * to keep memory bounded; adjacent dedupe — if the new state equals the
      * topmost, no-op.
      */
+    /**
+     * Seed history with the baseline state so the first undo has somewhere
+     * to return to. No-op if history already has entries.
+     */
+    fun ensureHistoryBaseline(state: EditState) {
+        if (historyStack.isNotEmpty()) return
+        historyStack.add(state)
+        historyIdx = 0
+        updateUndoRedoState()
+    }
+
     fun pushHistory(state: EditState) {
         if (historyIdx in historyStack.indices) {
             val top = historyStack[historyIdx]
@@ -767,9 +862,10 @@ fun removeBackground() {
         // Drop any redo entries past historyIdx
         while (historyStack.size > historyIdx + 1) historyStack.removeAt(historyIdx + 1)
         historyStack.add(state)
-        // Cap at 12
-        while (historyStack.size > 12) {
-            historyStack.removeAt(0)
+        // Cap at 20 (after baseline)
+        while (historyStack.size > 20) {
+            // Keep index 0 as baseline when possible
+            if (historyStack.size > 1) historyStack.removeAt(1) else historyStack.removeAt(0)
         }
         historyIdx = historyStack.size - 1
         updateUndoRedoState()
@@ -794,25 +890,32 @@ fun removeBackground() {
     }
 
     /**
-     * Apply an EditState to the ViewModel: set _rotationDegrees, _bgOption,
-     * _compressionQuality, _customWidth/_customHeight/_customFormat, then
-     * re-derive _displayedBitmap by rotating the pristine original to the
-     * new rotationDegrees. The scale/offX/offY fields are returned via
-     * StateFlow but consumed by EditPhotoScreen's local UI directly (the
-     * ViewModel has no concept of "window pixel scale" — only source-pixel
-     * rotation matters).
+     * Apply an EditState: rotation/bg/compression/custom fields + re-derive
+     * displayed bitmap. scale/offX/offY are applied by EditPhotoScreen from
+     * the returned EditState. When bg is NONE, restore pristine+rotation;
+     * otherwise re-run bg removal for that option.
      */
     private fun restoreFromState(state: EditState) {
+        faceAnalysisJob?.cancel()
+        bgRemovalJob?.cancel()
         _rotationDegrees.value = state.rotationDegrees
         _bgOption.value = state.bgOption
         _compressionQuality.value = state.compression
         _customWidth.value = state.customW
         _customHeight.value = state.customH
         _customFormat.value = state.customFmt
-        // Re-derive displayed bitmap from pristine (applyRotationToDisplayed handles 0/90/180/270)
+        _backgroundColor.value = state.bgOption.toBackgroundColor()
         val pristine = _pristineOriginalBitmap.value
         if (pristine != null && !pristine.isRecycled) {
             applyRotationToDisplayed(pristine, state.rotationDegrees)
+        }
+        if (state.bgOption != BackgroundOption.NONE) {
+            removeBackground()
+        } else {
+            // Restore pristine+rotation without re-pushing history side effects
+            _removalState.value = RemovalState.Idle
+            _isRemovingBackground.value = false
+            analyzeFace()
         }
     }
 
@@ -823,19 +926,33 @@ fun removeBackground() {
 
     /**
      * Reset all edits — restore displayed bitmap from pristine original,
-     * clear rotation, reset bg option + custom inputs, re-trigger auto-fit.
-     * Clears the history stack too.
+     * clear rotation, reset bg option + custom inputs, re-seed baseline history.
      */
     fun resetAllEditsAndRefit() {
+        faceAnalysisJob?.cancel()
+        bgRemovalJob?.cancel()
         _rotationDegrees.value = 0
         _bgOption.value = BackgroundOption.NONE
+        _backgroundColor.value = BackgroundColor.WHITE
         _compressionQuality.value = 0.7f
         _customWidth.value = "350"
         _customHeight.value = "450"
         _customFormat.value = "jpg"
+        _removalState.value = RemovalState.Idle
+        _isRemovingBackground.value = false
         _pristineOriginalBitmap.value?.let { if (!it.isRecycled) applyRotationToDisplayed(it, 0) }
         historyStack.clear()
         historyIdx = -1
+        // Baseline so Undo is available after next action
+        historyStack.add(
+            EditState(
+                scale = 1f, offX = 0f, offY = 0f,
+                rotationDegrees = 0,
+                bgOption = BackgroundOption.NONE,
+                compression = 0.7f
+            )
+        )
+        historyIdx = 0
         updateUndoRedoState()
     }
 
@@ -879,6 +996,7 @@ private fun recycleBitmaps() {
 override fun onCleared() {
     super.onCleared()
     faceAnalysisJob?.cancel()
+    bgRemovalJob?.cancel()
     decodeJob?.cancel()
     recycleBitmaps()
   }
@@ -902,198 +1020,199 @@ override fun onCleared() {
 
     suspend fun savePhotoToGallery(): Result<Uri> {
         Log.d(TAG, "savePhotoToGallery: Starting save process")
+        // Cancel ALL concurrent bitmap consumers BEFORE we touch the baked bitmap.
+        // Native ML Kit / Skia holding a recycled buffer is the main silent-kill path.
+        faceAnalysisJob?.cancel()
+        bgRemovalJob?.cancel()
+        faceAnalysisJob = null
+        bgRemovalJob = null
+
         return withContext(Dispatchers.IO) {
-            photoMutex.withLock {
-                var workBitmap: Bitmap? = null
-                var scaledBitmap: Bitmap? = null
-                try {
-                    // ONLY use baked bitmap (Continue output). No silent fallback —
-                    // missing bake means user never tapped Continue correctly.
+            var workBitmap: Bitmap? = null
+            var scaledBitmap: Bitmap? = null
+            try {
+                // Snapshot under mutex so no other job can recycle mid-copy.
+                val snapshot: Bitmap = photoMutex.withLock {
                     val src = _bakedBitmap.value
                     if (src == null || src.isRecycled) {
-                        Log.e(TAG, "savePhotoToGallery: No baked bitmap — Continue first")
                         writeCrashFile("save: no baked bitmap")
-                        return@withLock Result.failure(Exception("No processed image. Go back and tap Continue."))
+                        throw IllegalStateException("No processed image. Go back and tap Continue.")
                     }
-
-                    // Isolate immediately: private ARGB_8888 deep copy. Never compress
-                    // a shared ref that face-analyze / rotate may recycle.
-                    workBitmap = try {
-                        Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888).also { copy ->
-                            android.graphics.Canvas(copy).drawBitmap(src, 0f, 0f, null)
-                        }
+                    try {
+                        src.copy(Bitmap.Config.ARGB_8888, false)
+                            ?: Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888).also { c ->
+                                android.graphics.Canvas(c).drawBitmap(src, 0f, 0f, null)
+                            }
                     } catch (oom: OutOfMemoryError) {
                         writeCrashFile("save: deep-copy OOM", oom)
-                        return@withLock Result.failure(Exception("Out of memory — try a smaller photo"))
-                    } catch (e: Exception) {
-                        writeCrashFile("save: deep-copy failed", e)
-                        return@withLock Result.failure(e)
+                        throw Exception("Out of memory — try a smaller photo")
                     }
+                }
+                workBitmap = snapshot
+                val wb = snapshot
 
-                    val wb = workBitmap!!
-                    // Cap target to min(preset, source, 2048) — never huge upscale.
-                    val presetW = targetWidth.coerceAtLeast(50)
-                    val presetH = targetHeight.coerceAtLeast(50)
-                    val maxSide = 2048
-                    var targetW = presetW.coerceAtMost(maxSide).coerceAtMost(wb.width.coerceAtLeast(50))
-                    var targetH = presetH.coerceAtMost(maxSide).coerceAtMost(wb.height.coerceAtLeast(50))
-                    // Preserve baked aspect if preset dims would distort a lot
-                    val bakedAR = wb.width.toFloat() / wb.height.toFloat()
-                    val targetAR = targetW.toFloat() / targetH.toFloat()
-                    if (kotlin.math.abs(bakedAR - targetAR) > 0.02f) {
-                        // Fit baked AR into target box
-                        if (bakedAR > targetAR) {
-                            targetH = (targetW / bakedAR).toInt().coerceAtLeast(50)
-                        } else {
-                            targetW = (targetH * bakedAR).toInt().coerceAtLeast(50)
-                        }
+                // Target preset size, capped. Prefer preset dims so saved file matches exam.
+                val presetW = targetWidth.coerceIn(50, 2048)
+                val presetH = targetHeight.coerceIn(50, 2048)
+                var targetW = presetW
+                var targetH = presetH
+                // If baked is tiny, don't upscale past 2x source
+                targetW = targetW.coerceAtMost(maxOf(wb.width * 2, 50)).coerceAtMost(2048)
+                targetH = targetH.coerceAtMost(maxOf(wb.height * 2, 50)).coerceAtMost(2048)
+
+                val format = _selectedPreset.value?.format?.lowercase() ?: "jpg"
+                val isPng = format == "png"
+                val compressFormat = if (isPng) Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG
+                val maxFileSizeBytes = (_selectedPreset.value?.maxFileSizeKb ?: 500) * 1024
+                var quality = (_compressionQuality.value * 100).toInt().coerceIn(15, 95)
+
+                scaledBitmap = try {
+                    if (wb.width == targetW && wb.height == targetH) wb
+                    else scaleBitmapSafe(wb, targetW, targetH)
+                } catch (oom: OutOfMemoryError) {
+                    Log.e(TAG, "savePhotoToGallery: scale OOM — saving at source size", oom)
+                    wb
+                } catch (e: Exception) {
+                    writeCrashFile("save: scale failed", e)
+                    wb
+                }
+
+                val toCompress = scaledBitmap ?: wb
+                if (toCompress.isRecycled) {
+                    writeCrashFile("save: compress target recycled")
+                    return@withContext Result.failure(Exception("Image was recycled — try again"))
+                }
+
+                val outputStream = ByteArrayOutputStream()
+                var attempts = 0
+                var done = false
+                while (attempts < 12 && !done) {
+                    outputStream.reset()
+                    val ok = try {
+                        toCompress.compress(compressFormat, quality, outputStream)
+                    } catch (t: Throwable) {
+                        writeCrashFile("save: compress Throwable", t)
+                        false
                     }
-
-                    val format = _selectedPreset.value?.format?.lowercase() ?: "jpg"
-                    val isPng = format == "png"
-                    val compressFormat = if (isPng) Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG
-                    val maxFileSizeBytes = (_selectedPreset.value?.maxFileSizeKb ?: 500) * 1024
-                    var quality = (_compressionQuality.value * 100).toInt().coerceIn(10, 100)
-
-                    scaledBitmap = try {
-                        scaleBitmapSafe(wb, targetW, targetH)
-                    } catch (oom: OutOfMemoryError) {
-                        Log.e(TAG, "savePhotoToGallery: scale OOM — saving at source size", oom)
-                        wb
-                    } catch (e: Exception) {
-                        writeCrashFile("save: scale failed", e)
-                        wb
-                    }
-
-                    val outputStream = ByteArrayOutputStream()
-                    var attempts = 0
-                    val maxAttempts = 12
-                    var done = false
-                    while (attempts < maxAttempts && !done) {
-                        outputStream.reset()
-                        val b = scaledBitmap ?: break
-                        if (b.isRecycled) {
-                            writeCrashFile("save: bitmap recycled mid-compress")
-                            break
-                        }
-                        try {
-                            b.compress(compressFormat, quality, outputStream)
-                        } catch (e: IllegalStateException) {
-                            writeCrashFile("save: compress IllegalState", e)
-                            break
-                        } catch (t: Throwable) {
-                            writeCrashFile("save: compress Throwable", t)
-                            break
-                        }
-                        if (outputStream.size() <= maxFileSizeBytes || outputStream.size() == 0) {
-                            done = outputStream.size() > 0
-                            if (done) break
-                        }
+                    if (!ok || outputStream.size() == 0) {
+                        // Retry at lower quality / smaller size once
+                        quality = (quality - 10).coerceAtLeast(10)
                         attempts++
-                        if (isPng || quality <= 15) {
+                        continue
+                    }
+                    if (outputStream.size() <= maxFileSizeBytes) {
+                        done = true
+                    } else {
+                        attempts++
+                        if (quality > 20) {
+                            quality = (quality - 10).coerceAtLeast(10)
+                        } else {
+                            // Shrink and rebuild scaled
                             targetW = ((targetW * 0.85f).toInt()).coerceAtLeast(50)
                             targetH = ((targetH * 0.85f).toInt()).coerceAtLeast(50)
-                            if (targetW == b.width && targetH == b.height) break
-                            val old = scaledBitmap
-                            scaledBitmap = try { scaleBitmapSafe(wb, targetW, targetH) }
-                                           catch (_: Throwable) { old }
-                            if (old != null && old !== wb && old !== scaledBitmap && !old.isRecycled) {
-                                try { old.recycle() } catch (_: Throwable) {}
+                            try {
+                                val old = scaledBitmap
+                                val next = scaleBitmapSafe(wb, targetW, targetH)
+                                if (old != null && old !== wb && old !== next && !old.isRecycled) {
+                                    try { old.recycle() } catch (_: Throwable) {}
+                                }
+                                scaledBitmap = next
+                            } catch (_: Throwable) {
+                                break
                             }
-                        } else {
-                            quality = (quality - 8).coerceAtLeast(10)
                         }
                     }
+                }
 
-                    val imageBytes = outputStream.toByteArray()
-                    if (imageBytes.isEmpty()) {
-                        writeCrashFile("save: empty compress output")
-                        return@withLock Result.failure(Exception("Failed to compress image"))
-                    }
+                val imageBytes = outputStream.toByteArray()
+                if (imageBytes.isEmpty()) {
+                    writeCrashFile("save: empty compress output")
+                    return@withContext Result.failure(Exception("Failed to compress image"))
+                }
 
-                    val extension = if (isPng) "png" else "jpg"
-                    val mimeType = if (isPng) "image/png" else "image/jpeg"
-                    val filename = "GovPhoto_${System.currentTimeMillis()}.$extension"
-                    val contentValues = ContentValues().apply {
-                        put(MediaStore.Images.Media.DISPLAY_NAME, filename)
-                        put(MediaStore.Images.Media.MIME_TYPE, mimeType)
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/GovPhoto Resizer")
-                            put(MediaStore.Images.Media.IS_PENDING, 1)
-                        }
-                    }
-
-                    val imageUri = context.contentResolver.insert(
-                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                        contentValues
-                    ) ?: return@withLock Result.failure(Exception("Failed to create MediaStore entry"))
-
-                    var written = false
-                    try {
-                        context.contentResolver.openOutputStream(imageUri)?.use { stream ->
-                            stream.write(imageBytes)
-                            written = true
-                        }
-                    } catch (e: Exception) {
-                        writeCrashFile("save: MediaStore write failed", e)
-                    }
-                    if (!written) {
-                        try { context.contentResolver.delete(imageUri, null, null) } catch (_: Exception) {}
-                        return@withLock Result.failure(Exception("Failed to write image to MediaStore"))
-                    }
-
+                val extension = if (isPng) "png" else "jpg"
+                val mimeType = if (isPng) "image/png" else "image/jpeg"
+                val filename = "GovPhoto_${System.currentTimeMillis()}.$extension"
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+                    put(MediaStore.Images.Media.MIME_TYPE, mimeType)
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                        contentValues.clear()
-                        contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)
-                        try { context.contentResolver.update(imageUri, contentValues, null, null) }
-                        catch (e: Exception) { Log.w(TAG, "Could not clear IS_PENDING", e) }
+                        put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/GovPhoto Resizer")
+                        put(MediaStore.Images.Media.IS_PENDING, 1)
                     }
+                }
 
-                    _fileSizeKb.value = imageBytes.size / 1024
-                    _processedImageUri.value = imageUri
+                val imageUri = context.contentResolver.insert(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    contentValues
+                ) ?: return@withContext Result.failure(Exception("Failed to create MediaStore entry"))
 
-                    try {
-                        historyRepo.recordSave(
-                            HistoryRepository.HistorySave(
-                                presetId = _selectedPreset.value?.id ?: "unknown",
-                                examName = _selectedPreset.value?.examName ?: "Custom",
-                                originalImagePath = _selectedImageUri.value?.toString() ?: "",
-                                processedImagePath = imageUri.toString(),
-                                fileSizeKb = imageBytes.size / 1024,
-                                widthPx = targetW,
-                                heightPx = targetH
-                            )
-                        )
-                        recentPresetRepo.recordUse(
+                var written = false
+                try {
+                    context.contentResolver.openOutputStream(imageUri)?.use { stream ->
+                        stream.write(imageBytes)
+                        stream.flush()
+                        written = true
+                    }
+                } catch (e: Exception) {
+                    writeCrashFile("save: MediaStore write failed", e)
+                }
+                if (!written) {
+                    try { context.contentResolver.delete(imageUri, null, null) } catch (_: Exception) {}
+                    return@withContext Result.failure(Exception("Failed to write image to MediaStore"))
+                }
+
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    contentValues.clear()
+                    contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)
+                    try { context.contentResolver.update(imageUri, contentValues, null, null) }
+                    catch (e: Exception) { Log.w(TAG, "Could not clear IS_PENDING", e) }
+                }
+
+                _fileSizeKb.value = imageBytes.size / 1024
+                _processedImageUri.value = imageUri
+
+                try {
+                    historyRepo.recordSave(
+                        HistoryRepository.HistorySave(
                             presetId = _selectedPreset.value?.id ?: "unknown",
                             examName = _selectedPreset.value?.examName ?: "Custom",
-                            category = _selectedPreset.value?.category?.name ?: "CUSTOM"
+                            originalImagePath = _selectedImageUri.value?.toString() ?: "",
+                            processedImagePath = imageUri.toString(),
+                            fileSizeKb = imageBytes.size / 1024,
+                            widthPx = targetW,
+                            heightPx = targetH
                         )
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Failed to record history/recent preset", e)
-                    }
-
-                    Result.success(imageUri)
+                    )
+                    recentPresetRepo.recordUse(
+                        presetId = _selectedPreset.value?.id ?: "unknown",
+                        examName = _selectedPreset.value?.examName ?: "Custom",
+                        category = _selectedPreset.value?.category?.name ?: "CUSTOM"
+                    )
                 } catch (e: CancellationException) {
                     throw e
-                } catch (t: Throwable) {
-                    Log.e(TAG, "savePhotoToGallery: failure", t)
-                    writeCrashFile("save: outer Throwable", t)
-                    Result.failure(t)
-                } finally {
-                    try {
-                        if (scaledBitmap != null && scaledBitmap !== workBitmap && !scaledBitmap!!.isRecycled) {
-                            scaledBitmap!!.recycle()
-                        }
-                    } catch (_: Throwable) {}
-                    try {
-                        if (workBitmap != null && !workBitmap!!.isRecycled) {
-                            workBitmap!!.recycle()
-                        }
-                    } catch (_: Throwable) {}
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to record history/recent preset", e)
                 }
+
+                Result.success(imageUri)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                Log.e(TAG, "savePhotoToGallery: failure", t)
+                writeCrashFile("save: outer Throwable", t)
+                Result.failure(t)
+            } finally {
+                try {
+                    if (scaledBitmap != null && scaledBitmap !== workBitmap && !scaledBitmap!!.isRecycled) {
+                        scaledBitmap!!.recycle()
+                    }
+                } catch (_: Throwable) {}
+                try {
+                    if (workBitmap != null && !workBitmap!!.isRecycled) {
+                        workBitmap!!.recycle()
+                    }
+                } catch (_: Throwable) {}
             }
         }
     }
