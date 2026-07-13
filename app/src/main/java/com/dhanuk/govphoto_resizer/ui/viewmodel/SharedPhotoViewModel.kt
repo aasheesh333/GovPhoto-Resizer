@@ -150,11 +150,11 @@ class SharedPhotoViewModel @Inject constructor(
     /**
      * Selected background option as chosen in the Edit screen (NONE/WHITE/
      * STUDIO_BLUE/LIGHT_GREY/GRADIENT/TRANSPARENT). This is UI-owned state but
-     * tracked by the history stack so Undo/Redo can revert BgOption changes.
+     * tracked by the history stack so Undo/Redo can revert BackgroundOption changes.
      * The underlying `_backgroundColor` enum is set from this on bg-removal.
      */
-    private val _bgOption = MutableStateFlow<BgOption>(BgOption.NONE)
-    val bgOption: StateFlow<BgOption> = _bgOption.asStateFlow()
+    private val _bgOption = MutableStateFlow<BackgroundOption>(BackgroundOption.NONE)
+    val bgOption: StateFlow<BackgroundOption> = _bgOption.asStateFlow()
 
     // ----- Undo/Redo (intent-based) -----
     private val historyStack: MutableList<EditState> = mutableListOf()
@@ -638,11 +638,18 @@ fun removeBackground() {
             val prev = _bakedBitmap.value
             _bakedBitmap.value = cropped
             if (prev != null && !prev.isRecycled && prev !== cropped) prev.recycle()
-            // Fresh face analysis on the baked bitmap (for preview-screen checklist)
-            try {
-                _faceAnalysis.value = faceAnalyzer.analyze(cropped)
-            } catch (e: Exception) {
-                Log.w(TAG, "bakeTransform face analyze failed", e)
+            // Fresh face analysis on the baked bitmap (for preview-screen checklist).
+            // analyze{} is suspend — kick it off in the viewModelScope.
+            viewModelScope.launch(Dispatchers.Default + coroutineExceptionHandler) {
+                try {
+                    _faceAnalysis.value = faceAnalyzer.analyze(cropped)
+                } catch (fe: CancellationException) {
+                    throw fe
+                } catch (fe: OutOfMemoryError) {
+                    Log.w(TAG, "bakeTransform face analyze OOM", fe)
+                } catch (fe: Exception) {
+                    Log.w(TAG, "bakeTransform face analyze failed", fe)
+                }
             }
             true
         } catch (oom: OutOfMemoryError) {
@@ -782,7 +789,7 @@ fun removeBackground() {
      */
     fun resetAllEditsAndRefit() {
         _rotationDegrees.value = 0
-        _bgOption.value = BgOption.NONE
+        _bgOption.value = BackgroundOption.NONE
         _compressionQuality.value = 0.7f
         _customWidth.value = "350"
         _customHeight.value = "450"
@@ -800,7 +807,7 @@ fun removeBackground() {
         _selectedPreset.value = null
         _selectedPresetName.value = null
         _backgroundColor.value = BackgroundColor.WHITE
-        _bgOption.value = BgOption.NONE
+        _bgOption.value = BackgroundOption.NONE
         _compressionQuality.value = 0.7f
         _rotationDegrees.value = 0
         _processedImageUri.value = null
@@ -1055,7 +1062,7 @@ override fun onCleared() {
  * underlying pick used by the bg-remover). `NONE` means "skip bg removal"; the
  * other options map to `BackgroundColor` values directly.
  */
-enum class BgOption {
+enum class BackgroundOption {
     NONE, WHITE, STUDIO_BLUE, LIGHT_GREY, GRADIENT, TRANSPARENT;
     fun toBackgroundColor(): BackgroundColor = when (this) {
         NONE, WHITE -> BackgroundColor.WHITE
@@ -1080,7 +1087,7 @@ data class EditState(
     val offX: Float = 0f,
     val offY: Float = 0f,
     val rotationDegrees: Int = 0,
-    val bgOption: BgOption = BgOption.NONE,
+    val bgOption: BackgroundOption = BackgroundOption.NONE,
     val compression: Float = 0.7f,
     val customW: String = "350",
     val customH: String = "450",
