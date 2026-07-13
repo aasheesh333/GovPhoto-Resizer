@@ -55,6 +55,8 @@ fun PreviewValidationScreen(
     
     val selectedImageUri by sharedViewModel.selectedImageUri.collectAsState()
     val originalBitmap by sharedViewModel.originalBitmap.collectAsState()
+    val pristineOriginal by sharedViewModel.pristineOriginalBitmap.collectAsState()
+    val bakedBitmap by sharedViewModel.bakedBitmap.collectAsState()
     val displayedBitmap by sharedViewModel.displayedBitmap.collectAsState()
     val backgroundColor by sharedViewModel.backgroundColor.collectAsState()
     val fileSizeKb by sharedViewModel.fileSizeKb.collectAsState()
@@ -139,7 +141,11 @@ fun PreviewValidationScreen(
                         .navigationBarsPadding(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Save Button
+                    // Save Button — wrapped with try/catch (Throwable) at the
+                    // UI coroutine boundary as a last-resort safety net. This
+                    // catches VirtualMachineError, native OOM, etc., that might
+                    // escape the ViewModel's internal catches. Never app-crash
+                    // from a Save tap.
                     Button(
                         onClick = {
                             if (!isSaving) {
@@ -154,13 +160,13 @@ fun PreviewValidationScreen(
                                         }.onFailure { error ->
                                             Toast.makeText(context, "Failed to save: ${error.message}", Toast.LENGTH_LONG).show()
                                         }
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
+                                    } catch (t: Throwable) {
+                                        android.util.Log.e("PreviewValidation", "Save crashed", t)
                                         isSaving = false
-                                        Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
-                                    } catch (oom: OutOfMemoryError) {
-                                        isSaving = false
-                                        Toast.makeText(context, "Out of memory — try a smaller photo", Toast.LENGTH_LONG).show()
+                                        val msg = if (t is OutOfMemoryError)
+                                            "Out of memory — try a smaller photo"
+                                        else "Error: ${t.message}"
+                                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
                                     }
                                 }
                             }
@@ -244,11 +250,12 @@ Icon(
                 onTabSelected = { selectedTab = it }
             )
             
-            // Preview Card
+            // Preview Card. Processed = baked (output of Continue); Original =
+            // pristine, never edited (full untouched image with EXIF applied).
             PreviewCard(
                 imageUri = selectedImageUri,
-                originalBitmap = originalBitmap,
-                processedBitmap = displayedBitmap,
+                originalBitmap = pristineOriginal ?: originalBitmap,
+                processedBitmap = bakedBitmap ?: displayedBitmap,
                 backgroundColor = backgroundColor,
                 fileSizeKb = fileSizeKb,
                 preset = selectedPreset,

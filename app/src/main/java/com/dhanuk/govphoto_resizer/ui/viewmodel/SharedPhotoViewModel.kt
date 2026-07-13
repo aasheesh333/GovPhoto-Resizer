@@ -21,6 +21,7 @@ import com.dhanuk.govphoto_resizer.data.repository.RecentPresetRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -48,14 +49,54 @@ class SharedPhotoViewModel @Inject constructor(
 
     private val photoMutex = Mutex()
 
+    /**
+     * Last-resort safety net for coroutine failures in viewModelScope. If a
+     * coroutine throws an uncaught Throwable (e.g. OutOfMemoryError in a
+     * bg-removal path we forgot to wrap), we log instead of crashing the app.
+     * CancellationException is re-thrown automatically by coroutines, so it
+     * won't reach here.
+     */
+    private val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        Log.e(TAG, "viewModelScope uncaught coroutine exception", throwable)
+    }
+
     private val _selectedImageUri = MutableStateFlow<Uri?>(null)
     val selectedImageUri: StateFlow<Uri?> = _selectedImageUri.asStateFlow()
 
     private val _originalBitmap = MutableStateFlow<Bitmap?>(null)
     val originalBitmap: StateFlow<Bitmap?> = _originalBitmap.asStateFlow()
 
+    /**
+     * The TRUE original decoded bitmap — written ONCE at decode time, after EXIF
+     * orientation is applied, and never mutated by any edit operation (rotate, bg
+     * removal, auto-fit, etc.). Used by the Original tab on PreviewValidationScreen
+     * and as the source-of-truth for Reset and Undo. Recycled only by clearState()
+     * (full screen-exit cleanup), never by intermediate operations.
+     */
+    private val _pristineOriginalBitmap = MutableStateFlow<Bitmap?>(null)
+    val pristineOriginalBitmap: StateFlow<Bitmap?> = _pristineOriginalBitmap.asStateFlow()
+
     private val _displayedBitmap = MutableStateFlow<Bitmap?>(null)
     val displayedBitmap: StateFlow<Bitmap?> = _displayedBitmap.asStateFlow()
+
+    /**
+     * The baked (physical-cropped) output of `bakeTransform()`. Set when the user
+     * taps Continue on EditPhotoScreen — contains ONLY the portion of the image
+     * visible inside the preset-box at that moment, cropped to the preset's
+     * aspect ratio. Read by PreviewValidationScreen's Processed tab and by
+     * `savePhotoToGallery()` as the source of bytes to compress to disk.
+     */
+    private val _bakedBitmap = MutableStateFlow<Bitmap?>(null)
+    val bakedBitmap: StateFlow<Bitmap?> = _bakedBitmap.asStateFlow()
+
+    /**
+     * Current rotation accumulator in degrees (0, 90, 180, 270). Incremented by
+     * `rotate90()` and used to re-derive the displayed bitmap from the pristine
+     * original on each rotation tap (preserves image quality across many
+     * rotations — no accumulative sampling loss).
+     */
+    private val _rotationDegrees = MutableStateFlow(0)
+    val rotationDegrees: StateFlow<Int> = _rotationDegrees.asStateFlow()
 
     private val _selectedPreset = MutableStateFlow<PhotoPreset?>(null)
     val selectedPreset: StateFlow<PhotoPreset?> = _selectedPreset.asStateFlow()
@@ -106,6 +147,23 @@ class SharedPhotoViewModel @Inject constructor(
     private val _customFormat = MutableStateFlow("jpg")
     val customFormat: StateFlow<String> = _customFormat.asStateFlow()
 
+    /**
+     * Selected background option as chosen in the Edit screen (NONE/WHITE/
+     * STUDIO_BLUE/LIGHT_GREY/GRADIENT/TRANSPARENT). This is UI-owned state but
+     * tracked by the history stack so Undo/Redo can revert BgOption changes.
+     * The underlying `_backgroundColor` enum is set from this on bg-removal.
+     */
+    private val _bgOption = MutableStateFlow<BgOption>(BgOption.NONE)
+    val bgOption: StateFlow<BgOption> = _bgOption.asStateFlow()
+
+    // ----- Undo/Redo (intent-based) -----
+    private val historyStack: MutableList<EditState> = mutableListOf()
+    private var historyIdx: Int = -1
+    private val _canUndo = MutableStateFlow(false)
+    val canUndo: StateFlow<Boolean> = _canUndo.asStateFlow()
+    private val _canRedo = MutableStateFlow(false)
+    val canRedo: StateFlow<Boolean> = _canRedo.asStateFlow()
+
     val aspectRatio: Float
         get() = _selectedPreset.value?.getAspectRatio() ?: 0.8f
 
@@ -124,6 +182,12 @@ class SharedPhotoViewModel @Inject constructor(
     fun setSelectedImageUri(uri: Uri?) {
         _selectedImageUri.value = uri
         recycleBitmaps()
+        // reset pristine + rotation — will be re-populated inside decodeUriToOriginalBitmap
+        _pristineOriginalBitmap.value?.let { if (!it.isRecycled) it.recycle() }
+        _pristineOriginalBitmap.value = null
+        _bakedBitmap.value?.let { if (!it.isRecycled) it.recycle() }
+        _bakedBitmap.value = null
+        _rotationDegrees.value = 0
         _displayedBitmap.value = null
         _faceAnalysis.value = null
         _removalState.value = RemovalState.Idle
@@ -137,6 +201,8 @@ class SharedPhotoViewModel @Inject constructor(
         _selectedImageUri.value = null
         recycleBitmaps()
         _originalBitmap.value = bitmap
+        _pristineOriginalBitmap.value = bitmap
+        _rotationDegrees.value = 0
         _displayedBitmap.value = null
         _faceAnalysis.value = null
         _removalState.value = RemovalState.Idle
@@ -177,9 +243,16 @@ private fun decodeUriToOriginalBitmap(uri: Uri) {
           }
         }
         // Apply EXIF orientation so the bitmap matches what the user saw in the camera preview.
-        _originalBitmap.value = bmp?.let { applyExifOrientation(uri, it) }
+        val withExif = bmp?.let { applyExifOrientation(uri, it) }
+        _originalBitmap.value = withExif
+        // Pristine original — write ONCE here, never mutated by edits. Used by
+        // the Original tab on PreviewValidationScreen and as the source for rotating
+        // `_displayedBitmap` from a clean baseline (quality-preserving rotations).
+        _pristineOriginalBitmap.value = withExif
+        // Reset rotation history on fresh image load
+        _rotationDegrees.value = 0
         // autoFitToPreset() is invoked by analyzeFace() once face analysis returns,
-        // so the cropped preview can be centered on the detected face.
+        // so the displayed bitmap is set to the (rotated-0) pristine version.
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -189,69 +262,47 @@ private fun decodeUriToOriginalBitmap(uri: Uri) {
     }
 
     /**
-     * Crops the original (or currently displayed) bitmap to the selected
-     * preset's aspect ratio, centered on the detected face if available,
-     * otherwise centered on the image. The result is stored as the
-     * displayed bitmap so EditPhotoScreen shows the user the preset-framed
-     * image immediately; they can drag/zoom/rotate to fine-tune, and the
-     * displayed bitmap at Save time IS the saved output.
+     * Sets up the displayed bitmap from the pristine original. NO physical
+     * crop is performed here — the displayed bitmap IS the full original
+     * image (rotated to current [_rotationDegrees], default 0). The
+     * EditPhotoScreen applies a visual `graphicsLayer` zoom/pan so the image
+     * fills the preset-aspect-ratio box without stretching. Physical crop to
+     * the visible portion happens only when the user taps Continue, via
+     * [bakeTransform].
+     *
+     * This function must be safe to call repeatedly (e.g. on preset change,
+     * on Reset, on Undo/Redo). It must not mutate [_pristineOriginalBitmap].
      */
     fun autoFitToPreset() {
-        val source = _displayedBitmap.value ?: _originalBitmap.value ?: return
-        if (source.isRecycled) return
-        val srcW = source.width
-        val srcH = source.height
-        if (srcW <= 0 || srcH <= 0) return
+        val pristine = _pristineOriginalBitmap.value ?: return
+        if (pristine.isRecycled) return
+        val rot = _rotationDegrees.value
+        applyRotationToDisplayed(pristine, rot)
+    }
 
-        // Selected preset target aspect ratio (w/h). If no preset, default to 0.8 (portrait).
-        val targetAR = _selectedPreset.value?.getAspectRatio() ?: 0.78f
-
-        // Crop rectangle dimensions preserving target aspect ratio.
-        var cropW: Int
-        var cropH: Int
-        if (srcW.toFloat() / srcH.toFloat() > targetAR) {
-            // Source is wider than target — fit height, crop width.
-            cropH = srcH
-            cropW = (srcH * targetAR).toInt().coerceIn(1, srcW)
-        } else {
-            // Source is taller than target — fit width, crop height.
-            cropW = srcW
-            cropH = (srcW / targetAR).toInt().coerceIn(1, srcH)
+    /**
+     * Sets [_displayedBitmap] to [pristine] rotated by [rot] degrees (0/90/
+     * 180/270). Recycles previous displayed if it's not the pristine itself.
+     */
+    private fun applyRotationToDisplayed(pristine: Bitmap, rot: Int) {
+        if (rot == 0) {
+            _displayedBitmap.value = pristine
+            return
         }
-
-        // Try to center the crop on the detected face bounds (if available).
-        var centerX = srcW / 2f
-        var centerY = srcH / 2f
-        val fa = _faceAnalysis.value
-        if (fa != null && fa.bounds != null) {
-            // Face bounds may be in the source space already (FaceAnalyzer scales back).
-            val b = fa.bounds
-            centerX = (b.left + b.right) / 2f
-            centerY = (b.top + b.bottom) / 2f
-            // Bias upward (human faces read better when there is a little more headroom above).
-            // Shift center up by 5% of crop height.
-            centerY = (centerY - cropH * 0.05f).coerceIn(cropH / 2f, srcH - cropH / 2f)
-        }
-        // Clamp center so the crop stays inside.
-        centerX = centerX.coerceIn(cropW / 2f, srcW - cropW / 2f)
-        centerY = centerY.coerceIn(cropH / 2f, srcH - cropH / 2f)
-
-        val left = (centerX - cropW / 2f).toInt().coerceIn(0, srcW - cropW)
-        val top = (centerY - cropH / 2f).toInt().coerceIn(0, srcH - cropH)
-
         try {
-            val cropped = Bitmap.createBitmap(source, left, top, cropW, cropH)
-            // Recycle the previous displayed bitmap if it's distinct from the original
-            // to avoid retaining intermediate copies from old rotations/removals.
+            val m = Matrix().apply { postRotate(rot.toFloat()) }
+            val rotated = Bitmap.createBitmap(pristine, 0, 0, pristine.width, pristine.height, m, true)
             val prev = _displayedBitmap.value
-            _displayedBitmap.value = cropped
-            if (prev != null && !prev.isRecycled && prev !== _originalBitmap.value && prev !== source) {
+            _displayedBitmap.value = rotated
+            if (prev != null && !prev.isRecycled && prev !== pristine && prev !== _originalBitmap.value) {
                 prev.recycle()
             }
-        } catch (e: Exception) {
-            Log.w(TAG, "autoFitToPreset: crop failed", e)
         } catch (oom: OutOfMemoryError) {
-            Log.e(TAG, "autoFitToPreset: OOM", oom)
+            Log.e(TAG, "applyRotationToDisplayed: OOM", oom)
+            _displayedBitmap.value = pristine
+        } catch (e: Exception) {
+            Log.w(TAG, "applyRotationToDisplayed failed", e)
+            _displayedBitmap.value = pristine
         }
     }
 
@@ -438,7 +489,7 @@ fun removeBackground() {
     _removalState.value = RemovalState.Working
     _isRemovingBackground.value = true
 
-    viewModelScope.launch(Dispatchers.Default) {
+    viewModelScope.launch(Dispatchers.Default + coroutineExceptionHandler) {
       photoMutex.withLock {
         try {
           val result = backgroundRemover.remove(bitmap, _backgroundColor.value)
@@ -468,7 +519,11 @@ fun removeBackground() {
 
     /** Skip background removal: keep original/source bitmap and mark state idle. */
     fun skipBackgroundRemoval() {
-        _displayedBitmap.value = _originalBitmap.value
+        // Restore displayed to the rotation-correct pristine baseline (no bg removal applied)
+        val pristine = _pristineOriginalBitmap.value ?: _originalBitmap.value
+        if (pristine != null && !pristine.isRecycled) {
+            applyRotationToDisplayed(pristine, _rotationDegrees.value)
+        }
         _removalState.value = RemovalState.Idle
         _isRemovingBackground.value = false
         analyzeFace()
@@ -537,6 +592,15 @@ fun removeBackground() {
      * Use this before navigating to the processed preview so the preview reflects
      * the user's adjustments. Returns true on success.
      */
+    /**
+     * Called on Continue button in EditPhotoScreen. Physically crops the
+     * portion of the displayed bitmap visible inside the preset-ratio box at
+     * the current zoom/pan transform, and stores the result in
+     * [_bakedBitmap] (NOT `_displayedBitmap` — the latter must remain the
+     * full original so back-navigation from PreviewValidation shows the user
+     * a fresh editable state). The baked bitmap is later read by
+     * PreviewValidation's Processed tab and by `savePhotoToGallery()`.
+     */
     fun bakeTransform(scale: Float, offsetX: Float, offsetY: Float): Boolean {
         val source = _displayedBitmap.value ?: _originalBitmap.value ?: return false
         if (source.isRecycled || scale <= 0f) return false
@@ -544,26 +608,46 @@ fun removeBackground() {
         val srcH = source.height
         if (srcW <= 0 || srcH <= 0) return false
         val targetAR = aspectRatio
+        // The crop rect preserves the preset aspect ratio. Its dimensions are
+        // exactly what is visually represented by the preset-ratio box (the
+        // "viewport" in the rendered image).
         val cropW: Int
         val cropH: Int
         if (targetAR >= 1f) {
+            // Landscape-ish preset box — its width is limited by the smaller
+            // source dimension, height is the box-pixel height = width / ratio.
             cropW = minOf(srcW, srcH)
             cropH = (cropW / targetAR).toInt().coerceIn(1, srcH)
         } else {
+            // Portrait-ish preset box — analogous.
             cropH = minOf(srcW, srcH)
             cropW = (cropH * targetAR).toInt().coerceIn(1, srcW)
         }
+        // At scale=1, the viewport half-width is cropW/2 in source pixels.
+        // When user zooms in, the visible area shrinks in source pixels.
         val halfVW = (cropW / 2f / scale).coerceAtMost(srcW / 2f)
         val halfVH = (cropH / 2f / scale).coerceAtMost(srcH / 2f)
         val centerX = (srcW / 2f - offsetX / scale).coerceIn(halfVW, srcW - halfVW)
         val centerY = (srcH / 2f - offsetY / scale).coerceIn(halfVH, srcH - halfVH)
         val left = (centerX - halfVW).toInt().coerceIn(0, srcW - cropW)
         val top = (centerY - halfVH).toInt().coerceIn(0, srcH - cropH)
+        val cropPxW = (halfVW * 2).toInt().coerceIn(1, srcW - left)
+        val cropPxH = (halfVH * 2).toInt().coerceIn(1, srcH - top)
         return try {
-            val cropped = Bitmap.createBitmap(source, left, top, cropW, cropH)
-            _displayedBitmap.value = cropped
-            analyzeFace()
+            val cropped = Bitmap.createBitmap(source, left, top, cropPxW, cropPxH)
+            val prev = _bakedBitmap.value
+            _bakedBitmap.value = cropped
+            if (prev != null && !prev.isRecycled && prev !== cropped) prev.recycle()
+            // Fresh face analysis on the baked bitmap (for preview-screen checklist)
+            try {
+                _faceAnalysis.value = faceAnalyzer.analyze(cropped)
+            } catch (e: Exception) {
+                Log.w(TAG, "bakeTransform face analyze failed", e)
+            }
             true
+        } catch (oom: OutOfMemoryError) {
+            Log.e(TAG, "bakeTransform OOM", oom)
+            false
         } catch (e: Exception) {
             Log.w(TAG, "bakeTransform failed", e)
             false
@@ -572,28 +656,23 @@ fun removeBackground() {
 
     /** Rotate the currently displayed (and original) bitmap 90° clockwise. */
     fun rotate90() {
-        viewModelScope.launch(Dispatchers.Default) {
+        viewModelScope.launch(Dispatchers.Default + coroutineExceptionHandler) {
             photoMutex.withLock {
                 try {
-                    val src = _displayedBitmap.value ?: _originalBitmap.value ?: return@withLock
-                    if (src.isRecycled) return@withLock
-                    val matrix = Matrix().apply { postRotate(90f) }
-                    val rotated = Bitmap.createBitmap(src, 0, 0, src.width, src.height, matrix, true)
-                    _displayedBitmap.value = rotated
-                    // Also rotate the original so future bg-removal uses the corrected orientation.
-                    _originalBitmap.value?.let { orig ->
-                        if (!orig.isRecycled && orig !== src) {
-                            val m2 = Matrix().apply { postRotate(90f) }
-                            _originalBitmap.value = Bitmap.createBitmap(orig, 0, 0, orig.width, orig.height, m2, true)
-                        } else if (orig === src) {
-                            _originalBitmap.value = rotated
-                        }
-                    }
+                    val pristine = _pristineOriginalBitmap.value
+                    if (pristine == null || pristine.isRecycled) return@withLock
+                    // Increment rotation accumulator (mod 360) and re-derive the
+                    // displayed bitmap from the pristine source. Quality is
+                    // preserved across many rotations — no accumulative sampling
+                    // loss because we always rotate from the original.
+                    val newRot = (_rotationDegrees.value + 90) % 360
+                    _rotationDegrees.value = newRot
+                    applyRotationToDisplayed(pristine, newRot)
                     analyzeFace()
-                } catch (e: Exception) {
-                    Log.w(TAG, "rotate90 failed", e)
                 } catch (oom: OutOfMemoryError) {
                     Log.e(TAG, "rotate90 OOM", oom)
+                } catch (e: Exception) {
+                    Log.w(TAG, "rotate90 failed", e)
                 }
             }
         }
@@ -622,6 +701,98 @@ fun removeBackground() {
         calculateEstimatedFileSize()
     }
 
+    // ----------------------------- Undo / Redo -----------------------------
+    // History captures the *intent* of each Edit-screen action (zoom, pan,
+    // rotate, bg-change, custom-size-change). It does NOT touch the displayed
+    // bitmap directly — restoreFromState re-derives the displayed bitmap from
+    // the pristine source + rotationDegrees, just like autoFitToPreset.
+
+    /**
+     * Push the current edit-window state onto the history stack, discarding
+     * any "redo" entries that come after the current index. Cap at 12 entries
+     * to keep memory bounded; adjacent dedupe — if the new state equals the
+     * topmost, no-op.
+     */
+    fun pushHistory(state: EditState) {
+        if (historyIdx in historyStack.indices) {
+            val top = historyStack[historyIdx]
+            if (top == state) return
+        }
+        // Drop any redo entries past historyIdx
+        while (historyStack.size > historyIdx + 1) historyStack.removeAt(historyIdx + 1)
+        historyStack.add(state)
+        // Cap at 12
+        while (historyStack.size > 12) {
+            historyStack.removeAt(0)
+        }
+        historyIdx = historyStack.size - 1
+        updateUndoRedoState()
+    }
+
+    fun undoEdit(): EditState? {
+        if (historyIdx <= 0) return null
+        historyIdx--
+        updateUndoRedoState()
+        val state = historyStack[historyIdx]
+        restoreFromState(state)
+        return state
+    }
+
+    fun redoEdit(): EditState? {
+        if (historyIdx >= historyStack.size - 1) return null
+        historyIdx++
+        updateUndoRedoState()
+        val state = historyStack[historyIdx]
+        restoreFromState(state)
+        return state
+    }
+
+    /**
+     * Apply an EditState to the ViewModel: set _rotationDegrees, _bgOption,
+     * _compressionQuality, _customWidth/_customHeight/_customFormat, then
+     * re-derive _displayedBitmap by rotating the pristine original to the
+     * new rotationDegrees. The scale/offX/offY fields are returned via
+     * StateFlow but consumed by EditPhotoScreen's local UI directly (the
+     * ViewModel has no concept of "window pixel scale" — only source-pixel
+     * rotation matters).
+     */
+    private fun restoreFromState(state: EditState) {
+        _rotationDegrees.value = state.rotationDegrees
+        _bgOption.value = state.bgOption
+        _compressionQuality.value = state.compression
+        _customWidth.value = state.customW
+        _customHeight.value = state.customH
+        _customFormat.value = state.customFmt
+        // Re-derive displayed bitmap from pristine (applyRotationToDisplayed handles 0/90/180/270)
+        val pristine = _pristineOriginalBitmap.value
+        if (pristine != null && !pristine.isRecycled) {
+            applyRotationToDisplayed(pristine, state.rotationDegrees)
+        }
+    }
+
+    private fun updateUndoRedoState() {
+        _canUndo.value = historyIdx > 0
+        _canRedo.value = historyIdx in 0 until historyStack.size - 1
+    }
+
+    /**
+     * Reset all edits — restore displayed bitmap from pristine original,
+     * clear rotation, reset bg option + custom inputs, re-trigger auto-fit.
+     * Clears the history stack too.
+     */
+    fun resetAllEditsAndRefit() {
+        _rotationDegrees.value = 0
+        _bgOption.value = BgOption.NONE
+        _compressionQuality.value = 0.7f
+        _customWidth.value = "350"
+        _customHeight.value = "450"
+        _customFormat.value = "jpg"
+        _pristineOriginalBitmap.value?.let { if (!it.isRecycled) applyRotationToDisplayed(it, 0) }
+        historyStack.clear()
+        historyIdx = -1
+        updateUndoRedoState()
+    }
+
     fun clearState() {
         _selectedImageUri.value = null
         recycleBitmaps()
@@ -629,7 +800,9 @@ fun removeBackground() {
         _selectedPreset.value = null
         _selectedPresetName.value = null
         _backgroundColor.value = BackgroundColor.WHITE
+        _bgOption.value = BgOption.NONE
         _compressionQuality.value = 0.7f
+        _rotationDegrees.value = 0
         _processedImageUri.value = null
         _fileSizeKb.value = 0
         _isRemovingBackground.value = false
@@ -637,6 +810,10 @@ fun removeBackground() {
         _faceAnalysis.value = null
         preCropBitmap?.let { if (!it.isRecycled) it.recycle() }
         preCropBitmap = null
+        // Clear undo/redo history
+        historyStack.clear()
+        historyIdx = -1
+        updateUndoRedoState()
     }
 
 private fun recycleBitmaps() {
@@ -644,6 +821,11 @@ private fun recycleBitmaps() {
     _originalBitmap.value = null
     _displayedBitmap.value?.let { if (!it.isRecycled && it != _originalBitmap.value) it.recycle() }
     _displayedBitmap.value = null
+    // Pristine is shared with `_originalBitmap` initially — same reference. Don't double-recycle.
+    _pristineOriginalBitmap.value?.let { if (!it.isRecycled && it !== _originalBitmap.value) it.recycle() }
+    _pristineOriginalBitmap.value = null
+    _bakedBitmap.value?.let { if (!it.isRecycled) it.recycle() }
+    _bakedBitmap.value = null
     preCropBitmap?.let { if (!it.isRecycled) it.recycle() }
     preCropBitmap = null
   }
@@ -660,33 +842,47 @@ override fun onCleared() {
         return withContext(Dispatchers.IO) {
             photoMutex.withLock {
                 // Hold a local bitmap reference that won't be recycled underneath us.
-                // We deep-copy the displayed bitmap (or fall back to the original / re-decode).
+                // We deep-copy the baked bitmap (or fall back to displayed / original / re-decode).
                 var workBitmap: Bitmap? = null
                 var scaledBitmap: Bitmap? = null
                 try {
-                    val src = _displayedBitmap.value ?: _originalBitmap.value ?: run {
-                        _selectedImageUri.value?.let { uri ->
-                            decodeSelectedUri()
+                    // Prefer the baked bitmap (output of Continue/bakeTransform).
+                    // Fall back to displayed (pre-Continue case, e.g. test or legacy path).
+                    val src = _bakedBitmap.value
+                        ?: _displayedBitmap.value
+                        ?: _originalBitmap.value
+                        ?: run {
+                            _selectedImageUri.value?.let { uri ->
+                                decodeSelectedUri()
+                            }
                         }
-                    }
                     if (src == null || src.isRecycled) {
                         Log.e(TAG, "savePhotoToGallery: No bitmap available")
                         return@withLock Result.failure(Exception("No image to save"))
+                    }
+                    // Pre-flight: source must be a non-recycled ARGB_8888 (or compatible) bitmap.
+                    // Reconfigure to ARGB_8888 if needed (some ImageDecoder paths yield RGB_565
+                    // which fails PNG compress with transparent pixels).
+                    val srcSafe = if (src.config == Bitmap.Config.ARGB_8888 || src.config == Bitmap.Config.RGBA_F16) {
+                        src
+                    } else {
+                        try { src.copy(Bitmap.Config.ARGB_8888, true) ?: src }
+                        catch (oom: OutOfMemoryError) { src }
                     }
 
                     // Deep copy so concurrent analyzeFace()/rotate90()/autoFit() recycling
                     // the shared bitmap does NOT crash our compress path. ARGB_8888 keeps
                     // transparency for PNG/transparent backgrounds.
                     workBitmap = try {
-                        Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888).also { copy ->
-                            android.graphics.Canvas(copy).drawBitmap(src, 0f, 0f, null)
+                        Bitmap.createBitmap(srcSafe.width, srcSafe.height, Bitmap.Config.ARGB_8888).also { copy ->
+                            android.graphics.Canvas(copy).drawBitmap(srcSafe, 0f, 0f, null)
                         }
                     } catch (oom: OutOfMemoryError) {
                         Log.e(TAG, "savePhotoToGallery: deep-copy OOM, using source directly", oom)
-                        src
+                        srcSafe
                     } catch (e: Exception) {
                         Log.w(TAG, "savePhotoToGallery: deep-copy failed", e)
-                        src
+                        srcSafe
                     }
 
                     var targetW = targetWidth.coerceAtLeast(50).coerceAtMost(4096)
@@ -843,7 +1039,7 @@ override fun onCleared() {
                         // workBitmap is a deep copy made above (unless it equals src).
                         // Distinguish: if workBitmap is NOT the same instance as src
                         // (i.e. deep-copy succeeded), recycle it. If it equals src, leave alone.
-                        val srcRef = _displayedBitmap.value ?: _originalBitmap.value
+                        val srcRef = _bakedBitmap.value ?: _displayedBitmap.value ?: _originalBitmap.value
                         if (workBitmap != null && workBitmap !== srcRef && !workBitmap!!.isRecycled) {
                             workBitmap!!.recycle()
                         }
@@ -853,6 +1049,43 @@ override fun onCleared() {
         }
     }
 }
+
+/**
+ * Background-option entry — distinct from `BackgroundColor` enum (which is the
+ * underlying pick used by the bg-remover). `NONE` means "skip bg removal"; the
+ * other options map to `BackgroundColor` values directly.
+ */
+enum class BgOption {
+    NONE, WHITE, STUDIO_BLUE, LIGHT_GREY, GRADIENT, TRANSPARENT;
+    fun toBackgroundColor(): BackgroundColor = when (this) {
+        NONE, WHITE -> BackgroundColor.WHITE
+        STUDIO_BLUE -> BackgroundColor.STUDIO_BLUE
+        LIGHT_GREY -> BackgroundColor.LIGHT_GREY
+        GRADIENT -> BackgroundColor.GRADIENT
+        TRANSPARENT -> BackgroundColor.TRANSPARENT
+    }
+}
+
+/**
+ * Snapshot of all edit-screen state. ~100 bytes per snapshot. The history
+ * stack keeps up to 12 of these; Undo/Redo restores them via
+ * [SharedPhotoViewModel.restoreFromState].
+ *
+ * Note: scale/offX/offY here are the *post-fit* scale (what the UI renders
+ * inside the preset box), not the source-bitmap pixel dim. EditPhotoScreen
+ * applies them locally after undo/redo.
+ */
+data class EditState(
+    val scale: Float = 1f,
+    val offX: Float = 0f,
+    val offY: Float = 0f,
+    val rotationDegrees: Int = 0,
+    val bgOption: BgOption = BgOption.NONE,
+    val compression: Float = 0.7f,
+    val customW: String = "350",
+    val customH: String = "450",
+    val customFmt: String = "jpg"
+)
 
 enum class BackgroundColor {
     WHITE,

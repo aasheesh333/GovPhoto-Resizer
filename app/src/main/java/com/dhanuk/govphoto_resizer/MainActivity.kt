@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dhanuk.govphoto_resizer.BuildConfig
 import com.dhanuk.govphoto_resizer.data.datastore.DarkModePref
 import com.dhanuk.govphoto_resizer.ui.navigation.GovPhotoNavHost
 import com.dhanuk.govphoto_resizer.ui.theme.GovPhotoTheme
@@ -50,6 +51,19 @@ class MainActivity : ComponentActivity() {
 
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // DEBUG-only uncaught-exception handler — logs to logcat with a clear
+        // tag instead of an instant silent crash. Useful for diagnosing the
+        // "app closes instantly on Save" report without a debugger attached.
+        // In release builds the default handler still runs (this is gated to
+        // BuildConfig.DEBUG only).
+        if (BuildConfig.DEBUG) {
+            val previous = Thread.getDefaultUncaughtExceptionHandler()
+            Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+                android.util.Log.e("GovPhotoCrash", "Uncaught on ${thread.name}", throwable)
+                previous?.uncaughtException(thread, throwable)
+            }
+        }
 
         setContent {
             val settings by hiltViewModel<SettingsViewModel>().state.collectAsState()

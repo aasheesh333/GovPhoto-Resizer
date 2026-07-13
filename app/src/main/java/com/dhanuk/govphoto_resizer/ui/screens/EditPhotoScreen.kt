@@ -35,10 +35,12 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.dhanuk.govphoto_resizer.R
 import com.dhanuk.govphoto_resizer.data.ml.FaceAnalysisResult
+import com.dhanuk.govphoto_resizer.data.model.PhotoPreset
 import com.dhanuk.govphoto_resizer.ui.theme.*
 import com.dhanuk.govphoto_resizer.ui.viewmodel.BackgroundColor
+import com.dhanuk.govphoto_resizer.ui.viewmodel.BackgroundOption
+import com.dhanuk.govphoto_resizer.ui.viewmodel.EditState
 import com.dhanuk.govphoto_resizer.ui.viewmodel.SharedPhotoViewModel
-
 /**
  * Edit Photo Screen - Face alignment, background selection, and compression controls.
  * Displays the selected image with editing tools.
@@ -53,35 +55,61 @@ fun EditPhotoScreen(
     val context = LocalContext.current
     val selectedImageUri by sharedViewModel.selectedImageUri.collectAsState()
     val originalBitmap by sharedViewModel.originalBitmap.collectAsState()
+    val pristineOriginal by sharedViewModel.pristineOriginalBitmap.collectAsState()
     val displayedBitmap by sharedViewModel.displayedBitmap.collectAsState()
     val backgroundColor by sharedViewModel.backgroundColor.collectAsState()
     val compressionQuality by sharedViewModel.compressionQuality.collectAsState()
     val fileSizeKb by sharedViewModel.fileSizeKb.collectAsState()
     val selectedPreset by sharedViewModel.selectedPreset.collectAsState()
     val faceAnalysis by sharedViewModel.faceAnalysis.collectAsState()
-    
+    val rotationDegrees by sharedViewModel.rotationDegrees.collectAsState()
+    val canUndo by sharedViewModel.canUndo.collectAsState()
+    val canRedo by sharedViewModel.canRedo.collectAsState()
+
     // Dynamic aspect ratio from preset
     val aspectRatio = sharedViewModel.aspectRatio
     val format = selectedPreset?.format?.uppercase() ?: "JPG"
     val maxSize = selectedPreset?.maxFileSizeKb ?: 500
-    
+
     // Local UI state
     var selectedBackground by remember { mutableStateOf(BackgroundOption.NONE) }
     var compressionValue by remember { mutableFloatStateOf(compressionQuality) }
-    
-    // Image transformation state
-    var scale by remember { mutableFloatStateOf(1f) }
+
+    // Image transformation state — visual-only zoom/pan applied via graphicsLayer.
+    // scale starts at "fill preset box without stretching" — recomputed whenever
+    // the preset aspect ratio or the underlying bitmap changes.
+    var scale by remember(selectedPreset?.id, originalBitmap, rotationDegrees) {
+        mutableFloatStateOf(1f)
+    }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
-    var canUndoCrop by remember { mutableStateOf(false) }
-    
+
+    // The bitmap actually rendered — pristine+rotation-corrected. Background
+    // removal (when selected) replaces the displayedBitmap too. We read the
+    // displayedBitmap; it's reset to pristine+rotated by autoFitToPreset() or
+    // applyRotationToDisplayed().
+    val renderBitmap = displayedBitmap ?: pristineOriginal ?: originalBitmap
+
     // Ensure face analysis runs when Edit screen is shown
     LaunchedEffect(selectedImageUri, originalBitmap) {
         if (selectedImageUri != null || originalBitmap != null) {
             sharedViewModel.analyzeFace()
         }
     }
-    
+
+    // Compute the initial fill scale: image fills preset box without stretching,
+    // so the box is entirely covered (some image overflows outside, hidden by clip).
+    // scale = max(boxWPx / imgWPx, boxHPx / imgHPx). The box absorbs the preset AR.
+    // We can't know pixel dims yet (no BoxWithConstraints on outer), so we use
+    // a simpler heuristic: scale = 1f means "fit entire image inside box".
+    // Users can fine-tune by pinch / zoom buttons. Future enhancement: read actual
+    // box pixel dims via BoxWithConstraints and compute true cover-scale.
+    LaunchedEffect(selectedPreset?.id, originalBitmap, rotationDegrees) {
+        scale = 1f
+        offsetX = 0f
+        offsetY = 0f
+    }
+
     // Sync background with ViewModel — any option change re-composites subject over chosen bg
     LaunchedEffect(selectedBackground) {
         if (selectedBackground == BackgroundOption.NONE) {
@@ -101,13 +129,35 @@ fun EditPhotoScreen(
             )
             sharedViewModel.removeBackground()
         }
+        // Track in history — capture the current edit-window state
+        sharedViewModel.pushHistory(
+            EditState(
+                scale = scale,
+                offX = offsetX,
+                offY = offsetY,
+                rotationDegrees = rotationDegrees,
+                bgOption = selectedBackground,
+                compression = compressionValue
+            )
+        )
     }
-    
+
     // Sync compression with ViewModel
     LaunchedEffect(compressionValue) {
         sharedViewModel.setCompressionQuality(compressionValue)
     }
-    
+
+    // Apply undo/redo — sync local UI to the post-undo state
+    fun applyEditState(state: EditState?) {
+        if (state == null) return
+        scale = state.scale
+        offsetX = state.offX
+        offsetY = state.offY
+        // rotationDegrees / bgOption / compression / custom* are restored inside the VM
+        selectedBackground = state.bgOption
+        compressionValue = state.compression
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -128,6 +178,26 @@ fun EditPhotoScreen(
                     }
                 },
                 actions = {
+                    // Undo / Redo sit LEFT of the "2/3" indicator. Disabled when
+                    // history stack is empty / has no backward / forward entry.
+                    IconButton(
+                        onClick = { applyEditState(sharedViewModel.undoEdit()) },
+                        enabled = canUndo
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Undo,
+                            contentDescription = "Undo edit"
+                        )
+                    }
+                    IconButton(
+                        onClick = { applyEditState(sharedViewModel.redoEdit()) },
+                        enabled = canRedo
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Redo,
+                            contentDescription = "Redo edit"
+                        )
+                    }
                     Text(
                         text = "2/3",
                         style = MaterialTheme.typography.bodyMedium,
@@ -138,7 +208,8 @@ fun EditPhotoScreen(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White
                 )
             )
         },
@@ -150,8 +221,13 @@ fun EditPhotoScreen(
             ) {
                 Button(
                     onClick = {
-                        sharedViewModel.bakeTransform(scale, offsetX, offsetY)
-                        onContinue()
+                        // Continue = bake visible portion of displayed bitmap
+                        // (preserving preset AR) into _bakedBitmap, then navigate.
+                        // No history is pushed for the bake itself — that would
+                        // prevent the user from redoing after Continue-but-back.
+                        if (sharedViewModel.bakeTransform(scale, offsetX, offsetY)) {
+                            onContinue()
+                        }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -194,11 +270,12 @@ Icon(
             // Custom Preset Inputs (only for MANUAL preset) — shown at top so the
             // user can type width/height and immediately see the preview box ratio
             // update; the live preview below reflects whatever they entered.
-            if (selectedPreset?.id == com.dhanuk.govphoto_resizer.data.model.PhotoPreset.MANUAL_PRESET_ID) {
+            if (selectedPreset?.id == PhotoPreset.MANUAL_PRESET_ID) {
                 CustomPresetInputs(sharedViewModel)
                 Spacer(modifier = Modifier.height(16.dp))
                 // Re-trigger auto-fit when the user changes the custom dimensions —
-                // the displayed bitmap must re-crop to the new target aspect ratio.
+                // the displayed bitmap recovers to pristine+rotated baseline so the
+                // user can re-pan to the new aspect-ratio box. No physical crop here.
                 LaunchedEffect(aspectRatio) {
                     val ob = originalBitmap
                     if (ob != null && !ob.isRecycled) {
@@ -210,10 +287,12 @@ Icon(
                 }
             }
 
-            // Photo Preview with actual image and dynamic aspect ratio
+            // Photo Preview with actual image and dynamic aspect ratio.
+            // Visual-only zoom/pan inside the preset-aspect-ratio box; no
+            // physical crop until the user taps Continue (bakeTransform).
             PhotoPreviewWithImage(
                 imageUri = selectedImageUri,
-                bitmap = displayedBitmap ?: originalBitmap,
+                bitmap = renderBitmap,
                 backgroundColor = selectedBackground,
                 aspectRatio = aspectRatio,
                 scale = scale,
@@ -226,35 +305,37 @@ Icon(
                     offsetY += newOffsetY
                 },
                 onReset = {
+                    // Reset = undo all window actions, restore pristine original,
+                    // clear history, re-trigger auto-fit
+                    sharedViewModel.resetAllEditsAndRefit()
                     scale = 1f
                     offsetX = 0f
                     offsetY = 0f
+                    selectedBackground = BackgroundOption.NONE
+                    compressionValue = 0.7f
                 },
-                onRotate = { sharedViewModel.rotate90() },
-                onCrop = {
-                    val src = displayedBitmap ?: originalBitmap
-                    if (src != null && !src.isRecycled) {
-                        val cropped = sharedViewModel.applyCrop(src, scale, offsetX, offsetY)
-                        if (cropped != null) {
-                            scale = 1f
-                            offsetX = 0f
-                            offsetY = 0f
-                            canUndoCrop = true
-                        }
-                    }
+                onRotate = {
+                    sharedViewModel.rotate90()
+                    sharedViewModel.pushHistory(
+                        EditState(
+                            scale = scale, offX = offsetX, offY = offsetY,
+                            rotationDegrees = (rotationDegrees + 90) % 360,
+                            bgOption = selectedBackground,
+                            compression = compressionValue
+                        )
+                    )
                 },
                 onZoom = { factor ->
                     scale = (scale * factor).coerceIn(0.5f, 3f)
-                },
-                onUndoCrop = {
-                    if (sharedViewModel.undoCrop()) {
-                        scale = 1f
-                        offsetX = 0f
-                        offsetY = 0f
-                        canUndoCrop = false
-                    }
-                },
-                canUndoCrop = canUndoCrop
+                    sharedViewModel.pushHistory(
+                        EditState(
+                            scale = scale, offX = offsetX, offY = offsetY,
+                            rotationDegrees = rotationDegrees,
+                            bgOption = selectedBackground,
+                            compression = compressionValue
+                        )
+                    )
+                }
             )
             
             Spacer(modifier = Modifier.height(8.dp))
@@ -302,10 +383,7 @@ private fun PhotoPreviewWithImage(
     onTransform: (Float, Float, Float) -> Unit,
     onReset: () -> Unit,
     onRotate: () -> Unit,
-    onCrop: () -> Unit,
-    onZoom: (Float) -> Unit,
-    onUndoCrop: () -> Unit,
-    canUndoCrop: Boolean
+    onZoom: (Float) -> Unit
 ) {
     val context = LocalContext.current
     
@@ -474,7 +552,9 @@ private fun PhotoPreviewWithImage(
             }
         }
         
-        // Control buttons row
+        // Control buttons row: [Reset] [Rotate] [Zoom-] [Zoom %] [Zoom+]
+        // Crop / Undo-Crop removed — physical crop happens only on Continue
+        // (bakeTransform). Undo/Redo now live in the TopAppBar, not here.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -482,6 +562,22 @@ private fun PhotoPreviewWithImage(
                 .padding(12.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
+            // Reset button — restores pristine + clears history
+            FloatingActionButton(
+            onClick = onReset,
+            modifier = Modifier.size(48.dp),
+                containerColor = Color.Black.copy(alpha = 0.5f),
+                contentColor = Color.White,
+                shape = CircleShape,
+                elevation = FloatingActionButtonDefaults.elevation(0.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Reset edits",
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
             // Rotate button — rotates the bitmap 90° clockwise each tap
             FloatingActionButton(
             onClick = onRotate,
@@ -497,7 +593,7 @@ private fun PhotoPreviewWithImage(
                     modifier = Modifier.size(22.dp)
                 )
             }
-            
+
             // Zoom out button
             FloatingActionButton(
             onClick = { onZoom(0.9f) },
@@ -513,7 +609,7 @@ private fun PhotoPreviewWithImage(
                     modifier = Modifier.size(22.dp)
                 )
             }
-            
+
             // Zoom indicator
             Surface(
                 shape = RoundedCornerShape(20.dp),
@@ -526,7 +622,7 @@ private fun PhotoPreviewWithImage(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                 )
             }
-            
+
             // Zoom in button
             FloatingActionButton(
             onClick = { onZoom(1.1f) },
@@ -539,38 +635,6 @@ private fun PhotoPreviewWithImage(
                 Icon(
                     imageVector = Icons.Default.ZoomIn,
                     contentDescription = "Zoom in",
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-            
-            // Undo crop button — restores pre-crop bitmap
-            FloatingActionButton(
-            onClick = onUndoCrop,
-            modifier = Modifier.size(48.dp),
-                containerColor = if (canUndoCrop) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = 0.5f),
-                contentColor = Color.White,
-                shape = CircleShape,
-                elevation = FloatingActionButtonDefaults.elevation(0.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Undo,
-                    contentDescription = "Undo crop",
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-            
-            // Crop button — applies current zoom/pan as a crop to the visible region
-            FloatingActionButton(
-            onClick = onCrop,
-            modifier = Modifier.size(48.dp),
-                containerColor = Color.Black.copy(alpha = 0.5f),
-                contentColor = Color.White,
-                shape = CircleShape,
-                elevation = FloatingActionButtonDefaults.elevation(0.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Crop,
-                    contentDescription = "Crop",
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -828,9 +892,6 @@ Icon(
     }
 }
 
-enum class BackgroundOption {
-    NONE, WHITE, STUDIO_BLUE, LIGHT_GREY, GRADIENT, TRANSPARENT
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
