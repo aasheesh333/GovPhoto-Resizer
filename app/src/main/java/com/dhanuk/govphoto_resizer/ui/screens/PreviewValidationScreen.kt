@@ -191,7 +191,10 @@ fun PreviewValidationScreen(
                         )
                     ) {
                         if (isSaving) {
-                            CircularProgressIndicator(
+                            // Material3 CircularProgressIndicator crashes with
+                            // NoSuchMethodError KeyframesSpecConfig.at on this BOM —
+                            // use safe Canvas spinner instead.
+                            com.dhanuk.govphoto_resizer.ui.components.SafeCircularSpinner(
                                 modifier = Modifier.size(24.dp),
                                 color = MaterialTheme.colorScheme.onTertiary,
                                 strokeWidth = 2.dp
