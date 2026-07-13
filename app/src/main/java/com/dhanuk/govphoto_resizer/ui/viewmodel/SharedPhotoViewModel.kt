@@ -870,7 +870,9 @@ override fun onCleared() {
                     // Pre-flight: source must be a non-recycled ARGB_8888 (or compatible) bitmap.
                     // Reconfigure to ARGB_8888 if needed (some ImageDecoder paths yield RGB_565
                     // which fails PNG compress with transparent pixels).
-                    val srcSafe = if (src.config == Bitmap.Config.ARGB_8888 || src.config == Bitmap.Config.RGBA_F16) {
+                    val srcSafe = if (src.config == Bitmap.Config.ARGB_8888 ||
+                        (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O &&
+                         src.config == Bitmap.Config.RGBA_F16)) {
                         src
                     } else {
                         try { src.copy(Bitmap.Config.ARGB_8888, true) ?: src }
