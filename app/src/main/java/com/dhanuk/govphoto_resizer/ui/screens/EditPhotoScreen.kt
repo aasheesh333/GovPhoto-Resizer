@@ -117,7 +117,8 @@ fun EditPhotoScreen(
 
     // Seed baseline once image is ready so Undo has a return point.
     LaunchedEffect(originalBitmap) {
-        if (originalBitmap != null && !originalBitmap.isRecycled) {
+        val bmp = originalBitmap
+        if (bmp != null && !bmp.isRecycled) {
             sharedViewModel.ensureHistoryBaseline(
                 EditState(
                     scale = 1f, offX = 0f, offY = 0f,
