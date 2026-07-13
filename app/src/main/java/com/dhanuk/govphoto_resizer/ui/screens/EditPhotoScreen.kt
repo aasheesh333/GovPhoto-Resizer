@@ -27,7 +27,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -76,13 +78,14 @@ fun EditPhotoScreen(
     var compressionValue by remember { mutableFloatStateOf(compressionQuality) }
 
     // Image transformation state — visual-only zoom/pan applied via graphicsLayer.
-    // scale starts at "fill preset box without stretching" — recomputed whenever
-    // the preset aspect ratio or the underlying bitmap changes.
+    // scale=1f + ContentScale.Crop = cover-fill (no stretch, no blank bars).
     var scale by remember(selectedPreset?.id, originalBitmap, rotationDegrees) {
         mutableFloatStateOf(1f)
     }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
+    // Edit window size in px — required by bakeTransform for accurate crop math.
+    var previewBoxSize by remember { mutableStateOf(IntSize.Zero) }
 
     // The bitmap actually rendered — pristine+rotation-corrected. Background
     // removal (when selected) replaces the displayedBitmap too. We read the
@@ -221,11 +224,10 @@ fun EditPhotoScreen(
             ) {
                 Button(
                     onClick = {
-                        // Continue = bake visible portion of displayed bitmap
-                        // (preserving preset AR) into _bakedBitmap, then navigate.
-                        // No history is pushed for the bake itself — that would
-                        // prevent the user from redoing after Continue-but-back.
-                        if (sharedViewModel.bakeTransform(scale, offsetX, offsetY)) {
+                        // Continue = bake visible cover-window region into _bakedBitmap.
+                        val bw = previewBoxSize.width.toFloat().coerceAtLeast(1f)
+                        val bh = previewBoxSize.height.toFloat().coerceAtLeast(1f)
+                        if (sharedViewModel.bakeTransform(scale, offsetX, offsetY, bw, bh)) {
                             onContinue()
                         }
                     },
@@ -299,14 +301,16 @@ Icon(
                 offsetX = offsetX,
                 offsetY = offsetY,
                 faceAnalysis = faceAnalysis,
+                onBoxSize = { previewBoxSize = it },
                 onTransform = { newScale, newOffsetX, newOffsetY ->
-                    scale = (scale * newScale).coerceIn(0.5f, 3f)
-                    offsetX += newOffsetX
-                    offsetY += newOffsetY
+                    val nextScale = (scale * newScale).coerceIn(1f, 4f)
+                    scale = nextScale
+                    // Soft pan clamp: keep offsets within ~half box so face stays reachable
+                    val maxPan = maxOf(previewBoxSize.width, previewBoxSize.height).toFloat() * nextScale
+                    offsetX = (offsetX + newOffsetX).coerceIn(-maxPan, maxPan)
+                    offsetY = (offsetY + newOffsetY).coerceIn(-maxPan, maxPan)
                 },
                 onReset = {
-                    // Reset = undo all window actions, restore pristine original,
-                    // clear history, re-trigger auto-fit
                     sharedViewModel.resetAllEditsAndRefit()
                     scale = 1f
                     offsetX = 0f
@@ -326,7 +330,7 @@ Icon(
                     )
                 },
                 onZoom = { factor ->
-                    scale = (scale * factor).coerceIn(0.5f, 3f)
+                    scale = (scale * factor).coerceIn(1f, 4f)
                     sharedViewModel.pushHistory(
                         EditState(
                             scale = scale, offX = offsetX, offY = offsetY,
@@ -380,6 +384,7 @@ private fun PhotoPreviewWithImage(
     offsetX: Float,
     offsetY: Float,
     faceAnalysis: FaceAnalysisResult?,
+    onBoxSize: (IntSize) -> Unit,
     onTransform: (Float, Float, Float) -> Unit,
     onReset: () -> Unit,
     onRotate: () -> Unit,
@@ -390,9 +395,10 @@ private fun PhotoPreviewWithImage(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(aspectRatio) // Use dynamic aspect ratio
+            .aspectRatio(aspectRatio) // Preset window size
             .clip(RoundedCornerShape(16.dp))
-            .border(2.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp)),
+            .border(2.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
+            .onSizeChanged { onBoxSize(it) },
         contentAlignment = Alignment.Center
     ) {
         // Background color layer
@@ -411,11 +417,9 @@ private fun PhotoPreviewWithImage(
                 )
         )
         
-        // Actual image display — prioritize displayedBitmap so that
-        // background removal / compositing results are visible to the user.
-        // Use ContentScale.Fit so the whole image is visible (no stretching,
-        // no cropping). Users can zoom/pan to compose; bakeTransform() crops
-        // the visible region to the preset aspect ratio on Continue.
+        // Cover-fill: ContentScale.Crop keeps original AR, fills preset box,
+        // clips overflow (visual only — no permanent crop until Continue).
+        // graphicsLayer scale/pan lets user adjust framing with fingers.
         if (bitmap != null && !bitmap.isRecycled) {
             androidx.compose.foundation.Image(
                 bitmap = bitmap.asImageBitmap(),
@@ -433,7 +437,7 @@ private fun PhotoPreviewWithImage(
                             onTransform(zoom, pan.x, pan.y)
                         }
                     },
-                contentScale = ContentScale.Fit
+                contentScale = ContentScale.Crop
             )
         } else if (imageUri != null) {
             AsyncImage(
@@ -455,7 +459,7 @@ private fun PhotoPreviewWithImage(
                             onTransform(zoom, pan.x, pan.y)
                         }
                     },
-                contentScale = ContentScale.Fit
+                contentScale = ContentScale.Crop
             )
         } else {
             // Placeholder when no image

@@ -153,20 +153,27 @@ fun PreviewValidationScreen(
                                 scope.launch {
                                     try {
                                         val result = sharedViewModel.savePhotoToGallery()
-                                        isSaving = false
                                         result.onSuccess {
                                             Toast.makeText(context, "Photo saved to Gallery!", Toast.LENGTH_SHORT).show()
                                             onSaveComplete()
                                         }.onFailure { error ->
-                                            Toast.makeText(context, "Failed to save: ${error.message}", Toast.LENGTH_LONG).show()
+                                            Toast.makeText(
+                                                context,
+                                                "Failed to save: ${error.message ?: "unknown"}",
+                                                Toast.LENGTH_LONG
+                                            ).show()
                                         }
                                     } catch (t: Throwable) {
                                         android.util.Log.e("PreviewValidation", "Save crashed", t)
-                                        isSaving = false
+                                        try {
+                                            sharedViewModel.writeCrashFile("UI save catch", t)
+                                        } catch (_: Throwable) {}
                                         val msg = if (t is OutOfMemoryError)
                                             "Out of memory — try a smaller photo"
                                         else "Error: ${t.message}"
                                         Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                    } finally {
+                                        isSaving = false
                                     }
                                 }
                             }
@@ -369,12 +376,13 @@ private fun PreviewCard(
                             .border(1.dp, MaterialTheme.colorScheme.outlineVariant),
                         contentAlignment = Alignment.Center
                     ) {
+                        // Baked bitmap already has preset AR — Fit fills box without stretch.
                         if (processedBitmap != null && !processedBitmap.isRecycled) {
                             androidx.compose.foundation.Image(
                                 bitmap = processedBitmap.asImageBitmap(),
                                 contentDescription = "Processed photo",
                                 modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
+                                contentScale = ContentScale.Fit
                             )
                         } else if (originalBitmap != null && !originalBitmap.isRecycled) {
                             androidx.compose.foundation.Image(

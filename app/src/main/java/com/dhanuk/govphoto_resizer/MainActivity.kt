@@ -52,17 +52,24 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // DEBUG-only uncaught-exception handler — logs to logcat with a clear
-        // tag instead of an instant silent crash. Useful for diagnosing the
-        // "app closes instantly on Save" report without a debugger attached.
-        // In release builds the default handler still runs (this is gated to
-        // BuildConfig.DEBUG only).
-        if (BuildConfig.DEBUG) {
-            val previous = Thread.getDefaultUncaughtExceptionHandler()
-            Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+        // Always-on uncaught handler: write last_crash.txt then delegate.
+        // Helps diagnose "instant app close on Save" after process death.
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            try {
                 android.util.Log.e("GovPhotoCrash", "Uncaught on ${thread.name}", throwable)
-                previous?.uncaughtException(thread, throwable)
-            }
+                val f = java.io.File(filesDir, "last_crash.txt")
+                f.writeText(
+                    buildString {
+                        appendLine(java.util.Date().toString())
+                        appendLine("Uncaught on ${thread.name}")
+                        appendLine(throwable::class.java.name + ": " + throwable.message)
+                        appendLine(throwable.stackTraceToString().take(4000))
+                        if (BuildConfig.DEBUG) appendLine("DEBUG=true")
+                    }
+                )
+            } catch (_: Throwable) {}
+            previous?.uncaughtException(thread, throwable)
         }
 
         setContent {

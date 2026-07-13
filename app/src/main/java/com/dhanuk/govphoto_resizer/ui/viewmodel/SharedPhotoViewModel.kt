@@ -222,16 +222,29 @@ private fun decodeUriToOriginalBitmap(uri: Uri) {
             BitmapFactory.decodeStream(stream, null, options)
         }
         val maxDim = MAX_DECODE_DIM
+        val srcW = options.outWidth.coerceAtLeast(1)
+        val srcH = options.outHeight.coerceAtLeast(1)
         val sampleSize = sequenceOf(1, 2, 4, 8).firstOrNull {
-            (options.outWidth / it) <= maxDim && (options.outHeight / it) <= maxDim
+            (srcW / it) <= maxDim && (srcH / it) <= maxDim
         } ?: 8
 
+        // Decode preserving aspect ratio. NEVER force square (setTargetSize(max,max)
+        // stretches every photo to 1:1 and is the root cause of "image stretched").
         val bmp = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
           val source = android.graphics.ImageDecoder.createSource(context.contentResolver, uri)
-          android.graphics.ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+          android.graphics.ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
             decoder.allocator = android.graphics.ImageDecoder.ALLOCATOR_SOFTWARE
-            decoder.setTargetSize(maxDim, maxDim)
             decoder.isMutableRequired = true
+            val iw = info.size.width.coerceAtLeast(1)
+            val ih = info.size.height.coerceAtLeast(1)
+            val longest = maxOf(iw, ih)
+            if (longest > maxDim) {
+              val s = maxDim.toFloat() / longest.toFloat()
+              decoder.setTargetSize(
+                (iw * s).toInt().coerceAtLeast(1),
+                (ih * s).toInt().coerceAtLeast(1)
+              )
+            }
           }
         } else {
           val decodeOptions = BitmapFactory.Options().apply {
@@ -593,53 +606,59 @@ fun removeBackground() {
      * the user's adjustments. Returns true on success.
      */
     /**
-     * Called on Continue button in EditPhotoScreen. Physically crops the
-     * portion of the displayed bitmap visible inside the preset-ratio box at
-     * the current zoom/pan transform, and stores the result in
-     * [_bakedBitmap] (NOT `_displayedBitmap` — the latter must remain the
-     * full original so back-navigation from PreviewValidation shows the user
-     * a fresh editable state). The baked bitmap is later read by
-     * PreviewValidation's Processed tab and by `savePhotoToGallery()`.
+     * Called on Continue. Physically crops the portion of [source] that is
+     * visible inside the preset-ratio edit window under the current
+     * ContentScale.Crop + graphicsLayer(scale, offset) transform.
+     *
+     * [boxW]/]/boxH] = edit window size in Compose pixels (from onSizeChanged).
+     * [userScale] = graphicsLayer scale (1f = cover-fill).
+     * [offsetX]/[offsetY] = graphicsLayer translation in Compose pixels.
+     *
+     * Result is written to [_bakedBitmap] only — displayed stays full image.
      */
-    fun bakeTransform(scale: Float, offsetX: Float, offsetY: Float): Boolean {
+    fun bakeTransform(
+        userScale: Float,
+        offsetX: Float,
+        offsetY: Float,
+        boxW: Float,
+        boxH: Float
+    ): Boolean {
         val source = _displayedBitmap.value ?: _originalBitmap.value ?: return false
-        if (source.isRecycled || scale <= 0f) return false
-        val srcW = source.width
-        val srcH = source.height
-        if (srcW <= 0 || srcH <= 0) return false
-        val targetAR = aspectRatio
-        // The crop rect preserves the preset aspect ratio. Its dimensions are
-        // exactly what is visually represented by the preset-ratio box (the
-        // "viewport" in the rendered image).
-        val cropW: Int
-        val cropH: Int
-        if (targetAR >= 1f) {
-            // Landscape-ish preset box — its width is limited by the smaller
-            // source dimension, height is the box-pixel height = width / ratio.
-            cropW = minOf(srcW, srcH)
-            cropH = (cropW / targetAR).toInt().coerceIn(1, srcH)
-        } else {
-            // Portrait-ish preset box — analogous.
-            cropH = minOf(srcW, srcH)
-            cropW = (cropH * targetAR).toInt().coerceIn(1, srcW)
-        }
-        // At scale=1, the viewport half-width is cropW/2 in source pixels.
-        // When user zooms in, the visible area shrinks in source pixels.
-        val halfVW = (cropW / 2f / scale).coerceAtMost(srcW / 2f)
-        val halfVH = (cropH / 2f / scale).coerceAtMost(srcH / 2f)
-        val centerX = (srcW / 2f - offsetX / scale).coerceIn(halfVW, srcW - halfVW)
-        val centerY = (srcH / 2f - offsetY / scale).coerceIn(halfVH, srcH - halfVH)
-        val left = (centerX - halfVW).toInt().coerceIn(0, srcW - cropW)
-        val top = (centerY - halfVH).toInt().coerceIn(0, srcH - cropH)
-        val cropPxW = (halfVW * 2).toInt().coerceIn(1, srcW - left)
-        val cropPxH = (halfVH * 2).toInt().coerceIn(1, srcH - top)
+        if (source.isRecycled || userScale <= 0f) return false
+        val srcW = source.width.toFloat()
+        val srcH = source.height.toFloat()
+        if (srcW <= 0f || srcH <= 0f) return false
+        val bw = boxW.coerceAtLeast(1f)
+        val bh = boxH.coerceAtLeast(1f)
+
+        // Cover scale at userScale=1: image fills box, keeps AR, clips overflow.
+        val coverScale = maxOf(bw / srcW, bh / srcH)
+        val totalScale = coverScale * userScale.coerceAtLeast(0.01f)
+
+        // Compose graphicsLayer: image laid out fillMaxSize then scaled around
+        // center, then translated by (offsetX, offsetY). Viewport center maps
+        // back to source as: srcCenter - offset / totalScale.
+        val halfVW = (bw / totalScale) / 2f
+        val halfVH = (bh / totalScale) / 2f
+        val centerX = (srcW / 2f - offsetX / totalScale).coerceIn(halfVW, srcW - halfVW)
+        val centerY = (srcH / 2f - offsetY / totalScale).coerceIn(halfVH, srcH - halfVH)
+
+        var left = (centerX - halfVW).toInt()
+        var top = (centerY - halfVH).toInt()
+        var cropW = (halfVW * 2f).toInt().coerceAtLeast(1)
+        var cropH = (halfVH * 2f).toInt().coerceAtLeast(1)
+        // Clamp crop rect inside source bounds
+        if (left < 0) left = 0
+        if (top < 0) top = 0
+        if (left + cropW > source.width) cropW = source.width - left
+        if (top + cropH > source.height) cropH = source.height - top
+        if (cropW < 1 || cropH < 1) return false
+
         return try {
-            val cropped = Bitmap.createBitmap(source, left, top, cropPxW, cropPxH)
+            val cropped = Bitmap.createBitmap(source, left, top, cropW, cropH)
             val prev = _bakedBitmap.value
             _bakedBitmap.value = cropped
             if (prev != null && !prev.isRecycled && prev !== cropped) prev.recycle()
-            // Fresh face analysis on the baked bitmap (for preview-screen checklist).
-            // analyze{} is suspend — kick it off in the viewModelScope.
             viewModelScope.launch(Dispatchers.Default + coroutineExceptionHandler) {
                 try {
                     _faceAnalysis.value = faceAnalyzer.analyze(cropped)
@@ -654,11 +673,31 @@ fun removeBackground() {
             true
         } catch (oom: OutOfMemoryError) {
             Log.e(TAG, "bakeTransform OOM", oom)
+            writeCrashFile("bakeTransform OOM", oom)
             false
         } catch (e: Exception) {
             Log.w(TAG, "bakeTransform failed", e)
+            writeCrashFile("bakeTransform failed", e)
             false
         }
+    }
+
+    /** Durable crash breadcrumb — survives process death better than logcat alone. */
+    fun writeCrashFile(label: String, t: Throwable? = null) {
+        try {
+            val f = java.io.File(context.filesDir, "last_crash.txt")
+            f.writeText(
+                buildString {
+                    appendLine(java.util.Date().toString())
+                    appendLine(label)
+                    if (t != null) {
+                        appendLine(t::class.java.name + ": " + t.message)
+                        appendLine(t.stackTraceToString().take(4000))
+                    }
+                }
+            )
+            Log.e(TAG, "crash file written: $label", t)
+        } catch (_: Throwable) {}
     }
 
     /** Rotate the currently displayed (and original) bitmap 90° clockwise. */
@@ -844,128 +883,136 @@ override fun onCleared() {
     recycleBitmaps()
   }
 
+    /**
+     * Scale [src] into a new ARGB_8888 bitmap of [tw]x[th] using Canvas (safer
+     * than some createScaledBitmap native paths on low-RAM devices).
+     */
+    private fun scaleBitmapSafe(src: Bitmap, tw: Int, th: Int): Bitmap {
+        if (src.width == tw && src.height == th) {
+            return src.copy(Bitmap.Config.ARGB_8888, false) ?: src
+        }
+        val out = Bitmap.createBitmap(tw, th, Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(out)
+        val paint = android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG)
+        val srcRect = android.graphics.Rect(0, 0, src.width, src.height)
+        val dstRect = android.graphics.Rect(0, 0, tw, th)
+        canvas.drawBitmap(src, srcRect, dstRect, paint)
+        return out
+    }
+
     suspend fun savePhotoToGallery(): Result<Uri> {
         Log.d(TAG, "savePhotoToGallery: Starting save process")
         return withContext(Dispatchers.IO) {
             photoMutex.withLock {
-                // Hold a local bitmap reference that won't be recycled underneath us.
-                // We deep-copy the baked bitmap (or fall back to displayed / original / re-decode).
                 var workBitmap: Bitmap? = null
                 var scaledBitmap: Bitmap? = null
                 try {
-                    // Prefer the baked bitmap (output of Continue/bakeTransform).
-                    // Fall back to displayed (pre-Continue case, e.g. test or legacy path).
+                    // ONLY use baked bitmap (Continue output). No silent fallback —
+                    // missing bake means user never tapped Continue correctly.
                     val src = _bakedBitmap.value
-                        ?: _displayedBitmap.value
-                        ?: _originalBitmap.value
-                        ?: run {
-                            _selectedImageUri.value?.let { uri ->
-                                decodeSelectedUri()
-                            }
-                        }
                     if (src == null || src.isRecycled) {
-                        Log.e(TAG, "savePhotoToGallery: No bitmap available")
-                        return@withLock Result.failure(Exception("No image to save"))
-                    }
-                    // Pre-flight: source must be a non-recycled ARGB_8888 (or compatible) bitmap.
-                    // Reconfigure to ARGB_8888 if needed (some ImageDecoder paths yield RGB_565
-                    // which fails PNG compress with transparent pixels).
-                    val srcSafe = if (src.config == Bitmap.Config.ARGB_8888 ||
-                        (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O &&
-                         src.config == Bitmap.Config.RGBA_F16)) {
-                        src
-                    } else {
-                        try { src.copy(Bitmap.Config.ARGB_8888, true) ?: src }
-                        catch (oom: OutOfMemoryError) { src }
+                        Log.e(TAG, "savePhotoToGallery: No baked bitmap — Continue first")
+                        writeCrashFile("save: no baked bitmap")
+                        return@withLock Result.failure(Exception("No processed image. Go back and tap Continue."))
                     }
 
-                    // Deep copy so concurrent analyzeFace()/rotate90()/autoFit() recycling
-                    // the shared bitmap does NOT crash our compress path. ARGB_8888 keeps
-                    // transparency for PNG/transparent backgrounds.
+                    // Isolate immediately: private ARGB_8888 deep copy. Never compress
+                    // a shared ref that face-analyze / rotate may recycle.
                     workBitmap = try {
-                        Bitmap.createBitmap(srcSafe.width, srcSafe.height, Bitmap.Config.ARGB_8888).also { copy ->
-                            android.graphics.Canvas(copy).drawBitmap(srcSafe, 0f, 0f, null)
+                        Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888).also { copy ->
+                            android.graphics.Canvas(copy).drawBitmap(src, 0f, 0f, null)
                         }
                     } catch (oom: OutOfMemoryError) {
-                        Log.e(TAG, "savePhotoToGallery: deep-copy OOM, using source directly", oom)
-                        srcSafe
+                        writeCrashFile("save: deep-copy OOM", oom)
+                        return@withLock Result.failure(Exception("Out of memory — try a smaller photo"))
                     } catch (e: Exception) {
-                        Log.w(TAG, "savePhotoToGallery: deep-copy failed", e)
-                        srcSafe
+                        writeCrashFile("save: deep-copy failed", e)
+                        return@withLock Result.failure(e)
                     }
 
-                    var targetW = targetWidth.coerceAtLeast(50).coerceAtMost(4096)
-                    var targetH = targetHeight.coerceAtLeast(50).coerceAtMost(4096)
-                    // Cap side by source bounds so we never upscale a tiny image.
-                    val maxSrcSide = maxOf(workBitmap!!.width, workBitmap!!.height)
-                    val cap = maxSrcSide.coerceAtMost(4096)
-                    if (targetW > cap) targetW = (cap * targetWidth.toFloat() / maxOf(targetWidth, targetHeight)).toInt().coerceAtLeast(50)
-                    if (targetH > cap) targetH = (cap * targetHeight.toFloat() / maxOf(targetWidth, targetHeight)).toInt().coerceAtLeast(50)
+                    val wb = workBitmap!!
+                    // Cap target to min(preset, source, 2048) — never huge upscale.
+                    val presetW = targetWidth.coerceAtLeast(50)
+                    val presetH = targetHeight.coerceAtLeast(50)
+                    val maxSide = 2048
+                    var targetW = presetW.coerceAtMost(maxSide).coerceAtMost(wb.width.coerceAtLeast(50))
+                    var targetH = presetH.coerceAtMost(maxSide).coerceAtMost(wb.height.coerceAtLeast(50))
+                    // Preserve baked aspect if preset dims would distort a lot
+                    val bakedAR = wb.width.toFloat() / wb.height.toFloat()
+                    val targetAR = targetW.toFloat() / targetH.toFloat()
+                    if (kotlin.math.abs(bakedAR - targetAR) > 0.02f) {
+                        // Fit baked AR into target box
+                        if (bakedAR > targetAR) {
+                            targetH = (targetW / bakedAR).toInt().coerceAtLeast(50)
+                        } else {
+                            targetW = (targetH * bakedAR).toInt().coerceAtLeast(50)
+                        }
+                    }
 
                     val format = _selectedPreset.value?.format?.lowercase() ?: "jpg"
-                    val compressFormat = if (format == "png") Bitmap.CompressFormat.PNG
-                                         else Bitmap.CompressFormat.JPEG
+                    val isPng = format == "png"
+                    val compressFormat = if (isPng) Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG
                     val maxFileSizeBytes = (_selectedPreset.value?.maxFileSizeKb ?: 500) * 1024
                     var quality = (_compressionQuality.value * 100).toInt().coerceIn(10, 100)
 
                     scaledBitmap = try {
-                        Bitmap.createScaledBitmap(workBitmap!!, targetW, targetH, true)
+                        scaleBitmapSafe(wb, targetW, targetH)
                     } catch (oom: OutOfMemoryError) {
                         Log.e(TAG, "savePhotoToGallery: scale OOM — saving at source size", oom)
-                        workBitmap
+                        wb
+                    } catch (e: Exception) {
+                        writeCrashFile("save: scale failed", e)
+                        wb
                     }
 
                     val outputStream = ByteArrayOutputStream()
                     var attempts = 0
-                    val maxAttempts = 15
+                    val maxAttempts = 12
                     var done = false
                     while (attempts < maxAttempts && !done) {
                         outputStream.reset()
-                        val b = scaledBitmap!!
+                        val b = scaledBitmap ?: break
                         if (b.isRecycled) {
-                            Log.e(TAG, "savePhotoToGallery: bitmap recycled mid-compress")
+                            writeCrashFile("save: bitmap recycled mid-compress")
                             break
                         }
                         try {
                             b.compress(compressFormat, quality, outputStream)
                         } catch (e: IllegalStateException) {
-                            Log.e(TAG, "savePhotoToGallery: compress failed", e)
+                            writeCrashFile("save: compress IllegalState", e)
+                            break
+                        } catch (t: Throwable) {
+                            writeCrashFile("save: compress Throwable", t)
                             break
                         }
-                        if (outputStream.size() <= maxFileSizeBytes) {
-                            done = true
-                        } else {
-                            attempts++
-                            if (format == "png") {
-                                targetW = ((targetW * 0.9f).toInt()).coerceAtLeast(50)
-                                targetH = ((targetH * 0.9f).toInt()).coerceAtLeast(50)
-                                if (targetW == b.width && targetH == b.height) break
-                                val old = scaledBitmap
-                                scaledBitmap = try { Bitmap.createScaledBitmap(workBitmap!!, targetW, targetH, true) }
-                                              catch (oom: OutOfMemoryError) { old }
-                                if (old != null && old != workBitmap && old != scaledBitmap) old?.recycle()
-                            } else {
-                                if (quality > 10) quality -= 5
-                                else {
-                                    targetW = ((targetW * 0.9f).toInt()).coerceAtLeast(50)
-                                    targetH = ((targetH * 0.9f).toInt()).coerceAtLeast(50)
-                                    if (targetW == b.width && targetH == b.height) break
-                                    val old2 = scaledBitmap
-                                    scaledBitmap = try { Bitmap.createScaledBitmap(workBitmap!!, targetW, targetH, true) }
-                                                  catch (oom: OutOfMemoryError) { old2 }
-                                    if (old2 != null && old2 != workBitmap && old2 != scaledBitmap) old2?.recycle()
-                                }
+                        if (outputStream.size() <= maxFileSizeBytes || outputStream.size() == 0) {
+                            done = outputStream.size() > 0
+                            if (done) break
+                        }
+                        attempts++
+                        if (isPng || quality <= 15) {
+                            targetW = ((targetW * 0.85f).toInt()).coerceAtLeast(50)
+                            targetH = ((targetH * 0.85f).toInt()).coerceAtLeast(50)
+                            if (targetW == b.width && targetH == b.height) break
+                            val old = scaledBitmap
+                            scaledBitmap = try { scaleBitmapSafe(wb, targetW, targetH) }
+                                           catch (_: Throwable) { old }
+                            if (old != null && old !== wb && old !== scaledBitmap && !old.isRecycled) {
+                                try { old.recycle() } catch (_: Throwable) {}
                             }
+                        } else {
+                            quality = (quality - 8).coerceAtLeast(10)
                         }
                     }
 
                     val imageBytes = outputStream.toByteArray()
                     if (imageBytes.isEmpty()) {
+                        writeCrashFile("save: empty compress output")
                         return@withLock Result.failure(Exception("Failed to compress image"))
                     }
 
-                    val extension = if (format == "png") "png" else "jpg"
-                    val mimeType = if (format == "png") "image/png" else "image/jpeg"
+                    val extension = if (isPng) "png" else "jpg"
+                    val mimeType = if (isPng) "image/png" else "image/jpeg"
                     val filename = "GovPhoto_${System.currentTimeMillis()}.$extension"
                     val contentValues = ContentValues().apply {
                         put(MediaStore.Images.Media.DISPLAY_NAME, filename)
@@ -988,7 +1035,7 @@ override fun onCleared() {
                             written = true
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "savePhotoToGallery: openOutputStream/write failed", e)
+                        writeCrashFile("save: MediaStore write failed", e)
                     }
                     if (!written) {
                         try { context.contentResolver.delete(imageUri, null, null) } catch (_: Exception) {}
@@ -1032,24 +1079,17 @@ override fun onCleared() {
                 } catch (e: CancellationException) {
                     throw e
                 } catch (t: Throwable) {
-                    // Catch Throwable, not just Exception — covers VirtualMachineError,
-                    // native OOM, RuntimeException aggregates, etc. Never crash the app.
                     Log.e(TAG, "savePhotoToGallery: failure", t)
+                    writeCrashFile("save: outer Throwable", t)
                     Result.failure(t)
                 } finally {
-                    // Always clean up our private bitmap copies. Never recycle the
-                    // shared _displayedBitmap/_originalBitmap from the save path.
                     try {
-                        if (scaledBitmap != null && scaledBitmap != workBitmap && !scaledBitmap!!.isRecycled) {
+                        if (scaledBitmap != null && scaledBitmap !== workBitmap && !scaledBitmap!!.isRecycled) {
                             scaledBitmap!!.recycle()
                         }
                     } catch (_: Throwable) {}
                     try {
-                        // workBitmap is a deep copy made above (unless it equals src).
-                        // Distinguish: if workBitmap is NOT the same instance as src
-                        // (i.e. deep-copy succeeded), recycle it. If it equals src, leave alone.
-                        val srcRef = _bakedBitmap.value ?: _displayedBitmap.value ?: _originalBitmap.value
-                        if (workBitmap != null && workBitmap !== srcRef && !workBitmap!!.isRecycled) {
+                        if (workBitmap != null && !workBitmap!!.isRecycled) {
                             workBitmap!!.recycle()
                         }
                     } catch (_: Throwable) {}
