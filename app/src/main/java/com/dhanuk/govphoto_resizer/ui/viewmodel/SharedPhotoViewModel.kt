@@ -231,8 +231,13 @@ private fun decodeUriToOriginalBitmap(uri: Uri) {
         } ?: 8
 
         // Decode preserving aspect ratio. NEVER force square (setTargetSize(max,max)
-        // stretches every photo to 1:1 and is the root cause of "image stretched").
-        val bmp = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+        // stretches every photo to 1:1 — that was a root cause of "image stretched").
+        //
+        // ImageDecoder (API 28+) already applies EXIF orientation automatically.
+        // Applying EXIF again would double-rotate camera photos (looks stretched
+        // in the preset box). Only BitmapFactory path needs manual EXIF.
+        val usedImageDecoder = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P
+        val bmp = if (usedImageDecoder) {
           val source = android.graphics.ImageDecoder.createSource(context.contentResolver, uri)
           android.graphics.ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
             decoder.allocator = android.graphics.ImageDecoder.ALLOCATOR_SOFTWARE
@@ -257,17 +262,16 @@ private fun decodeUriToOriginalBitmap(uri: Uri) {
               BitmapFactory.decodeStream(stream, null, decodeOptions)
           }
         }
-        // Apply EXIF orientation so the bitmap matches what the user saw in the camera preview.
-        val withExif = bmp?.let { applyExifOrientation(uri, it) }
-        _originalBitmap.value = withExif
-        // Pristine original — write ONCE here, never mutated by edits. Used by
-        // the Original tab on PreviewValidationScreen and as the source for rotating
-        // `_displayedBitmap` from a clean baseline (quality-preserving rotations).
-        _pristineOriginalBitmap.value = withExif
-        // Reset rotation history on fresh image load
+        val oriented = if (bmp == null) null
+            else if (usedImageDecoder) bmp
+            else applyExifOrientation(uri, bmp)
+        _originalBitmap.value = oriented
+        // Pristine original — write ONCE here, never mutated by edits.
+        _pristineOriginalBitmap.value = oriented
+        // Show FULL image immediately (no physical crop). Edit screen uses
+        // ContentScale.Crop only for visual cover-fill inside the preset box.
+        _displayedBitmap.value = oriented
         _rotationDegrees.value = 0
-        // autoFitToPreset() is invoked by analyzeFace() once face analysis returns,
-        // so the displayed bitmap is set to the (rotated-0) pristine version.
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

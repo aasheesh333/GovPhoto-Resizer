@@ -65,6 +65,9 @@ fun AllFormsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.background)
+                    // Edge-to-edge: without statusBarsPadding the title/icons
+                    // sit under the system status bar and look half-cut.
+                    .statusBarsPadding()
             ) {
                 // Title Row with Back Button
                 Row(
@@ -112,14 +115,6 @@ fun AllFormsScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                         .padding(bottom = 16.dp)
-                )
-                
-                // Preset count indicator
-                Text(
-                    text = "${allPresets.size} presets available",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
                 
                 Divider(color = MaterialTheme.colorScheme.outlineVariant)
