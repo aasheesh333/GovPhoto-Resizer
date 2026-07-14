@@ -35,6 +35,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 
 private const val TAG = "SharedPhotoViewModel"
@@ -110,6 +111,13 @@ class SharedPhotoViewModel @Inject constructor(
     val isApplyingFilter: StateFlow<Boolean> = _isApplyingFilter.asStateFlow()
 
     private var filterJob: Job? = null
+    /**
+     * Monotonic counter incremented each time [reapplyFilter] launches a coroutine.
+     * A finished job only commits its result / clears the loading flag if its
+     * captured version still matches the current value — preventing stale
+     * results from a cancelled-but-still-running filter coroutine.
+     */
+    private val filterVersion = AtomicInteger(0)
 
     /**
      * Current rotation accumulator in degrees (0, 90, 180, 270). Incremented by
@@ -154,9 +162,6 @@ class SharedPhotoViewModel @Inject constructor(
      * when available, but still runs (centered crop) if face analysis fails.
      */
     @Volatile private var autoFitPending: Boolean = false
-
-    /** Snapshot of displayedBitmap before the most recent crop, for undo. */
-    private var preCropBitmap: Bitmap? = null
 
     private val _faceAnalysis = MutableStateFlow<FaceAnalysisResult?>(null)
     val faceAnalysis: StateFlow<FaceAnalysisResult?> = _faceAnalysis.asStateFlow()
@@ -295,7 +300,9 @@ private fun decodeUriToOriginalBitmap(uri: Uri) {
         _pristineOriginalBitmap.value = oriented
         // Show FULL image immediately (no physical crop). Edit screen uses
         // ContentScale.Crop only for visual cover-fill inside the preset box.
-        _displayedBitmap.value = oriented
+        // Route through setBaseBitmap so _preFilterBitmap is populated and the
+        // current filter re-applies (if any was selected before decode finished).
+        setBaseBitmap(oriented)
         _rotationDegrees.value = 0
             } catch (e: CancellationException) {
                 throw e
@@ -348,6 +355,15 @@ private fun decodeUriToOriginalBitmap(uri: Uri) {
      * Apply [_selectedFilter] to [_preFilterBitmap] and store result in
      * [_displayedBitmap]. ORIGINAL is synchronous (displayed = base).
      * Other filters run on a coroutine with loading state.
+     *
+     * A version counter + base-copy guard against races when the user changes
+     * filters or rotates while a filter coroutine is still running:
+     *   - The base is copied before [ImageFilterProcessor.apply] so recycling
+     *     oldPreFilter in [setBaseBitmap] cannot crash an in-flight job (#3).
+     *   - Before committing, the job re-checks its version so a stale result
+     *     from a cancelled job is discarded instead of overwriting displayed (#2).
+     *   - The finally block only clears the loading flag if this job is still
+     *     current, so a stale job doesn't re-enable Continue mid-application (#1).
      */
     private fun reapplyFilter() {
         filterJob?.cancel()
@@ -373,10 +389,24 @@ private fun decodeUriToOriginalBitmap(uri: Uri) {
             return
         }
         _isApplyingFilter.value = true
+        val myVersion = filterVersion.incrementAndGet()
         filterJob = viewModelScope.launch(Dispatchers.Default + coroutineExceptionHandler) {
+            // Private copy so setBaseBitmap recycling oldPreFilter (= base)
+            // cannot crash us mid-apply. Mirrors removeBackground's localCopy.
+            val localCopy = try {
+                base.copy(Bitmap.Config.ARGB_8888, false) ?: base
+            } catch (_: OutOfMemoryError) {
+                base
+            }
             try {
-                val result = ImageFilterProcessor.apply(base, filter)
-                if (!isActive) {
+                val result = ImageFilterProcessor.apply(localCopy, filter)
+                // Discard localCopy now — apply already consumed it.
+                if (localCopy !== base && localCopy !== result && !localCopy.isRecycled) {
+                    try { localCopy.recycle() } catch (_: Throwable) {}
+                }
+                // Re-check: if a newer filter was requested or base changed,
+                // discard this result — it is stale.
+                if (myVersion != filterVersion.get() || base !== _preFilterBitmap.value) {
                     if (result !== base && !result.isRecycled) result.recycle()
                     return@launch
                 }
@@ -393,12 +423,18 @@ private fun decodeUriToOriginalBitmap(uri: Uri) {
                 }
             } catch (oom: OutOfMemoryError) {
                 Log.e(TAG, "reapplyFilter OOM", oom)
-                _displayedBitmap.value = base
+                if (myVersion == filterVersion.get() && !base.isRecycled) {
+                    _displayedBitmap.value = base
+                }
             } catch (e: Exception) {
                 Log.w(TAG, "reapplyFilter failed", e)
-                _displayedBitmap.value = base
+                if (myVersion == filterVersion.get() && !base.isRecycled) {
+                    _displayedBitmap.value = base
+                }
             } finally {
-                _isApplyingFilter.value = false
+                if (myVersion == filterVersion.get()) {
+                    _isApplyingFilter.value = false
+                }
             }
         }
     }
@@ -695,59 +731,6 @@ fun removeBackground() {
     fun updateCustomWidth(w: String) { _customWidth.value = w }
     fun updateCustomHeight(h: String) { _customHeight.value = h }
     fun updateCustomFormat(f: String) { _customFormat.value = f }
-
-    /**
-     * Crop [source] to the visible region implied by the current zoom/pan,
-     * preserving the preset target aspect ratio so the crop is not stretched.
-     * Returns the cropped bitmap and replaces [displayedBitmap]; null on failure.
-     */
-    fun applyCrop(source: Bitmap, scale: Float, offsetX: Float, offsetY: Float): Bitmap? {
-        if (source.isRecycled || scale <= 0f) return null
-        val srcW = source.width
-        val srcH = source.height
-        if (srcW <= 0 || srcH <= 0) return null
-
-        val targetAR = aspectRatio
-        val minSrcDim = minOf(srcW, srcH)
-        val cropW: Int
-        val cropH: Int
-        if (targetAR >= 1f) {
-            cropW = minSrcDim
-            cropH = (cropW / targetAR).toInt().coerceIn(1, srcH)
-        } else {
-            cropH = minSrcDim
-            cropW = (cropH * targetAR).toInt().coerceIn(1, srcW)
-        }
-        val visibleSize = (minSrcDim / scale).toInt().coerceIn(cropW, srcW)
-        val halfV = visibleSize / 2
-        val centerX = (srcW / 2 - offsetX / scale).toInt().coerceIn(halfV, srcW - halfV)
-        val centerY = (srcH / 2 - offsetY / scale).toInt().coerceIn(halfV, srcH - halfV)
-        val left = (centerX - cropW / 2).coerceIn(0, srcW - cropW)
-        val top = (centerY - cropH / 2).coerceIn(0, srcH - cropH)
-        return try {
-            val cropped = Bitmap.createBitmap(source, left, top, cropW, cropH)
-            preCropBitmap?.let { if (!it.isRecycled && it !== source) it.recycle() }
-            preCropBitmap = source
-            _displayedBitmap.value = cropped
-            cropped
-        } catch (e: Exception) {
-            Log.w(TAG, "applyCrop failed", e)
-            null
-        }
-    }
-
-    /** Undo the last crop — restores the bitmap that was visible before [applyCrop]. */
-    fun undoCrop(): Boolean {
-        val prev = preCropBitmap ?: return false
-        if (prev.isRecycled) {
-            preCropBitmap = null
-            return false
-        }
-        preCropBitmap = null
-        _displayedBitmap.value = prev
-        analyzeFace()
-        return true
-    }
 
     /**
      * Called on Continue. Renders the current user-visible frame onto a
@@ -1082,8 +1065,6 @@ fun removeBackground() {
         _isRemovingBackground.value = false
         _removalState.value = RemovalState.Idle
         _faceAnalysis.value = null
-        preCropBitmap?.let { if (!it.isRecycled) it.recycle() }
-        preCropBitmap = null
         // Clear undo/redo history
         historyStack.clear()
         historyIdx = -1
@@ -1109,8 +1090,6 @@ private fun recycleBitmaps() {
     _preFilterBitmap.value = null
     _bakedBitmap.value?.let { if (!it.isRecycled) it.recycle() }
     _bakedBitmap.value = null
-    preCropBitmap?.let { if (!it.isRecycled) it.recycle() }
-    preCropBitmap = null
   }
 
  override fun onCleared() {
