@@ -206,5 +206,15 @@
     <string name="batch_save_all">सभी गैलरी में सेव करें</string>
     <string name="batch_retry">पुनः प्रयास</string>
     <string name="batch_no_source">कोई फोटो चयनित नहीं। पहले फोटो चुनने के लिए वापस जाएं।</string>
+
+    <!-- Image Filters -->
+    <string name="filters">फिल्टर</string>
+    <string name="filter_original">मूल</string>
+    <string name="filter_grayscale">ग्रेस्केल</string>
+    <string name="filter_binarize">बी एंड डब्ल्यू स्कैन</string>
+    <string name="filter_enhance">बेहतर बनाएं</string>
+    <string name="filter_lighten">हल्का करें</string>
+    <string name="filter_high_contrast">उच्च कंट्रास्ट</string>
+    <string name="cd_applying_filter">फिल्टर लागू हो रहा है</string>
 </resources>
 

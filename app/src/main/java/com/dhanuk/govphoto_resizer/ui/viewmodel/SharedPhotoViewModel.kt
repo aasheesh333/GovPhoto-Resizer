@@ -14,6 +14,8 @@ import androidx.lifecycle.viewModelScope
 import com.dhanuk.govphoto_resizer.data.ml.BackgroundRemover
 import com.dhanuk.govphoto_resizer.data.ml.FaceAnalysisResult
 import com.dhanuk.govphoto_resizer.data.ml.FaceAnalyzer
+import com.dhanuk.govphoto_resizer.data.ml.ImageFilter
+import com.dhanuk.govphoto_resizer.data.ml.ImageFilterProcessor
 import com.dhanuk.govphoto_resizer.data.model.PhotoPreset
 import com.dhanuk.govphoto_resizer.data.repository.HistoryRepository
 import com.dhanuk.govphoto_resizer.data.repository.PresetRepository
@@ -89,6 +91,25 @@ class SharedPhotoViewModel @Inject constructor(
      */
     private val _bakedBitmap = MutableStateFlow<Bitmap?>(null)
     val bakedBitmap: StateFlow<Bitmap?> = _bakedBitmap.asStateFlow()
+
+    /**
+     * "Base" bitmap before any image filter is applied: pristine + rotation
+     * (or post-bg-removal for PHOTO presets). [reapplyFilter] reads from this
+     * and writes the final result to [_displayedBitmap]. Never directly displayed.
+     */
+    private val _preFilterBitmap = MutableStateFlow<Bitmap?>(null)
+
+    /**
+     * Currently selected image filter (default ORIGINAL = no filter).
+     * Stored as state so undo/redo can restore it.
+     */
+    private val _selectedFilter = MutableStateFlow(ImageFilter.ORIGINAL)
+    val selectedFilter: StateFlow<ImageFilter> = _selectedFilter.asStateFlow()
+
+    private val _isApplyingFilter = MutableStateFlow(false)
+    val isApplyingFilter: StateFlow<Boolean> = _isApplyingFilter.asStateFlow()
+
+    private var filterJob: Job? = null
 
     /**
      * Current rotation accumulator in degrees (0, 90, 180, 270). Incremented by
@@ -191,6 +212,8 @@ class SharedPhotoViewModel @Inject constructor(
         _bakedBitmap.value = null
         _rotationDegrees.value = 0
         _displayedBitmap.value = null
+        _selectedFilter.value = ImageFilter.ORIGINAL
+        filterJob?.cancel()
         _faceAnalysis.value = null
         _removalState.value = RemovalState.Idle
         autoFitPending = true
@@ -206,6 +229,8 @@ class SharedPhotoViewModel @Inject constructor(
         _pristineOriginalBitmap.value = bitmap
         _rotationDegrees.value = 0
         _displayedBitmap.value = null
+        _selectedFilter.value = ImageFilter.ORIGINAL
+        filterJob?.cancel()
         _faceAnalysis.value = null
         _removalState.value = RemovalState.Idle
         autoFitPending = true
@@ -300,44 +325,112 @@ private fun decodeUriToOriginalBitmap(uri: Uri) {
     }
 
     /**
-     * Sets [_displayedBitmap] to [pristine] rotated by [rot] degrees (0/90/
-     * 180/270). Recycles previous displayed if it's not the pristine itself.
+     * Sets the "base" bitmap (pre-filter) and re-applies the current filter.
+     * Every place that previously wrote [_displayedBitmap] directly now calls
+     * this instead. Manages recycling of old preFilter and old displayed.
+     */
+    private fun setBaseBitmap(base: Bitmap) {
+        val oldPreFilter = _preFilterBitmap.value
+        _preFilterBitmap.value = base
+        reapplyFilter()
+        // Recycle old preFilter if not still in use as displayed / pristine / original.
+        if (oldPreFilter != null && !oldPreFilter.isRecycled &&
+            oldPreFilter !== base &&
+            oldPreFilter !== _pristineOriginalBitmap.value &&
+            oldPreFilter !== _originalBitmap.value &&
+            oldPreFilter !== _displayedBitmap.value
+        ) {
+            try { oldPreFilter.recycle() } catch (_: Throwable) {}
+        }
+    }
+
+    /**
+     * Apply [_selectedFilter] to [_preFilterBitmap] and store result in
+     * [_displayedBitmap]. ORIGINAL is synchronous (displayed = base).
+     * Other filters run on a coroutine with loading state.
+     */
+    private fun reapplyFilter() {
+        filterJob?.cancel()
+        val base = _preFilterBitmap.value
+        if (base == null || base.isRecycled) {
+            _displayedBitmap.value = null
+            _isApplyingFilter.value = false
+            return
+        }
+        val filter = _selectedFilter.value
+        if (filter == ImageFilter.ORIGINAL) {
+            val oldDisplayed = _displayedBitmap.value
+            _displayedBitmap.value = base
+            if (oldDisplayed != null && !oldDisplayed.isRecycled &&
+                oldDisplayed !== base &&
+                oldDisplayed !== _preFilterBitmap.value &&
+                oldDisplayed !== _pristineOriginalBitmap.value &&
+                oldDisplayed !== _originalBitmap.value
+            ) {
+                try { oldDisplayed.recycle() } catch (_: Throwable) {}
+            }
+            _isApplyingFilter.value = false
+            return
+        }
+        _isApplyingFilter.value = true
+        filterJob = viewModelScope.launch(Dispatchers.Default + coroutineExceptionHandler) {
+            try {
+                val result = ImageFilterProcessor.apply(base, filter)
+                if (!isActive) {
+                    if (result !== base && !result.isRecycled) result.recycle()
+                    return@launch
+                }
+                val oldDisplayed = _displayedBitmap.value
+                _displayedBitmap.value = result
+                if (oldDisplayed != null && !oldDisplayed.isRecycled &&
+                    oldDisplayed !== result &&
+                    oldDisplayed !== base &&
+                    oldDisplayed !== _preFilterBitmap.value &&
+                    oldDisplayed !== _pristineOriginalBitmap.value &&
+                    oldDisplayed !== _originalBitmap.value
+                ) {
+                    try { oldDisplayed.recycle() } catch (_: Throwable) {}
+                }
+            } catch (oom: OutOfMemoryError) {
+                Log.e(TAG, "reapplyFilter OOM", oom)
+                _displayedBitmap.value = base
+            } catch (e: Exception) {
+                Log.w(TAG, "reapplyFilter failed", e)
+                _displayedBitmap.value = base
+            } finally {
+                _isApplyingFilter.value = false
+            }
+        }
+    }
+
+    /** User-facing: set a new filter and re-apply. */
+    fun applyFilter(filter: ImageFilter) {
+        if (_selectedFilter.value == filter) return
+        _selectedFilter.value = filter
+        reapplyFilter()
+    }
+
+    /**
+     * Sets the base (pre-filter) bitmap to [pristine] rotated by [rot] degrees
+     * (0/90/180/270). The current filter is re-applied on top.
      */
     private fun applyRotationToDisplayed(pristine: Bitmap, rot: Int) {
         if (rot % 360 == 0) {
-            val prev = _displayedBitmap.value
-            _displayedBitmap.value = pristine
-            if (prev != null && !prev.isRecycled &&
-                prev !== pristine &&
-                prev !== _originalBitmap.value &&
-                prev !== _pristineOriginalBitmap.value
-            ) {
-                prev.recycle()
-            }
+            setBaseBitmap(pristine)
             return
         }
         try {
-            // Full-bitmap rotate — width/height swap for 90/270, no crop.
             val m = Matrix().apply { postRotate((rot % 360).toFloat()) }
             val rotated = Bitmap.createBitmap(
                 pristine, 0, 0, pristine.width, pristine.height, m, true
             )
-            val prev = _displayedBitmap.value
-            _displayedBitmap.value = rotated
-            if (prev != null && !prev.isRecycled &&
-                prev !== pristine &&
-                prev !== _originalBitmap.value &&
-                prev !== _pristineOriginalBitmap.value &&
-                prev !== rotated
-            ) {
-                prev.recycle()
-            }
+            setBaseBitmap(rotated)
         } catch (oom: OutOfMemoryError) {
             Log.e(TAG, "applyRotationToDisplayed: OOM", oom)
-            _displayedBitmap.value = pristine
+            setBaseBitmap(pristine)
         } catch (e: Exception) {
             Log.w(TAG, "applyRotationToDisplayed failed", e)
-            _displayedBitmap.value = pristine
+            setBaseBitmap(pristine)
         }
     }
 
@@ -531,8 +624,9 @@ fun analyzeFace() {
     }
 
 fun removeBackground() {
-    // Prefer rotated displayed (or pristine) — never force re-decode mid-edit.
-    val bitmap = _displayedBitmap.value
+    // Use the pre-filter base (not the filtered displayed) so bg removal always
+    // operates on the raw rotated image, then the current filter re-applies on top.
+    val bitmap = _preFilterBitmap.value
         ?: _pristineOriginalBitmap.value
         ?: _originalBitmap.value
         ?: return
@@ -563,16 +657,8 @@ fun removeBackground() {
             if (result !== localCopy && !result.isRecycled) result.recycle()
             return@withLock
           }
-          val prev = _displayedBitmap.value
-          _displayedBitmap.value = result
-          if (prev != null && !prev.isRecycled &&
-              prev !== _pristineOriginalBitmap.value &&
-              prev !== _originalBitmap.value &&
-              prev !== result
-          ) {
-            prev.recycle()
-          }
           _removalState.value = RemovalState.Done
+          setBaseBitmap(result)
         }
         analyzeFace()
       } catch (e: CancellationException) {
@@ -924,6 +1010,7 @@ fun removeBackground() {
         _customHeight.value = state.customH
         _customFormat.value = state.customFmt
         _backgroundColor.value = state.bgOption.toBackgroundColor()
+        _selectedFilter.value = state.filter
         val pristine = _pristineOriginalBitmap.value
         if (pristine != null && !pristine.isRecycled) {
             applyRotationToDisplayed(pristine, state.rotationDegrees)
@@ -959,6 +1046,7 @@ fun removeBackground() {
         _customFormat.value = "jpg"
         _removalState.value = RemovalState.Idle
         _isRemovingBackground.value = false
+        _selectedFilter.value = ImageFilter.ORIGINAL
         _pristineOriginalBitmap.value?.let { if (!it.isRecycled) applyRotationToDisplayed(it, 0) }
         historyStack.clear()
         historyIdx = -1
@@ -968,7 +1056,8 @@ fun removeBackground() {
                 scale = 1f, offX = 0f, offY = 0f,
                 rotationDegrees = 0,
                 bgOption = BackgroundOption.NONE,
-                compression = 0.7f
+                compression = 0.7f,
+                filter = ImageFilter.ORIGINAL
             )
         )
         historyIdx = 0
@@ -985,6 +1074,9 @@ fun removeBackground() {
         _bgOption.value = BackgroundOption.NONE
         _compressionQuality.value = 0.7f
         _rotationDegrees.value = 0
+        _selectedFilter.value = ImageFilter.ORIGINAL
+        _isApplyingFilter.value = false
+        filterJob?.cancel()
         _processedImageUri.value = null
         _fileSizeKb.value = 0
         _isRemovingBackground.value = false
@@ -1006,19 +1098,29 @@ private fun recycleBitmaps() {
     // Pristine is shared with `_originalBitmap` initially — same reference. Don't double-recycle.
     _pristineOriginalBitmap.value?.let { if (!it.isRecycled && it !== _originalBitmap.value) it.recycle() }
     _pristineOriginalBitmap.value = null
+    // PreFilter may be the same as pristine/original — don't double-recycle.
+    _preFilterBitmap.value?.let {
+        if (!it.isRecycled &&
+            it !== _originalBitmap.value &&
+            it !== _pristineOriginalBitmap.value &&
+            it !== _displayedBitmap.value
+        ) it.recycle()
+    }
+    _preFilterBitmap.value = null
     _bakedBitmap.value?.let { if (!it.isRecycled) it.recycle() }
     _bakedBitmap.value = null
     preCropBitmap?.let { if (!it.isRecycled) it.recycle() }
     preCropBitmap = null
   }
 
-override fun onCleared() {
-    super.onCleared()
-    faceAnalysisJob?.cancel()
-    bgRemovalJob?.cancel()
-    decodeJob?.cancel()
-    recycleBitmaps()
-  }
+ override fun onCleared() {
+     super.onCleared()
+     faceAnalysisJob?.cancel()
+     bgRemovalJob?.cancel()
+     decodeJob?.cancel()
+     filterJob?.cancel()
+     recycleBitmaps()
+   }
 
     /**
      * Scale [src] into a new ARGB_8888 bitmap of [tw]x[th] using Canvas (safer
@@ -1271,7 +1373,8 @@ data class EditState(
     val compression: Float = 0.7f,
     val customW: String = "350",
     val customH: String = "450",
-    val customFmt: String = "jpg"
+    val customFmt: String = "jpg",
+    val filter: ImageFilter = ImageFilter.ORIGINAL
 )
 
 enum class BackgroundColor {

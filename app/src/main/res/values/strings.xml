@@ -206,5 +206,15 @@
     <string name="batch_save_all">Save All to Gallery</string>
     <string name="batch_retry">Retry</string>
     <string name="batch_no_source">No photo selected. Go back to pick a photo first.</string>
+
+    <!-- Image Filters -->
+    <string name="filters">Filters</string>
+    <string name="filter_original">Original</string>
+    <string name="filter_grayscale">Grayscale</string>
+    <string name="filter_binarize">B&amp;W Scan</string>
+    <string name="filter_enhance">Enhance</string>
+    <string name="filter_lighten">Lighten</string>
+    <string name="filter_high_contrast">High Contrast</string>
+    <string name="cd_applying_filter">Applying filter</string>
 </resources>
 

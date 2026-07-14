@@ -39,7 +39,9 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.dhanuk.govphoto_resizer.R
 import com.dhanuk.govphoto_resizer.data.ml.FaceAnalysisResult
+import com.dhanuk.govphoto_resizer.data.ml.ImageFilter
 import com.dhanuk.govphoto_resizer.data.model.PhotoPreset
+import com.dhanuk.govphoto_resizer.data.model.PresetType
 import com.dhanuk.govphoto_resizer.ui.theme.*
 import com.dhanuk.govphoto_resizer.ui.viewmodel.BackgroundColor
 import com.dhanuk.govphoto_resizer.ui.viewmodel.BackgroundOption
@@ -70,11 +72,15 @@ fun EditPhotoScreen(
     val canUndo by sharedViewModel.canUndo.collectAsState()
     val canRedo by sharedViewModel.canRedo.collectAsState()
     val isRemovingBackground by sharedViewModel.isRemovingBackground.collectAsState()
+    val selectedFilter by sharedViewModel.selectedFilter.collectAsState()
+    val isApplyingFilter by sharedViewModel.isApplyingFilter.collectAsState()
 
     // Dynamic aspect ratio from preset
     val aspectRatio = sharedViewModel.aspectRatio
     val format = selectedPreset?.format?.uppercase() ?: "JPG"
     val maxSize = selectedPreset?.maxFileSizeKb ?: 500
+    val presetType = selectedPreset?.presetType ?: PresetType.PHOTO
+    val isPhotoPreset = presetType == PresetType.PHOTO
 
     // Local UI state
     var selectedBackground by remember { mutableStateOf(BackgroundOption.NONE) }
@@ -126,12 +132,14 @@ fun EditPhotoScreen(
         oy: Float = offsetY,
         rot: Int = rotationDegrees,
         bg: BackgroundOption = selectedBackground,
-        comp: Float = compressionValue
+        comp: Float = compressionValue,
+        filt: ImageFilter = selectedFilter
     ) = EditState(
         scale = s, offX = ox, offY = oy,
         rotationDegrees = rot,
         bgOption = bg,
-        compression = comp
+        compression = comp,
+        filter = filt
     )
 
     fun commitHistory(
@@ -140,10 +148,11 @@ fun EditPhotoScreen(
         oy: Float = offsetY,
         rot: Int = rotationDegrees,
         bg: BackgroundOption = selectedBackground,
-        comp: Float = compressionValue
+        comp: Float = compressionValue,
+        filt: ImageFilter = selectedFilter
     ) {
         if (isRestoring) return
-        sharedViewModel.pushHistory(currentEditState(s, ox, oy, rot, bg, comp))
+        sharedViewModel.pushHistory(currentEditState(s, ox, oy, rot, bg, comp, filt))
     }
 
     // Seed baseline once image is ready so Undo has a return point.
@@ -155,7 +164,8 @@ fun EditPhotoScreen(
                     scale = 1f, offX = 0f, offY = 0f,
                     rotationDegrees = 0,
                     bgOption = BackgroundOption.NONE,
-                    compression = compressionQuality
+                    compression = compressionQuality,
+                    filter = ImageFilter.ORIGINAL
                 )
             )
         }
@@ -321,6 +331,7 @@ fun EditPhotoScreen(
                             onContinue()
                         }
                     },
+                    enabled = !isApplyingFilter && !isRemovingBackground,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
@@ -392,6 +403,7 @@ Icon(
                 offsetY = offsetY,
                 faceAnalysis = faceAnalysis,
                 isRemovingBackground = isRemovingBackground,
+                isApplyingFilter = isApplyingFilter,
                 onBoxSize = { previewBoxSize = it },
                 onTransform = { newScale, newOffsetX, newOffsetY ->
                     val nextScale = (scale * newScale).coerceIn(0.25f, 4f)
@@ -436,16 +448,29 @@ Icon(
             )
             
             Spacer(modifier = Modifier.height(24.dp))
-            
-            BackgroundSelector(
-                selectedOption = selectedBackground,
-                onOptionSelected = { option ->
-                    if (option == selectedBackground) return@BackgroundSelector
-                    applyBackgroundOption(option)
-                    commitHistory(bg = option)
+
+            // Background options only for PHOTO presets; filters for all presets.
+            if (isPhotoPreset) {
+                BackgroundSelector(
+                    selectedOption = selectedBackground,
+                    onOptionSelected = { option ->
+                        if (option == selectedBackground) return@BackgroundSelector
+                        applyBackgroundOption(option)
+                        commitHistory(bg = option)
+                    }
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            FilterSelector(
+                selectedFilter = selectedFilter,
+                onFilterSelected = { filter ->
+                    if (filter == selectedFilter) return@FilterSelector
+                    sharedViewModel.applyFilter(filter)
+                    commitHistory(filt = filter)
                 }
             )
-            
+
             Spacer(modifier = Modifier.height(24.dp))
 
             CompressionControl(
@@ -478,6 +503,7 @@ private fun PhotoPreviewWithImage(
     offsetY: Float,
     faceAnalysis: FaceAnalysisResult?,
     isRemovingBackground: Boolean,
+    isApplyingFilter: Boolean,
     onBoxSize: (IntSize) -> Unit,
     onTransform: (Float, Float, Float) -> Unit,
     onReset: () -> Unit,
@@ -575,7 +601,7 @@ private fun PhotoPreviewWithImage(
             }
         }
         
-        if (isRemovingBackground) {
+        if (isRemovingBackground || isApplyingFilter) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -871,6 +897,120 @@ private fun BackgroundOptionItem(
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                 ),
                 color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
+private fun FilterSelector(
+    selectedFilter: ImageFilter,
+    onFilterSelected: (ImageFilter) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = stringResource(R.string.filters),
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold
+            ),
+            color = MaterialTheme.colorScheme.onBackground
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        ImageFilter.entries.chunked(3).forEach { rowFilters ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                rowFilters.forEach { filter ->
+                    FilterItem(
+                        filter = filter,
+                        isSelected = selectedFilter == filter,
+                        onClick = { onFilterSelected(filter) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FilterItem(
+    filter: ImageFilter,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val icon = when (filter) {
+        ImageFilter.ORIGINAL -> Icons.Default.Image
+        ImageFilter.GRAYSCALE -> Icons.Default.FilterBAndW
+        ImageFilter.BINARIZE -> Icons.Default.Contrast
+        ImageFilter.ENHANCE -> Icons.Default.AutoFixHigh
+        ImageFilter.LIGHTEN -> Icons.Default.BrightnessLow
+        ImageFilter.HIGH_CONTRAST -> Icons.Default.Tune
+    }
+    val label = when (filter) {
+        ImageFilter.ORIGINAL -> stringResource(R.string.filter_original)
+        ImageFilter.GRAYSCALE -> stringResource(R.string.filter_grayscale)
+        ImageFilter.BINARIZE -> stringResource(R.string.filter_binarize)
+        ImageFilter.ENHANCE -> stringResource(R.string.filter_enhance)
+        ImageFilter.LIGHTEN -> stringResource(R.string.filter_lighten)
+        ImageFilter.HIGH_CONTRAST -> stringResource(R.string.filter_high_contrast)
+    }
+
+    Surface(
+        modifier = modifier
+            .height(96.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        border = if (isSelected) {
+            androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+        } else {
+            androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        },
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+                else MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = if (isSelected) MaterialTheme.colorScheme.primary
+                           else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                ),
+                color = if (isSelected) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
