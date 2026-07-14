@@ -39,4 +39,5 @@
 
     <!-- Splash Screen -->
     <color name="splash_background">#006495</color>
+    <color name="splash_background_dark">#111417</color>
 </resources>
