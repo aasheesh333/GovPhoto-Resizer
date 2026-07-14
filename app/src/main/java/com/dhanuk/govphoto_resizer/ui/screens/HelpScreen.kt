@@ -118,6 +118,14 @@ fun HelpScreen(
 
     var expandedIndex by rememberSaveable { mutableIntStateOf(-1) }
 
+    val filteredFaqs = remember(faqItems, searchQuery) {
+        if (searchQuery.isBlank()) faqItems
+        else faqItems.filter {
+            it.question.contains(searchQuery, ignoreCase = true) ||
+            it.answer.contains(searchQuery, ignoreCase = true)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -210,14 +218,6 @@ fun HelpScreen(
                     color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp)
                 )
-            }
-
-            val filteredFaqs = remember(faqItems, searchQuery) {
-                if (searchQuery.isBlank()) faqItems
-                else faqItems.filter {
-                    it.question.contains(searchQuery, ignoreCase = true) ||
-                    it.answer.contains(searchQuery, ignoreCase = true)
-                }
             }
 
             itemsIndexed(filteredFaqs) { index, faqItem ->
