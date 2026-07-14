@@ -302,7 +302,7 @@ private fun decodeUriToOriginalBitmap(uri: Uri) {
         // ContentScale.Crop only for visual cover-fill inside the preset box.
         // Route through setBaseBitmap so _preFilterBitmap is populated and the
         // current filter re-applies (if any was selected before decode finished).
-        setBaseBitmap(oriented)
+        if (oriented != null) setBaseBitmap(oriented)
         _rotationDegrees.value = 0
             } catch (e: CancellationException) {
                 throw e
