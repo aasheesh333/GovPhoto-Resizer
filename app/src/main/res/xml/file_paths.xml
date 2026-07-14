@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
+    <cache-path name="cache_root" path="."/>
     <cache-path name="shared_images" path="images/"/>
+    <files-path name="files_root" path="."/>
     <files-path name="internal_images" path="images/"/>
     <external-files-path name="external_images" path="GovPhoto/"/>
 </paths>

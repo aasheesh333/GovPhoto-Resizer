@@ -68,6 +68,13 @@
     <string name="recent_photos">हाल की फोटो</string>
     <string name="recent_presets">हाल के प्रीसेट</string>
     <string name="no_history">अभी तक कोई फोटो रीसाइज़ नहीं की गई</string>
+    <string name="no_history_subtitle">जो फोटो आप रीसाइज़ करते हैं वे यहां दिखाई देंगी</string>
+    <string name="history_item_dimensions">%1$d \u00d7 %2$d</string>
+    <string name="history_item_file_size">%1$d KB</string>
+    <string name="time_just_now">अभी</string>
+    <string name="time_min_ago">%1$d मिनट पहले</string>
+    <string name="time_h_ago">%1$d घंटे पहले</string>
+    <string name="time_days_ago">%1$d दिन पहले</string>
     
     <!-- Settings -->
     <string name="language">भाषा</string>
@@ -80,14 +87,34 @@
     <string name="version">संस्करण</string>
     <string name="privacy_policy">गोपनीयता नीति</string>
     
+    <!-- Settings: Appearance -->
+    <string name="appearance">रूप</string>
+    <string name="theme">थीम</string>
+    <string name="theme_light">लाइट</string>
+    <string name="theme_dark">डार्क</string>
+    <string name="theme_system">सिस्टम</string>
+    <string name="dynamic_color">डायनामिक कलर</string>
+    <string name="dynamic_color_desc">वॉलपेपर आधारित रंगों का उपयोग करें (Android 12+)</string>
+    <string name="large_buttons_desc">आसान टैपिंग के लिए बटन आकार बढ़ाएं</string>
+    <string name="high_contrast_desc">उच्च कंट्रास्ट से दृश्यता बढ़ाएं</string>
+    <string name="view_privacy_policy">गोपनीयता नीति देखें</string>
+    
     <!-- Permissions -->
     <string name="camera_permission_required">फोटो लेने के लिए कैमरा अनुमति आवश्यक है</string>
     <string name="storage_permission_required">फोटो सेव करने के लिए स्टोरेज अनुमति आवश्यक है</string>
     <string name="grant_permission">अनुमति दें</string>
     
     <!-- Actions -->
+    <string name="upload_photo">फोटो अपलोड करें</string>
     <string name="upload_from_camera">फोटो लें</string>
     <string name="upload_from_gallery">गैलरी से चुनें</string>
+    <string name="take_new_photo">नई फोटो लें</string>
+    <string name="select_from_photos">अपनी फोटो से चुनें</string>
+    <string name="choose_upload_method">अपनी फोटो अपलोड करने का तरीका चुनें</string>
+    <string name="photo_guidelines">फोटो दिशानिर्देश</string>
+    <string name="guideline_clear_photo">स्पष्ट, सामने की ओर देखती फोटो</string>
+    <string name="guideline_good_lighting">अच्छी रोशनी</string>
+    <string name="guideline_plain_background">सादा बैकग्राउंड पसंदीदा</string>
     <string name="undo">पूर्ववत करें</string>
     <string name="redo">फिर से करें</string>
     <string name="cancel">रद्द करें</string>
@@ -97,9 +124,97 @@
     <!-- Content Descriptions -->
     <string name="cd_app_logo">GovPhoto Resizer लोगो</string>
     <string name="cd_language_selector">भाषा बदलें</string>
+    <string name="cd_language_dropdown">भाषा विकल्प</string>
     <string name="cd_notification">सूचनाएं</string>
     <string name="cd_back_button">वापस जाएं</string>
     <string name="cd_undo_button">पिछली क्रिया पूर्ववत करें</string>
     <string name="cd_redo_button">पिछली क्रिया फिर से करें</string>
     <string name="cd_photo_preview">फोटो प्रीव्यू</string>
+    <string name="cd_quick_upload">त्वरित अपलोड फोटो</string>
+    <string name="cd_navigate_forward">आगे नेविगेट करें</string>
+    <string name="cd_recent_presets">हाल के प्रीसेट</string>
+    <string name="cd_recent_preset_item">हाल का प्रीसेट</string>
+    <string name="cd_view_all_forms">सभी फॉर्म देखें</string>
+    <string name="cd_document_type">दस्तावेज़ प्रकार</string>
+    <string name="cd_search_forms">फॉर्म खोजें</string>
+    <string name="cd_lightbulb_tips">फोटो टिप्स</string>
+    <string name="cd_upload_option">अपलोड विकल्प</string>
+    <string name="cd_continue_editing">एडिटिंग जारी रखें</string>
+    <string name="cd_no_image">कोई फोटो चयनित नहीं</string>
+    <string name="cd_background_transparent">पारदर्शी पृष्ठभूमि</string>
+    <string name="cd_background_selected">चयनित पृष्ठभूमि</string>
+    <string name="cd_compression_quality">कंप्रेशन गुणवत्ता</string>
+    <string name="cd_compression_size">कंप्रेशन आकार</string>
+    <string name="cd_save_button">फोटो सेव करें</string>
+    <string name="cd_retake_photo">फोटो दोबारा लें</string>
+    <string name="cd_person_placeholder">व्यक्ति प्लेसहोल्डर</string>
+    <string name="cd_valid_badge">वैध बैज</string>
+    <string name="cd_validation_face">चेहरा जांच</string>
+    <string name="cd_validation_aspect">अनुपात जांच</string>
+    <string name="cd_validation_size">फाइल आकार जांच</string>
+    <string name="cd_validation_status">जांच स्थिति</string>
+    <string name="cd_delete_history">हिस्ट्री आइटम हटाएं</string>
+    <string name="cd_history_thumbnail">हिस्ट्री फोटो थंबनेल</string>
+    <string name="cd_search_icon">खोज</string>
+    <string name="cd_category_icon">श्रेणी आइकन</string>
+    <string name="cd_settings_toggle">सेटिंग टॉगल</string>
+    <string name="cd_settings_item">सेटिंग विकल्प</string>
+    <string name="cd_onboarding_feature">ऑनबोर्डिंग सुविधा</string>
+    <string name="cd_history_empty">कोई हिस्ट्री नहीं</string>
+    <string name="cd_help_expand">FAQ आइटम बड़ा करें</string>
+    <string name="cd_help_search">FAQ खोजें</string>
+    <string name="cd_save_success">फोटो सफलतापूर्वक सेव हुई</string>
+    <string name="cd_saved_thumbnail">सेव की गई फोटो थंबनेल</string>
+
+    <!-- Save Success Screen -->
+    <string name="save_success_title">फोटो सेव हुई!</string>
+    <string name="save_success_compliant">%1$s के अनुरूप</string>
+    <string name="save_success_custom">कस्टम साइज</string>
+    <string name="save_success_details">%1$dcm x %2$dcm - %3$dKB - %4$s</string>
+    <string name="share">शेयर</string>
+    <string name="save_another">एक और सेव करें</string>
+    <string name="view_in_gallery">गैलरी में देखें</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_title_1">अपना दस्तावेज़ चुनें</string>
+    <string name="onboarding_desc_1">भारतीय सरकारी फॉर्म के लिए 110+ प्रीसेट</string>
+    <string name="onboarding_title_2">लें या अपलोड करें</string>
+    <string name="onboarding_desc_2">हम ऑटो-क्रॉप और चेहरा सत्यापन करते हैं</string>
+    <string name="onboarding_title_3">ऑटो बैकग्राउंड हटाना</string>
+    <string name="onboarding_desc_3">ग्रेडिएंट और पारदर्शी सहित 5 विकल्प</string>
+    <string name="onboarding_skip">छोड़ें</string>
+    <string name="onboarding_next">आगे</string>
+    <string name="onboarding_get_started">शुरू करें</string>
+
+    <!-- Help Screen -->
+    <string name="help_title">सहायता और अक्सर पूछे जाने वाले प्रश्न</string>
+    <string name="help_search_placeholder">अक्सर पूछे जाने वाले प्रश्न खोजें</string>
+    <string name="help_category_getting_started">शुरू करना</string>
+    <string name="help_category_photos">आपकी फोटो</string>
+    <string name="help_category_background">बैकग्राउंड और क्रॉपिंग</string>
+    <string name="help_category_file_sizes">फ़ाइल साइज</string>
+    <string name="help_category_troubleshooting">समस्या निवारण</string>
+    <string name="help_welcome">GovPhoto Resizer में आपका स्वागत है</string>
+    <string name="help_welcome_desc">अपनी पहली सरकारी-फोटो बनाने के लिए शुरू करें बटन दबाएं।</string>
+    <string name="help_get_started">शुरू करें</string>
+
+    <!-- Batch Screen -->
+    <string name="batch_title">बैच प्रोसेस</string>
+    <string name="batch_select_presets">प्रोसेस करने के लिए प्रीसेट चुनें</string>
+    <string name="batch_process">%1$d वेरिएंट प्रोसेस करें</string>
+    <string name="batch_results_title">बैच परिणाम</string>
+    <string name="batch_save_all">सभी गैलरी में सेव करें</string>
+    <string name="batch_retry">पुनः प्रयास</string>
+    <string name="batch_no_source">कोई फोटो चयनित नहीं। पहले फोटो चुनने के लिए वापस जाएं।</string>
+
+    <!-- Image Filters -->
+    <string name="filters">फिल्टर</string>
+    <string name="filter_original">मूल</string>
+    <string name="filter_grayscale">ग्रेस्केल</string>
+    <string name="filter_binarize">बी एंड डब्ल्यू स्कैन</string>
+    <string name="filter_enhance">बेहतर बनाएं</string>
+    <string name="filter_lighten">हल्का करें</string>
+    <string name="filter_high_contrast">उच्च कंट्रास्ट</string>
+    <string name="cd_applying_filter">फिल्टर लागू हो रहा है</string>
 </resources>
+

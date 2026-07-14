@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Dark variant of splash screen theme — dark window background avoids white flash -->
+    <style name="Theme.GovPhotoResizer.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background_dark</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.GovPhotoResizer</item>
+    </style>
+
+    <!-- Main app theme (dark) — DeviceDefault.NoActionBar is the dark variant -->
+    <style name="Theme.GovPhotoResizer" parent="android:Theme.DeviceDefault.NoActionBar">
+        <item name="android:statusBarColor">@color/surface_dark</item>
+        <item name="android:navigationBarColor">@color/surface_dark</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">false</item>
+        <item name="android:forceDarkAllowed" tools:targetApi="29">false</item>
+        <item name="colorPrimary">@color/primary</item>
+    </style>
+</resources>

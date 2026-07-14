@@ -2,9 +2,10 @@ name: Android Build
 
 on:
   push:
-    branches: [ '*' ]
+    branches: [ '**' ]
   pull_request:
-    branches: [ '*' ]
+    branches: [ '**' ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -32,15 +33,12 @@ jobs:
 
       - name: Build Release APK
         run: ./gradlew assembleRelease --no-daemon --stacktrace
-        continue-on-error: true
 
       - name: Build Release AAB
         run: ./gradlew bundleRelease --no-daemon --stacktrace
-        continue-on-error: true
 
       - name: Run unit tests
-        run: ./gradlew test --no-daemon
-        continue-on-error: true
+        run: ./gradlew testDebugUnitTest --no-daemon
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
@@ -58,19 +56,19 @@ jobs:
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
-        if: success() || failure()
+        if: always()
         with:
           name: app-release-apk
-          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          path: app/build/outputs/apk/release/*.apk
           retention-days: 30
           if-no-files-found: ignore
 
       - name: Upload Release AAB
         uses: actions/upload-artifact@v4
-        if: success() || failure()
+        if: always()
         with:
           name: app-release-aab
-          path: app/build/outputs/bundle/release/app-release.aab
+          path: app/build/outputs/bundle/release/*.aab
           retention-days: 30
           if-no-files-found: ignore
 
@@ -92,8 +90,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run lint
-        run: ./gradlew lint --no-daemon
-        continue-on-error: true
+        run: ./gradlew lintDebug --no-daemon
 
       - name: Upload Lint Report
         uses: actions/upload-artifact@v4

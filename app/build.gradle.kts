@@ -6,13 +6,13 @@ plugins {
 }
 
 android {
-    namespace = "com.govphoto.resizer"
-    compileSdk = 34
+    namespace = "com.dhanuk.govphoto_resizer"
+    compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.govphoto.resizer"
+        applicationId = "com.dhanuk.govphoto_resizer"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
 
@@ -20,19 +20,26 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // Room schema export location
+        ksp {
+            arg("room.schemaLocation", "$projectDir/schemas")
+        }
     }
 
-    buildTypes {
-        release {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
+  buildTypes {
+    release {
+      signingConfig = signingConfigs.getByName("debug")
+      isMinifyEnabled = true
+      isShrinkResources = true
+      proguardFiles(
+        getDefaultProguardFile("proguard-android-optimize.txt"),
+        "proguard-rules.pro"
+      )
+    }
         debug {
             isMinifyEnabled = false
+            applicationIdSuffix = ".debug"
         }
     }
 
@@ -52,6 +59,10 @@ android {
 
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.8"
+    }
+
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
     }
 
     packaging {
@@ -113,13 +124,20 @@ dependencies {
     // Splash Screen API
     implementation("androidx.core:core-splashscreen:1.0.1")
 
+    // EXIF orientation support for camera-captured photos
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
     testImplementation("io.mockk:mockk:1.13.9")
+    testImplementation("org.robolectric:robolectric:4.11.1")
+    testImplementation("androidx.test:core-ktx:1.5.0")
+    testImplementation("androidx.room:room-testing:2.6.1")
 
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    androidTestImplementation("androidx.room:room-testing:2.6.1")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.01.00"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 

@@ -68,6 +68,13 @@
     <string name="recent_photos">Recent Photos</string>
     <string name="recent_presets">Recent Presets</string>
     <string name="no_history">No photos resized yet</string>
+    <string name="no_history_subtitle">Photos you resize will appear here</string>
+    <string name="history_item_dimensions">%1$d \u00d7 %2$d</string>
+    <string name="history_item_file_size">%1$d KB</string>
+    <string name="time_just_now">just now</string>
+    <string name="time_min_ago">%1$d min ago</string>
+    <string name="time_h_ago">%1$d h ago</string>
+    <string name="time_days_ago">%1$d days ago</string>
     
     <!-- Settings -->
     <string name="language">Language</string>
@@ -79,6 +86,18 @@
     <string name="about">About</string>
     <string name="version">Version</string>
     <string name="privacy_policy">Privacy Policy</string>
+    
+    <!-- Settings: Appearance -->
+    <string name="appearance">Appearance</string>
+    <string name="theme">Theme</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_system">System</string>
+    <string name="dynamic_color">Dynamic Color</string>
+    <string name="dynamic_color_desc">Use wallpaper-based colors (Android 12+)</string>
+    <string name="large_buttons_desc">Increase button sizes for easier tapping</string>
+    <string name="high_contrast_desc">Improve visibility with higher contrast</string>
+    <string name="view_privacy_policy">View privacy policy</string>
     
     <!-- Permissions -->
     <string name="camera_permission_required">Camera permission is required to take photos</string>
@@ -105,9 +124,97 @@
     <!-- Content Descriptions -->
     <string name="cd_app_logo">GovPhoto Resizer Logo</string>
     <string name="cd_language_selector">Change Language</string>
+    <string name="cd_language_dropdown">Language options</string>
     <string name="cd_notification">Notifications</string>
     <string name="cd_back_button">Go back</string>
     <string name="cd_undo_button">Undo last action</string>
     <string name="cd_redo_button">Redo last action</string>
     <string name="cd_photo_preview">Photo preview</string>
+    <string name="cd_quick_upload">Quick upload photo</string>
+    <string name="cd_navigate_forward">Navigate forward</string>
+    <string name="cd_recent_presets">Recent presets</string>
+    <string name="cd_recent_preset_item">Recent preset</string>
+    <string name="cd_view_all_forms">View all forms</string>
+    <string name="cd_document_type">Document type</string>
+    <string name="cd_search_forms">Search forms</string>
+    <string name="cd_lightbulb_tips">Photo tips</string>
+    <string name="cd_upload_option">Upload option</string>
+    <string name="cd_continue_editing">Continue editing</string>
+    <string name="cd_no_image">No image selected</string>
+    <string name="cd_background_transparent">Transparent background</string>
+    <string name="cd_background_selected">Selected background</string>
+    <string name="cd_compression_quality">Compression quality</string>
+    <string name="cd_compression_size">Compression size</string>
+    <string name="cd_save_button">Save photo</string>
+    <string name="cd_retake_photo">Retake photo</string>
+    <string name="cd_person_placeholder">Person placeholder</string>
+    <string name="cd_valid_badge">Valid badge</string>
+    <string name="cd_validation_face">Face validation</string>
+    <string name="cd_validation_aspect">Aspect ratio validation</string>
+    <string name="cd_validation_size">File size validation</string>
+    <string name="cd_validation_status">Validation status</string>
+    <string name="cd_delete_history">Delete history item</string>
+    <string name="cd_history_thumbnail">History photo thumbnail</string>
+    <string name="cd_search_icon">Search</string>
+    <string name="cd_category_icon">Category icon</string>
+    <string name="cd_settings_toggle">Settings toggle</string>
+    <string name="cd_settings_item">Settings option</string>
+    <string name="cd_onboarding_feature">Onboarding feature</string>
+    <string name="cd_history_empty">No history</string>
+    <string name="cd_help_expand">Expand FAQ item</string>
+    <string name="cd_help_search">Search FAQ</string>
+    <string name="cd_save_success">Photo saved successfully</string>
+    <string name="cd_saved_thumbnail">Saved photo thumbnail</string>
+
+    <!-- Save Success Screen -->
+    <string name="save_success_title">Photo Saved!</string>
+    <string name="save_success_compliant">Compliant with %1$s</string>
+    <string name="save_success_custom">Custom Size</string>
+    <string name="save_success_details">%1$dcm x %2$dcm - %3$dKB - %4$s</string>
+    <string name="share">Share</string>
+    <string name="save_another">Save Another</string>
+    <string name="view_in_gallery">View in Gallery</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_title_1">Choose Your Document</string>
+    <string name="onboarding_desc_1">110+ presets for Indian government forms</string>
+    <string name="onboarding_title_2">Snap or Upload</string>
+    <string name="onboarding_desc_2">We auto-crop and validate facial compliance</string>
+    <string name="onboarding_title_3">Auto Background Removal</string>
+    <string name="onboarding_desc_3">5 options including gradient and transparent</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_get_started">Get Started</string>
+
+    <!-- Help Screen -->
+    <string name="help_title">Help and FAQ</string>
+    <string name="help_search_placeholder">Search FAQ</string>
+    <string name="help_category_getting_started">Getting Started</string>
+    <string name="help_category_photos">Your Photos</string>
+    <string name="help_category_background">Background and Cropping</string>
+    <string name="help_category_file_sizes">File Sizes</string>
+    <string name="help_category_troubleshooting">Troubleshooting</string>
+    <string name="help_welcome">Welcome to GovPhoto Resizer</string>
+    <string name="help_welcome_desc">Tap Get Started to create your first government-ready photo.</string>
+    <string name="help_get_started">Get Started</string>
+
+    <!-- Batch Screen -->
+    <string name="batch_title">Batch Process</string>
+    <string name="batch_select_presets">Select presets to process</string>
+    <string name="batch_process">Process %1$d Variants</string>
+    <string name="batch_results_title">Batch Results</string>
+    <string name="batch_save_all">Save All to Gallery</string>
+    <string name="batch_retry">Retry</string>
+    <string name="batch_no_source">No photo selected. Go back to pick a photo first.</string>
+
+    <!-- Image Filters -->
+    <string name="filters">Filters</string>
+    <string name="filter_original">Original</string>
+    <string name="filter_grayscale">Grayscale</string>
+    <string name="filter_binarize">B&amp;W Scan</string>
+    <string name="filter_enhance">Enhance</string>
+    <string name="filter_lighten">Lighten</string>
+    <string name="filter_high_contrast">High Contrast</string>
+    <string name="cd_applying_filter">Applying filter</string>
 </resources>
+

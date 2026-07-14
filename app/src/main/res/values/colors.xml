@@ -1,36 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Primary Colors -->
-    <color name="primary">#0B3B5B</color>
-    <color name="primary_dark">#082A41</color>
-    <color name="primary_light">#1985CC</color>
-    
+    <!-- Primary Colors (seedColor #006495) -->
+    <color name="primary">#006495</color>
+    <color name="primary_dark">#00486F</color>
+    <color name="primary_light">#95CAFF</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="primary_container">#95CAFF</color>
+    <color name="on_primary_container">#001E33</color>
+
     <!-- India Theme Colors -->
     <color name="india_green">#138808</color>
     <color name="saffron">#FF9933</color>
     <color name="india_white">#FFFFFF</color>
-    
-    <!-- Background Colors -->
-    <color name="background_light">#F6F7F8</color>
+
+    <!-- Background / Surface Colors -->
+    <color name="background_light">#FAFBFC</color>
     <color name="background_dark">#111B21</color>
-    <color name="surface_light">#FFFFFF</color>
+    <color name="surface_light">#FAFBFC</color>
     <color name="surface_dark">#1F2C34</color>
-    
-    <!-- Text Colors -->
-    <color name="text_main_light">#111518</color>
+    <color name="on_surface">#101820</color>
+    <color name="on_surface_variant">#5B6770</color>
+    <color name="outline_variant">#D0D7DE</color>
+
+    <!-- Text Colors (kept for backward compat in non-Compose contexts) -->
+    <color name="text_main_light">#101820</color>
     <color name="text_main_dark">#E9EDEF</color>
-    <color name="text_secondary_light">#637988</color>
+    <color name="text_secondary_light">#5B6770</color>
     <color name="text_secondary_dark">#8696A0</color>
-    
+
     <!-- Status Colors -->
-    <color name="success">#22C55E</color>
-    <color name="warning">#F59E0B</color>
-    <color name="error">#EF4444</color>
-    
+    <color name="success">#1B7F3B</color>
+    <color name="warning">#B7590B</color>
+    <color name="error">#BA1A1A</color>
+
     <!-- Photo Background Colors -->
     <color name="photo_bg_white">#FFFFFF</color>
     <color name="photo_bg_light_blue">#D0E6F5</color>
-    
+
     <!-- Splash Screen -->
-    <color name="splash_background">#0B3B5B</color>
+    <color name="splash_background">#006495</color>
+    <color name="splash_background_dark">#111417</color>
 </resources>

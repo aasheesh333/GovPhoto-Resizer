@@ -16,8 +16,47 @@
 }
 
 # Keep preset model classes
--keep class com.govphoto.resizer.data.model.** { *; }
+-keep class com.dhanuk.govphoto_resizer.data.model.** { *; }
+
+# Keep Room entities
+-keep class com.dhanuk.govphoto_resizer.data.local.entity.** { *; }
+
+# Keep Hilt
+-keep @dagger.hilt.android.HiltAndroidApp class *
+-keep class * extends androidx.lifecycle.ViewModel { *; }
+
+# Keep Room Database
+-keep class * extends androidx.room.RoomDatabase { *; }
 
 # ML Kit
 -keep class com.google.mlkit.** { *; }
 -dontwarn com.google.mlkit.**
+
+# Coil
+-dontwarn coil.**
+-keep class coil.** { *; }
+
+# ML Kit common
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.android.gms.**
+
+# Room DAO interfaces
+-keep class com.dhanuk.govphoto_resizer.data.local.dao.** { *; }
+
+# Kotlin metadata
+-keepattributes KotlinMetadata
+-keep class kotlin.Metadata { *; }
+
+# Keep enum values
+-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+
+# Coroutines
+-keepclassmembers class kotlinx.coroutines.** {
+    volatile <fields>;
+}
+
+# Compose
+-dontwarn androidx.compose.**
