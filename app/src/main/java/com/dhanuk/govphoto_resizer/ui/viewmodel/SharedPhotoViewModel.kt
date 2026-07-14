@@ -400,7 +400,9 @@ private fun decodeUriToOriginalBitmap(uri: Uri) {
             }
             try {
                 val result = ImageFilterProcessor.apply(localCopy, filter)
-                // Discard localCopy now — apply already consumed it.
+                // apply() reads pixels from localCopy but does NOT recycle it.
+                // Recycle localCopy here (unless apply returned it directly,
+                // e.g. on a recycled-source edge case).
                 if (localCopy !== base && localCopy !== result && !localCopy.isRecycled) {
                     try { localCopy.recycle() } catch (_: Throwable) {}
                 }
