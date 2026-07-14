@@ -80,14 +80,16 @@ fun EditPhotoScreen(
     var selectedBackground by remember { mutableStateOf(BackgroundOption.NONE) }
     var compressionValue by remember { mutableFloatStateOf(compressionQuality) }
 
-    // Image transformation — scale=1 + Crop = cover-fill. Do NOT key remember on
-    // rotationDegrees (that wiped zoom/pan on every rotate and broke undo).
+    // Image transformation — ContentScale.Fit with scale/offset. The default
+    // scale is zoomed to cover-fill; user can pinch to fit/zoom freely.
     var scale by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
     var previewBoxSize by remember { mutableStateOf(IntSize.Zero) }
     // When true, UI restores from undo/redo — do NOT push history / re-trigger bg.
     var isRestoring by remember { mutableStateOf(false) }
+    // Tracks whether the initial cover-fill scale has been applied for this image/preset.
+    var initialCoverApplied by remember { mutableStateOf(false) }
 
     var showExitDialog by remember { mutableStateOf(false) }
 
@@ -165,13 +167,47 @@ fun EditPhotoScreen(
         }
     }
 
-    // Reset framing only when image or preset changes — NOT on rotate.
+    // Reset framing when image or preset changes — NOT on rotate.
+    // We reset to the "fit" default and clear the cover flag; a separate effect
+    // below then zooms in to cover-fill once the preview box is laid out.
     LaunchedEffect(selectedPreset?.id, originalBitmap) {
         if (!isRestoring) {
             scale = 1f
             offsetX = 0f
             offsetY = 0f
+            initialCoverApplied = false
         }
+    }
+
+    // Apply initial cover-fill scale so the image fills the preset-ratio box on
+    // first load (matching the old ContentScale.Crop behaviour). This runs once
+    // the box size and the current bitmap are known, then initialCoverApplied
+    // prevents overriding the user's manual zoom/pan afterwards.
+    LaunchedEffect(
+        previewBoxSize.width,
+        previewBoxSize.height,
+        initialCoverApplied,
+        displayedBitmap,
+        originalBitmap,
+        pristineOriginal
+    ) {
+        if (isRestoring || initialCoverApplied) return@LaunchedEffect
+        val src = displayedBitmap ?: originalBitmap ?: pristineOriginal
+        if (src == null || src.isRecycled) return@LaunchedEffect
+        if (previewBoxSize.width <= 0 || previewBoxSize.height <= 0) return@LaunchedEffect
+        val boxW = previewBoxSize.width.toFloat()
+        val boxH = previewBoxSize.height.toFloat()
+        val srcW = src.width.toFloat()
+        val srcH = src.height.toFloat()
+        if (srcW <= 0f || srcH <= 0f) return@LaunchedEffect
+        val fitScale = minOf(boxW / srcW, boxH / srcH)
+        val cropScale = maxOf(boxW / srcW, boxH / srcH)
+        if (fitScale > 0f) {
+            scale = (cropScale / fitScale).coerceIn(0.25f, 4f)
+            offsetX = 0f
+            offsetY = 0f
+        }
+        initialCoverApplied = true
     }
 
     // Debounce pan/pinch into one undo step after user stops moving fingers.
@@ -370,6 +406,7 @@ Icon(
                     scale = 1f
                     offsetX = 0f
                     offsetY = 0f
+                    initialCoverApplied = false
                     selectedBackground = BackgroundOption.NONE
                     compressionValue = 0.7f
                 },
