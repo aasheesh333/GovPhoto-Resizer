@@ -701,15 +701,19 @@ fun removeBackground() {
         val bw = boxW.coerceAtLeast(1f)
         val bh = boxH.coerceAtLeast(1f)
 
-        // Cover scale at userScale=1: image fills box, keeps AR, clips overflow.
-        val coverScale = maxOf(bw / srcW, bh / srcH)
-        val totalScale = coverScale * userScale.coerceAtLeast(0.01f)
+        // Fit scale at userScale=1: full image visible inside preset box.
+        // User zooms in (scale>1) to fill the box and crop; zooms out (scale<1)
+        // to see even more. The baked crop is whatever portion of the source
+        // is visible inside the box at Continue time.
+        val fitScale = minOf(bw / srcW, bh / srcH)
+        val totalScale = fitScale * userScale.coerceAtLeast(0.01f)
 
-        // Compose graphicsLayer: image laid out fillMaxSize then scaled around
-        // center, then translated by (offsetX, offsetY). Viewport center maps
-        // back to source as: srcCenter - offset / totalScale.
-        val halfVW = (bw / totalScale) / 2f
-        val halfVH = (bh / totalScale) / 2f
+        // Compose graphicsLayer: image laid out fillMaxSize (Fit) then scaled
+        // around center, then translated by (offsetX, offsetY).
+        // Clamp half-dimensions to source bounds so the crop never exceeds
+        // the actual image (which would cause coerceIn to fail).
+        val halfVW = ((bw / totalScale) / 2f).coerceAtMost(srcW / 2f)
+        val halfVH = ((bh / totalScale) / 2f).coerceAtMost(srcH / 2f)
         val centerX = (srcW / 2f - offsetX / totalScale).coerceIn(halfVW, srcW - halfVW)
         val centerY = (srcH / 2f - offsetY / totalScale).coerceIn(halfVH, srcH - halfVH)
 

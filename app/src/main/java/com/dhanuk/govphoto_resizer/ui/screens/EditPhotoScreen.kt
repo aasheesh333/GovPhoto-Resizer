@@ -474,9 +474,8 @@ private fun PhotoPreviewWithImage(
                 )
         )
         
-        // Cover-fill: ContentScale.Crop keeps original AR, fills preset box,
-        // clips overflow (visual only — no permanent crop until Continue).
-        // graphicsLayer scale/pan lets user adjust framing with fingers.
+        // Fit: full image visible inside preset box. User zooms/pans to
+        // frame the shot. Physical crop happens only on Continue (bakeTransform).
         if (bitmap != null && !bitmap.isRecycled) {
             androidx.compose.foundation.Image(
                 bitmap = bitmap.asImageBitmap(),
@@ -494,7 +493,7 @@ private fun PhotoPreviewWithImage(
                             onTransform(zoom, pan.x, pan.y)
                         }
                     },
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Fit
             )
         } else if (imageUri != null) {
             AsyncImage(
@@ -516,7 +515,7 @@ private fun PhotoPreviewWithImage(
                             onTransform(zoom, pan.x, pan.y)
                         }
                     },
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Fit
             )
         } else {
             // Placeholder when no image
@@ -592,9 +591,8 @@ private fun PhotoPreviewWithImage(
             )
         }
         
-        // Face oval guide fixed to the PRESET BOX (not stretched to source).
-        // Color reflects face-detection result; bounds are drawn in cover-space
-        // when available so detection is visible again.
+        // Face oval guide — proportions match FaceAnalyzer.defaultOvalGuide
+        // so the visual guide matches the actual detection oval.
         Canvas(modifier = Modifier.fillMaxSize()) {
             val ovalColor = when {
                 faceAnalysis == null -> Color.White.copy(alpha = 0.6f)
@@ -602,24 +600,24 @@ private fun PhotoPreviewWithImage(
                 faceAnalysis.isWithinMargin -> Color(0xFF2E7D32) // green
                 else -> Color(0xFFFFA000) // amber
             }
-            // Always draw centered passport-style oval in the edit window.
-            val ovalW = size.width * 0.55f
-            val ovalH = ovalW / 0.75f
+            // Match FaceAnalyzer.defaultOvalGuide: 60% of min(w,h), height = width * 1.25
+            val ovalW = minOf(size.width, size.height) * 0.60f
+            val ovalH = ovalW * 1.25f
             val left = (size.width - ovalW) / 2f
-            val top = (size.height - ovalH) / 2f - size.height * 0.03f
+            val top = (size.height - ovalH) / 2f
             drawOval(
                 color = ovalColor,
                 topLeft = Offset(left, top),
                 size = Size(ovalW, ovalH),
                 style = Stroke(width = 3f),
             )
-            // Map face bounds with ContentScale.Crop + graphicsLayer transform.
+            // Map face bounds with ContentScale.Fit + graphicsLayer transform.
             val bounds = faceAnalysis?.bounds
             val srcW = (bitmap?.width ?: 0).toFloat()
             val srcH = (bitmap?.height ?: 0).toFloat()
             if (bounds != null && srcW > 0f && srcH > 0f) {
-                val cover = maxOf(size.width / srcW, size.height / srcH)
-                val ts = cover * scale
+                val fit = minOf(size.width / srcW, size.height / srcH)
+                val ts = fit * scale
                 val drawnW = srcW * ts
                 val drawnH = srcH * ts
                 val originX = (size.width - drawnW) / 2f + offsetX
