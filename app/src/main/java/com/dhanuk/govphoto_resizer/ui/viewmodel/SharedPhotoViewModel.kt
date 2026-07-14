@@ -664,19 +664,18 @@ fun removeBackground() {
     }
 
     /**
-     * Bake current zoom/pan transform into a new [displayedBitmap] that represents
-     * exactly what the user sees on screen (the visible region scaled back up).
-     * Use this before navigating to the processed preview so the preview reflects
-     * the user's adjustments. Returns true on success.
-     */
-    /**
-     * Called on Continue. Physically crops the portion of [source] that is
-     * visible inside the preset-ratio edit window under the current
-     * ContentScale.Crop + graphicsLayer(scale, offset) transform.
+     * Called on Continue. Renders the current user-visible frame onto a
+     * preset-sized bitmap.
      *
-     * [boxW]/]/boxH] = edit window size in Compose pixels (from onSizeChanged).
-     * [userScale] = graphicsLayer scale (1f = cover-fill).
-     * [offsetX]/[offsetY] = graphicsLayer translation in Compose pixels.
+     * The on-screen image is laid out with ContentScale.Fit inside a preset-
+     * aspect-ratio box of size [boxW]x[boxH], then scaled by [userScale] and
+     * translated by ([offsetX],[offsetY]). We reproduce the exact same transform
+     * on a canvas whose size is the requested preset output (capped to 2048px),
+     * drawing the source bitmap at the matching position.
+     *
+     * This preserves transparent/empty regions when the user has zoomed/panned
+     * the image smaller than the preset box, instead of stretching the image to
+     * fill the preset.
      *
      * Result is written to [_bakedBitmap] only — displayed stays full image.
      */
@@ -701,74 +700,74 @@ fun removeBackground() {
         val bw = boxW.coerceAtLeast(1f)
         val bh = boxH.coerceAtLeast(1f)
 
-        // Fit scale at userScale=1: full image visible inside preset box.
-        // User zooms in (scale>1) to fill the box and crop; zooms out (scale<1)
-        // to see even more. The baked crop is whatever portion of the source
-        // is visible inside the box at Continue time.
+        val preset = _selectedPreset.value
+        val format = preset?.format?.lowercase() ?: "jpg"
+        val isPng = format == "png"
+        val bgOption = _bgOption.value
+
+        // Target output size from preset, capped to avoid OOM.
+        val outW = ((preset?.widthPx ?: targetWidth).coerceIn(50, 2048)).toFloat()
+        val outH = ((preset?.heightPx ?: targetHeight).coerceIn(50, 2048)).toFloat()
+
+        // ContentScale.Fit scale inside the edit box.
         val fitScale = minOf(bw / srcW, bh / srcH)
         val totalScale = fitScale * userScale.coerceAtLeast(0.01f)
 
-        // Compose graphicsLayer: image laid out fillMaxSize (Fit) then scaled
-        // around center, then translated by (offsetX, offsetY).
-        // Clamp half-dimensions to source bounds so the crop never exceeds
-        // the actual image (which would cause coerceIn to fail).
-        val halfVW = ((bw / totalScale) / 2f).coerceAtMost(srcW / 2f)
-        val halfVH = ((bh / totalScale) / 2f).coerceAtMost(srcH / 2f)
-        val centerX = (srcW / 2f - offsetX / totalScale).coerceIn(halfVW, srcW - halfVW)
-        val centerY = (srcH / 2f - offsetY / totalScale).coerceIn(halfVH, srcH - halfVH)
+        // The edit box and the output share the preset aspect ratio, so a single
+        // box -> output scale works for both axes.
+        val outputScale = outW / bw
 
-        var left = (centerX - halfVW).toInt()
-        var top = (centerY - halfVH).toInt()
-        var cropW = (halfVW * 2f).toInt().coerceAtLeast(1)
-        var cropH = (halfVH * 2f).toInt().coerceAtLeast(1)
-        // Clamp crop rect inside source bounds
-        if (left < 0) left = 0
-        if (top < 0) top = 0
-        if (left + cropW > source.width) cropW = source.width - left
-        if (top + cropH > source.height) cropH = source.height - top
-        if (cropW < 1 || cropH < 1) return false
+        // Final scale from source pixels to output pixels, and the image origin
+        // in output coordinates (centered + user pan, matching Compose).
+        val srcToOutScale = totalScale * outputScale
+        val drawnW = srcW * srcToOutScale
+        val drawnH = srcH * srcToOutScale
+        val originX = (outW - drawnW) / 2f + offsetX * outputScale
+        val originY = (outH - drawnH) / 2f + offsetY * outputScale
 
         return try {
-            // Copy crop under isolation — createBitmap(source, ...) is a view into
-            // source pixels; use independent ARGB copy for save safety.
-            val region = Bitmap.createBitmap(source, left, top, cropW, cropH)
-            val cropped = try {
-                region.copy(Bitmap.Config.ARGB_8888, false) ?: region
-            } catch (_: OutOfMemoryError) {
-                region
+            val output = Bitmap.createBitmap(outW.toInt(), outH.toInt(), Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(output)
+            val transparentBg = isPng && bgOption == BackgroundOption.TRANSPARENT
+            if (!transparentBg) {
+                output.eraseColor(android.graphics.Color.WHITE)
             }
-            if (cropped !== region && !region.isRecycled) {
-                try { region.recycle() } catch (_: Throwable) {}
+            val matrix = Matrix().apply {
+                setScale(srcToOutScale, srcToOutScale)
+                postTranslate(originX, originY)
             }
+            val paint = android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG)
+            canvas.drawBitmap(source, matrix, paint)
+
             val prev = _bakedBitmap.value
-            _bakedBitmap.value = cropped
-            if (prev != null && !prev.isRecycled && prev !== cropped) prev.recycle()
+            _bakedBitmap.value = output
+            if (prev != null && !prev.isRecycled && prev !== output) prev.recycle()
+
             // Face analysis on a private copy of baked — never pass baked itself
             // into ML Kit (save path needs an unrecycled baked bitmap).
             // Skip for non-PHOTO presets (signatures, thumbs, documents).
-            val bakedPreset = _selectedPreset.value
-            if (bakedPreset != null && bakedPreset.presetType != com.dhanuk.govphoto_resizer.data.model.PresetType.PHOTO) {
+            if (preset != null && preset.presetType != com.dhanuk.govphoto_resizer.data.model.PresetType.PHOTO) {
                 _faceAnalysis.value = null
             } else {
                 faceAnalysisJob?.cancel()
                 faceAnalysisJob = viewModelScope.launch(Dispatchers.Default + coroutineExceptionHandler) {
-                val copy = try {
-                    cropped.copy(Bitmap.Config.ARGB_8888, false)
-                } catch (_: OutOfMemoryError) {
-                    null
-                }
-                if (copy == null) return@launch
-                try {
-                    _faceAnalysis.value = faceAnalyzer.analyze(copy)
-                } catch (fe: CancellationException) {
-                    throw fe
-                } catch (fe: OutOfMemoryError) {
-                    Log.w(TAG, "bakeTransform face analyze OOM", fe)
-                } catch (fe: Exception) {
-                    Log.w(TAG, "bakeTransform face analyze failed", fe)
-                } finally {
-                    if (!copy.isRecycled) try { copy.recycle() } catch (_: Throwable) {}
-                }
+                    val copy = try {
+                        output.copy(Bitmap.Config.ARGB_8888, false)
+                    } catch (_: OutOfMemoryError) {
+                        null
+                    }
+                    if (copy == null) return@launch
+                    try {
+                        _faceAnalysis.value = faceAnalyzer.analyze(copy)
+                    } catch (fe: CancellationException) {
+                        throw fe
+                    } catch (fe: OutOfMemoryError) {
+                        Log.w(TAG, "bakeTransform face analyze OOM", fe)
+                    } catch (fe: Exception) {
+                        Log.w(TAG, "bakeTransform face analyze failed", fe)
+                    } finally {
+                        if (!copy.isRecycled) try { copy.recycle() } catch (_: Throwable) {}
+                    }
                 }
             }
             true
