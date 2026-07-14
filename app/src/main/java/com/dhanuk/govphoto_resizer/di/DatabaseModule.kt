@@ -19,7 +19,10 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): GovPhotoDatabase =
         Room.databaseBuilder(context, GovPhotoDatabase::class.java, "govphoto.db")
-            .fallbackToDestructiveMigration().build()
+            // No destructive migration — future schema changes must add explicit Migration objects.
+            // For v1 (initial release) there are no migrations needed yet.
+            // When adding v2, add: .addMigrations(MIGRATION_1_2) here
+            .build()
 
     @Provides
     fun providePhotoHistoryDao(db: GovPhotoDatabase): PhotoHistoryDao = db.photoHistoryDao()

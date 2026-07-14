@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -22,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import kotlinx.coroutines.delay
 import com.dhanuk.govphoto_resizer.R
 import com.dhanuk.govphoto_resizer.data.local.entity.PhotoHistoryEntity
 import com.dhanuk.govphoto_resizer.ui.viewmodel.HistoryViewModel
@@ -195,6 +197,10 @@ private fun HistoryRowContent(
                     .crossfade(true)
                     .build(),
                 contentDescription = stringResource(R.string.cd_history_thumbnail),
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop
             )
 
             Column(
@@ -221,8 +227,14 @@ private fun HistoryRowContent(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                val mins = remember(item.createdAt) {
-                    ((System.currentTimeMillis() - item.createdAt) / 60000L).coerceAtLeast(0L)
+                val mins by androidx.compose.runtime.produceState(
+                    initialValue = ((System.currentTimeMillis() - item.createdAt) / 60000L).coerceAtLeast(0L),
+                    item.createdAt
+                ) {
+                    while (true) {
+                        value = ((System.currentTimeMillis() - item.createdAt) / 60000L).coerceAtLeast(0L)
+                        delay(60_000L)
+                    }
                 }
                 Text(
                     text = relativeTimeLabel(mins),

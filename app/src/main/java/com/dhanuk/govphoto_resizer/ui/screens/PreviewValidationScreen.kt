@@ -103,8 +103,10 @@ fun PreviewValidationScreen(
     
     // Function to handle sharing
     fun shareImage(uri: Uri) {
+        val format = selectedPreset?.format?.lowercase() ?: "jpg"
+        val mimeType = if (format == "png") "image/png" else "image/jpeg"
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
-            type = "image/jpeg"
+            type = mimeType
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
@@ -610,6 +612,9 @@ private fun ValidationChecklist(
     faceAnalysis: FaceAnalysisResult?,
 ) {
     val isSizeValid = fileSizeKb <= (preset?.maxFileSizeKb ?: 500)
+    val isPhotoPreset = preset?.presetType != com.dhanuk.govphoto_resizer.data.model.PresetType.SIGNATURE &&
+        preset?.presetType != com.dhanuk.govphoto_resizer.data.model.PresetType.THUMB &&
+        preset?.presetType != com.dhanuk.govphoto_resizer.data.model.PresetType.DOCUMENT
     val faceOk = faceAnalysis?.isWithinMargin == true && (faceAnalysis.faceCount == 1)
     val faceDesc = when {
         faceAnalysis == null -> "Checking face…"
@@ -630,12 +635,14 @@ private fun ValidationChecklist(
         )
         
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            ValidationItem(
-                icon = Icons.Default.Face,
-                title = stringResource(R.string.face_detected),
-                description = faceDesc,
-                isSuccess = faceOk
-            )
+            if (isPhotoPreset) {
+                ValidationItem(
+                    icon = Icons.Default.Face,
+                    title = stringResource(R.string.face_detected),
+                    description = faceDesc,
+                    isSuccess = faceOk
+                )
+            }
             ValidationItem(
                 icon = Icons.Default.AspectRatio,
                 title = stringResource(R.string.correct_dimensions),
@@ -651,7 +658,8 @@ private fun ValidationChecklist(
         }
         
         // Success Info Note — only when face AND file size are valid.
-        if (faceOk && isSizeValid) {
+        val allChecksPass = if (isPhotoPreset) faceOk && isSizeValid else isSizeValid
+        if (allChecksPass) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()

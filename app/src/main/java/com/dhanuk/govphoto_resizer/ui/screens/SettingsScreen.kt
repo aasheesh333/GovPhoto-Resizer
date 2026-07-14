@@ -35,6 +35,8 @@ fun SettingsScreen(
     val settings by viewModel.state.collectAsState()
     val context = LocalContext.current
     var showPrivacyPolicy by remember { mutableStateOf(false) }
+    val sharedPreferences = remember { context.getSharedPreferences("govphoto_settings", android.content.Context.MODE_PRIVATE) }
+    var preventScreenshots by remember { mutableStateOf(sharedPreferences.getBoolean("prevent_screenshots", false)) }
 
     Scaffold(
         topBar = {
@@ -126,6 +128,25 @@ fun SettingsScreen(
                     isChecked = settings.highContrast,
                     onCheckedChange = { viewModel.setHighContrast(it) }
                 )
+                SettingsToggle(
+                    icon = Icons.Default.Lock,
+                    title = "Prevent Screenshots",
+                    subtitle = "Block screenshots for sensitive document photos",
+                    isChecked = preventScreenshots,
+                    onCheckedChange = {
+                        preventScreenshots = it
+                        sharedPreferences.edit().putBoolean("prevent_screenshots", it).apply()
+                        val activity = context as? android.app.Activity
+                        if (it) {
+                            activity?.window?.setFlags(
+                                android.view.WindowManager.LayoutParams.FLAG_SECURE,
+                                android.view.WindowManager.LayoutParams.FLAG_SECURE
+                            )
+                        } else {
+                            activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                        }
+                    }
+                )
             }
 
             Divider(modifier = Modifier.padding(vertical = 8.dp))
@@ -142,6 +163,33 @@ fun SettingsScreen(
                     title = stringResource(R.string.privacy_policy),
                     subtitle = stringResource(R.string.view_privacy_policy),
                     onClick = { showPrivacyPolicy = true }
+                )
+                SettingsItem(
+                    icon = Icons.Default.BugReport,
+                    title = "Share Crash Log",
+                    subtitle = "Send diagnostic info to support",
+                    onClick = {
+                        try {
+                            val crashFile = java.io.File(context.filesDir, "last_crash.txt")
+                            if (crashFile.exists()) {
+                                val uri = androidx.core.content.FileProvider.getUriForFile(
+                                    context,
+                                    "${context.packageName}.fileprovider",
+                                    crashFile
+                                )
+                                val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Crash Log"))
+                            } else {
+                                android.widget.Toast.makeText(context, "No crash logs found", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        } catch (e: Exception) {
+                            android.widget.Toast.makeText(context, "Could not share crash log", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 )
             }
 

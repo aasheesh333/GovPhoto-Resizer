@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,7 +41,7 @@ fun AllFormsScreen(
     viewModel: AllFormsViewModel = hiltViewModel()
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    var selectedNavItem by remember { mutableIntStateOf(0) }
+    var selectedNavItem by rememberSaveable { mutableIntStateOf(0) }
     
     val allPresets by viewModel.presets.collectAsState()
     
@@ -143,8 +144,7 @@ fun AllFormsScreen(
                 )
                 NavigationBarItem(
                     selected = selectedNavItem == 1,
-                    onClick = { 
-                        selectedNavItem = 1
+                    onClick = {
                         onNavigateToHistory()
                     },
                     icon = {
@@ -157,8 +157,7 @@ fun AllFormsScreen(
                 )
                 NavigationBarItem(
                     selected = selectedNavItem == 2,
-                    onClick = { 
-                        selectedNavItem = 2
+                    onClick = {
                         onNavigateToSettings()
                     },
                     icon = {

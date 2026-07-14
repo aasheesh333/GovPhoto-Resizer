@@ -2,6 +2,7 @@ package com.dhanuk.govphoto_resizer.ui.screens
 
 import android.graphics.Bitmap
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -68,6 +69,7 @@ fun EditPhotoScreen(
     val rotationDegrees by sharedViewModel.rotationDegrees.collectAsState()
     val canUndo by sharedViewModel.canUndo.collectAsState()
     val canRedo by sharedViewModel.canRedo.collectAsState()
+    val isRemovingBackground by sharedViewModel.isRemovingBackground.collectAsState()
 
     // Dynamic aspect ratio from preset
     val aspectRatio = sharedViewModel.aspectRatio
@@ -86,6 +88,33 @@ fun EditPhotoScreen(
     var previewBoxSize by remember { mutableStateOf(IntSize.Zero) }
     // When true, UI restores from undo/redo — do NOT push history / re-trigger bg.
     var isRestoring by remember { mutableStateOf(false) }
+
+    var showExitDialog by remember { mutableStateOf(false) }
+
+    androidx.activity.compose.BackHandler {
+        showExitDialog = true
+    }
+
+    if (showExitDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = { Text("Discard edits?") },
+            text = { Text("Your changes will be lost. Are you sure you want to go back?") },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        showExitDialog = false
+                        onNavigateBack()
+                    }
+                ) { Text("Discard") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = { showExitDialog = false }
+                ) { Text("Keep editing") }
+            }
+        )
+    }
 
     val renderBitmap = displayedBitmap ?: pristineOriginal ?: originalBitmap
 
@@ -214,7 +243,7 @@ fun EditPhotoScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Undo,
-                            contentDescription = "Undo edit"
+                            contentDescription = stringResource(R.string.undo)
                         )
                     }
                     IconButton(
@@ -223,7 +252,7 @@ fun EditPhotoScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Redo,
-                            contentDescription = "Redo edit"
+                            contentDescription = stringResource(R.string.redo)
                         )
                     }
                     Text(
@@ -326,6 +355,7 @@ Icon(
                 offsetX = offsetX,
                 offsetY = offsetY,
                 faceAnalysis = faceAnalysis,
+                isRemovingBackground = isRemovingBackground,
                 onBoxSize = { previewBoxSize = it },
                 onTransform = { newScale, newOffsetX, newOffsetY ->
                     val nextScale = (scale * newScale).coerceIn(0.25f, 4f)
@@ -410,6 +440,7 @@ private fun PhotoPreviewWithImage(
     offsetX: Float,
     offsetY: Float,
     faceAnalysis: FaceAnalysisResult?,
+    isRemovingBackground: Boolean,
     onBoxSize: (IntSize) -> Unit,
     onTransform: (Float, Float, Float) -> Unit,
     onReset: () -> Unit,
@@ -500,10 +531,25 @@ private fun PhotoPreviewWithImage(
                     modifier = Modifier.size(64.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(
+                    Text(
                     text = "No image selected",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        
+        if (isRemovingBackground) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.4f)),
+                contentAlignment = Alignment.Center
+            ) {
+                com.dhanuk.govphoto_resizer.ui.components.SafeCircularSpinner(
+                    modifier = Modifier.size(32.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp
                 )
             }
         }

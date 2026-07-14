@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Folder
@@ -113,6 +114,8 @@ fun HelpScreen(
         )
     }
 
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+
     var expandedIndex by rememberSaveable { mutableIntStateOf(-1) }
 
     Scaffold(
@@ -149,8 +152,8 @@ fun HelpScreen(
         ) {
             item {
                 OutlinedTextField(
-                    value = "",
-                    onValueChange = { },
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -163,6 +166,16 @@ fun HelpScreen(
                             contentDescription = stringResource(R.string.cd_search_icon),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Clear search"
+                                )
+                            }
+                        }
                     },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
@@ -199,7 +212,15 @@ fun HelpScreen(
                 )
             }
 
-            itemsIndexed(faqItems) { index, faqItem ->
+            val filteredFaqs = remember(faqItems, searchQuery) {
+                if (searchQuery.isBlank()) faqItems
+                else faqItems.filter {
+                    it.question.contains(searchQuery, ignoreCase = true) ||
+                    it.answer.contains(searchQuery, ignoreCase = true)
+                }
+            }
+
+            itemsIndexed(filteredFaqs) { index, faqItem ->
                 FaqCard(
                     faqItem = faqItem,
                     isExpanded = expandedIndex == index,
@@ -220,8 +241,7 @@ private fun CategoryTile(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier
-            .clickable { },
+        modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)

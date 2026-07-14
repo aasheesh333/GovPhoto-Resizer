@@ -142,7 +142,14 @@ fun GovPhotoNavHost(
         composable(Screen.History.route) {
             HistoryScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onPhotoSelected = { }
+                onPhotoSelected = { imagePath ->
+                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                        setDataAndType(android.net.Uri.parse(imagePath), "image/*")
+                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    val context = navController.context
+                    context.startActivity(intent)
+                }
             )
         }
 

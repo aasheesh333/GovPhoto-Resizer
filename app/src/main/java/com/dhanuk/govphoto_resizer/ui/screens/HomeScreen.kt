@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,7 +45,7 @@ fun HomeScreen(
     settingsViewModel: SettingsViewModel = hiltViewModel(),
     homeViewModel: HomeViewModel = hiltViewModel()
 ) {
-    var selectedNavItem by remember { mutableIntStateOf(0) }
+    var selectedNavItem by rememberSaveable { mutableIntStateOf(0) }
     val recentPresets by homeViewModel.recentPresets.collectAsState()
     
     Scaffold(
@@ -52,9 +53,8 @@ fun HomeScreen(
             BottomNavigationBar(
                 selectedItem = selectedNavItem,
                 onItemSelected = { index ->
-                    selectedNavItem = index
                     when (index) {
-                        0 -> { /* Already on Home */ }
+                        0 -> selectedNavItem = 0
                         1 -> onNavigateToHistory()
                         2 -> onNavigateToSettings()
                     }
@@ -446,19 +446,19 @@ private fun DocumentTypeSection(
             DocumentTypeCard(
                 icon = Icons.Default.Public,
                 title = stringResource(R.string.passport),
-                subtitle = "3.5 x 4.5 cm",
+                subtitle = "5.1 x 5.1 cm",
                 onClick = { onPresetClick("passport") }
             )
             DocumentTypeCard(
                 icon = Icons.Default.Fingerprint,
                 title = stringResource(R.string.aadhaar),
-                subtitle = "Official Update",
+                subtitle = "3.5 x 4.5 cm",
                 onClick = { onPresetClick("aadhaar") }
             )
             DocumentTypeCard(
                 icon = Icons.Default.Badge,
                 title = stringResource(R.string.pan_card),
-                subtitle = "Standard Size",
+                subtitle = "2.5 x 3.5 cm",
                 onClick = { onPresetClick("pan_card") }
             )
 

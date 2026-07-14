@@ -80,8 +80,17 @@ fun SaveSuccessScreen(
 
     val widthPx = selectedPreset?.widthPx ?: 0
     val heightPx = selectedPreset?.heightPx ?: 0
-    val widthCm = widthPx / 118
-    val heightCm = heightPx / 118
+    val preset = selectedPreset
+    val widthCm: Int
+    val heightCm: Int
+    if (preset?.widthCm != null && preset?.heightCm != null) {
+        widthCm = preset!!.widthCm!!.toInt()
+        heightCm = preset!!.heightCm!!.toInt()
+    } else {
+        val dpi = preset?.dpi ?: 300
+        widthCm = ((widthPx.toFloat() / dpi * 2.54f).toInt())
+        heightCm = ((heightPx.toFloat() / dpi * 2.54f).toInt())
+    }
     val formatName = selectedPreset?.format?.uppercase() ?: "JPG"
     val detailsText = stringResource(
         R.string.save_success_details,
@@ -92,16 +101,20 @@ fun SaveSuccessScreen(
     )
 
     fun openInGallery(uri: Uri) {
+        val format = selectedPreset?.format?.lowercase() ?: "jpg"
+        val mimeType = if (format == "png") "image/png" else "image/jpeg"
         val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, "image/jpeg")
+            setDataAndType(uri, mimeType)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(intent)
     }
 
     fun shareImage(uri: Uri) {
+        val format = selectedPreset?.format?.lowercase() ?: "jpg"
+        val mimeType = if (format == "png") "image/png" else "image/jpeg"
         val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "image/jpeg"
+            type = mimeType
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
@@ -235,7 +248,7 @@ fun SaveSuccessScreen(
                 )
 
                 GovOutlinedButton(
-                    text = stringResource(R.string.save_another),
+                    text = "Done",
                     onClick = onNavigateHome,
                     modifier = Modifier.fillMaxWidth()
                 )

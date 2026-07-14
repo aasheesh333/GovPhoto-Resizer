@@ -3,6 +3,17 @@ package com.dhanuk.govphoto_resizer.data.model
 import com.google.gson.annotations.SerializedName
 
 /**
+ * Type of preset, used to decide whether ML Kit face detection should run.
+ * Non-PHOTO presets (signatures, thumb impressions, documents) skip face detection.
+ */
+enum class PresetType {
+    PHOTO,
+    SIGNATURE,
+    THUMB,
+    DOCUMENT
+}
+
+/**
  * Data class representing a photo preset for a specific exam or document.
  * Contains all specifications required to resize and validate a photo.
  */
@@ -42,7 +53,10 @@ data class PhotoPreset(
 
     @SerializedName("format")
     val format: String = "jpg", // "jpg" or "png"
-    
+
+    @SerializedName("preset_type")
+    val presetType: PresetType = PresetType.PHOTO,
+
     @SerializedName("background_color")
     val backgroundColor: String = "#FFFFFF",
     

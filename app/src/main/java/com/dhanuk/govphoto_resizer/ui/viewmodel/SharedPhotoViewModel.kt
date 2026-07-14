@@ -374,6 +374,11 @@ private fun decodeUriToOriginalBitmap(uri: Uri) {
     }
 
 fun analyzeFace() {
+    val preset = _selectedPreset.value
+    if (preset != null && preset.presetType != com.dhanuk.govphoto_resizer.data.model.PresetType.PHOTO) {
+        _faceAnalysis.value = null
+        return
+    }
     faceAnalysisJob?.cancel()
     faceAnalysisJob = viewModelScope.launch(Dispatchers.Default + coroutineExceptionHandler) {
       try {
@@ -569,6 +574,7 @@ fun removeBackground() {
           }
           _removalState.value = RemovalState.Done
         }
+        analyzeFace()
       } catch (e: CancellationException) {
         _removalState.value = RemovalState.Idle
         throw e
@@ -735,8 +741,13 @@ fun removeBackground() {
             if (prev != null && !prev.isRecycled && prev !== cropped) prev.recycle()
             // Face analysis on a private copy of baked — never pass baked itself
             // into ML Kit (save path needs an unrecycled baked bitmap).
-            faceAnalysisJob?.cancel()
-            faceAnalysisJob = viewModelScope.launch(Dispatchers.Default + coroutineExceptionHandler) {
+            // Skip for non-PHOTO presets (signatures, thumbs, documents).
+            val bakedPreset = _selectedPreset.value
+            if (bakedPreset != null && bakedPreset.presetType != com.dhanuk.govphoto_resizer.data.model.PresetType.PHOTO) {
+                _faceAnalysis.value = null
+            } else {
+                faceAnalysisJob?.cancel()
+                faceAnalysisJob = viewModelScope.launch(Dispatchers.Default + coroutineExceptionHandler) {
                 val copy = try {
                     cropped.copy(Bitmap.Config.ARGB_8888, false)
                 } catch (_: OutOfMemoryError) {
@@ -753,6 +764,7 @@ fun removeBackground() {
                     Log.w(TAG, "bakeTransform face analyze failed", fe)
                 } finally {
                     if (!copy.isRecycled) try { copy.recycle() } catch (_: Throwable) {}
+                }
                 }
             }
             true
