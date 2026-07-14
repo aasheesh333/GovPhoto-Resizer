@@ -4,6 +4,8 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -67,6 +69,30 @@ fun PreviewValidationScreen(
     
     var selectedTab by remember { mutableIntStateOf(1) } // 0 = Original, 1 = Processed
     var isSaving by remember { mutableStateOf(false) }
+    var pendingSave by remember { mutableStateOf(false) }
+
+    // Runtime permission for saving on Android 9 and below (API <= 28).
+    // WRITE_EXTERNAL_STORAGE is required for MediaStore writes on those versions.
+    val storagePermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted && pendingSave) {
+            performSave(
+                scope = scope,
+                context = context,
+                sharedViewModel = sharedViewModel,
+                setSaving = { isSaving = it },
+                onSaveComplete = onSaveComplete
+            )
+        } else if (pendingSave) {
+            Toast.makeText(
+                context,
+                "Storage permission is required to save photos on this device",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+        pendingSave = false
+    }
 
     // Ensure face analysis is available when Preview opens
     LaunchedEffect(selectedImageUri, originalBitmap) {
@@ -148,35 +174,27 @@ fun PreviewValidationScreen(
                     // from a Save tap.
                     Button(
                         onClick = {
-                            if (!isSaving) {
-                                isSaving = true
-                                scope.launch {
-                                    try {
-                                        val result = sharedViewModel.savePhotoToGallery()
-                                        result.onSuccess {
-                                            Toast.makeText(context, "Photo saved to Gallery!", Toast.LENGTH_SHORT).show()
-                                            onSaveComplete()
-                                        }.onFailure { error ->
-                                            Toast.makeText(
-                                                context,
-                                                "Failed to save: ${error.message ?: "unknown"}",
-                                                Toast.LENGTH_LONG
-                                            ).show()
-                                        }
-                                    } catch (t: Throwable) {
-                                        android.util.Log.e("PreviewValidation", "Save crashed", t)
-                                        try {
-                                            sharedViewModel.writeCrashFile("UI save catch", t)
-                                        } catch (_: Throwable) {}
-                                        val msg = if (t is OutOfMemoryError)
-                                            "Out of memory — try a smaller photo"
-                                        else "Error: ${t.message}"
-                                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
-                                    } finally {
-                                        isSaving = false
-                                    }
-                                }
+                            if (isSaving) return@Button
+
+                            // Android 9 and below need WRITE_EXTERNAL_STORAGE at runtime.
+                            if (android.os.Build.VERSION.SDK_INT <= android.os.Build.VERSION_CODES.P &&
+                                context.checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                                != android.content.pm.PackageManager.PERMISSION_GRANTED
+                            ) {
+                                pendingSave = true
+                                storagePermissionLauncher.launch(
+                                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+                                )
+                                return@Button
                             }
+
+                            performSave(
+                                scope = scope,
+                                context = context,
+                                sharedViewModel = sharedViewModel,
+                                setSaving = { isSaving = it },
+                                onSaveComplete = onSaveComplete
+                            )
                         },
                         enabled = !isSaving,
                         modifier = Modifier
@@ -549,6 +567,42 @@ private fun PreviewCard(
     }
 }
 
+private fun performSave(
+    scope: kotlinx.coroutines.CoroutineScope,
+    context: android.content.Context,
+    sharedViewModel: SharedPhotoViewModel,
+    setSaving: (Boolean) -> Unit,
+    onSaveComplete: () -> Unit
+) {
+    setSaving(true)
+    scope.launch {
+        try {
+            val result = sharedViewModel.savePhotoToGallery()
+            result.onSuccess {
+                Toast.makeText(context, "Photo saved to Gallery!", Toast.LENGTH_SHORT).show()
+                onSaveComplete()
+            }.onFailure { error ->
+                Toast.makeText(
+                    context,
+                    "Failed to save: ${error.message ?: "unknown"}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        } catch (t: Throwable) {
+            android.util.Log.e("PreviewValidation", "Save crashed", t)
+            try {
+                sharedViewModel.writeCrashFile("UI save catch", t)
+            } catch (_: Throwable) {}
+            val msg = if (t is OutOfMemoryError)
+                "Out of memory — try a smaller photo"
+            else "Error: ${t.message}"
+            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+        } finally {
+            setSaving(false)
+        }
+    }
+}
+
 @Composable
 private fun ValidationChecklist(
     fileSizeKb: Int,
@@ -560,6 +614,7 @@ private fun ValidationChecklist(
     val faceDesc = when {
         faceAnalysis == null -> "Checking face…"
         faceOk -> stringResource(R.string.face_detected_desc)
+        faceAnalysis.faceCount == 0 -> "No face detected"
         faceAnalysis.issues.isNotEmpty() -> faceAnalysis.issues.joinToString(" · ")
         else -> "Face not compliant"
     }
@@ -595,8 +650,8 @@ private fun ValidationChecklist(
             )
         }
         
-        // Success Info Note
-        if (isSizeValid) {
+        // Success Info Note — only when face AND file size are valid.
+        if (faceOk && isSizeValid) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()

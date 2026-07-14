@@ -328,7 +328,7 @@ Icon(
                 faceAnalysis = faceAnalysis,
                 onBoxSize = { previewBoxSize = it },
                 onTransform = { newScale, newOffsetX, newOffsetY ->
-                    val nextScale = (scale * newScale).coerceIn(1f, 4f)
+                    val nextScale = (scale * newScale).coerceIn(0.25f, 4f)
                     scale = nextScale
                     val maxPan = maxOf(previewBoxSize.width, previewBoxSize.height)
                         .toFloat().coerceAtLeast(1f) * nextScale
@@ -355,7 +355,7 @@ Icon(
                     )
                 },
                 onZoom = { factor ->
-                    scale = (scale * factor).coerceIn(1f, 4f)
+                    scale = (scale * factor).coerceIn(0.25f, 4f)
                     commitHistory()
                 }
             )
