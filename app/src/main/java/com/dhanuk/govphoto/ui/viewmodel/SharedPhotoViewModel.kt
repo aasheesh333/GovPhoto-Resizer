@@ -41,6 +41,14 @@ import javax.inject.Inject
 private const val TAG = "SharedPhotoViewModel"
 private const val MAX_DECODE_DIM = 2048
 
+/**
+ * Max bitmap dimension for filter processing. Filters allocate multiple
+ * IntArray(w*h) and Bitmap buffers — at 2048px that's ~128-176 MB peak
+ * which causes native SIGSEGV (silent OOM) on low-RAM devices. 1024px
+ * is sufficient because preset outputs max out at ~1200px.
+ */
+private const val MAX_FILTER_DIM = 1024
+
 @HiltViewModel
 class SharedPhotoViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -209,6 +217,9 @@ class SharedPhotoViewModel @Inject constructor(
 
     fun setSelectedImageUri(uri: Uri?) {
         _selectedImageUri.value = uri
+        // Cancel filter job BEFORE recycling bitmaps — the coroutine captured
+        // `base = _preFilterBitmap.value` and using it after recycle = native crash.
+        filterJob?.cancel()
         recycleBitmaps()
         // reset pristine + rotation — will be re-populated inside decodeUriToOriginalBitmap
         _pristineOriginalBitmap.value?.let { if (!it.isRecycled) it.recycle() }
@@ -218,7 +229,6 @@ class SharedPhotoViewModel @Inject constructor(
         _rotationDegrees.value = 0
         _displayedBitmap.value = null
         _selectedFilter.value = ImageFilter.ORIGINAL
-        filterJob?.cancel()
         _faceAnalysis.value = null
         _removalState.value = RemovalState.Idle
         autoFitPending = true
@@ -229,13 +239,14 @@ class SharedPhotoViewModel @Inject constructor(
 
     fun setCapturedBitmap(bitmap: Bitmap?) {
         _selectedImageUri.value = null
+        // Cancel filter job BEFORE recycling bitmaps — same TOCTOU as above.
+        filterJob?.cancel()
         recycleBitmaps()
         _originalBitmap.value = bitmap
         _pristineOriginalBitmap.value = bitmap
         _rotationDegrees.value = 0
         _displayedBitmap.value = null
         _selectedFilter.value = ImageFilter.ORIGINAL
-        filterJob?.cancel()
         _faceAnalysis.value = null
         _removalState.value = RemovalState.Idle
         autoFitPending = true
@@ -391,18 +402,41 @@ private fun decodeUriToOriginalBitmap(uri: Uri) {
         _isApplyingFilter.value = true
         val myVersion = filterVersion.incrementAndGet()
         filterJob = viewModelScope.launch(Dispatchers.Default + coroutineExceptionHandler) {
-            // Private copy so setBaseBitmap recycling oldPreFilter (= base)
-            // cannot crash us mid-apply. Mirrors removeBackground's localCopy.
+            // Guard: base may have been recycled by recycleBitmaps between
+            // the caller's null-check and this coroutine executing.
+            if (base.isRecycled) {
+                if (myVersion == filterVersion.get()) _isApplyingFilter.value = false
+                return@launch
+            }
+            // Downscale to MAX_FILTER_DIM to bound memory: filters allocate
+            // multiple IntArray(w*h) buffers. At 2048px that's ~128-176 MB
+            // peak → native SIGSEGV. 1024px keeps peak under ~48 MB.
+            // The downscale also serves as a private copy of base so
+            // setBaseBitmap recycling oldPreFilter cannot crash us mid-apply.
             val localCopy = try {
-                base.copy(Bitmap.Config.ARGB_8888, false) ?: base
+                if (maxOf(base.width, base.height) > MAX_FILTER_DIM) {
+                    Bitmap.createScaledBitmap(
+                        base,
+                        if (base.width >= base.height)
+                            MAX_FILTER_DIM
+                        else
+                            (base.width * MAX_FILTER_DIM / base.height),
+                        if (base.width >= base.height)
+                            (base.height * MAX_FILTER_DIM / base.width)
+                        else
+                            MAX_FILTER_DIM,
+                        false
+                    )
+                } else {
+                    base.copy(Bitmap.Config.ARGB_8888, false) ?: base
+                }
             } catch (_: OutOfMemoryError) {
                 base
             }
             try {
                 val result = ImageFilterProcessor.apply(localCopy, filter)
                 // apply() reads pixels from localCopy but does NOT recycle it.
-                // Recycle localCopy here (unless apply returned it directly,
-                // e.g. on a recycled-source edge case).
+                // Recycle localCopy here (unless apply returned it directly).
                 if (localCopy !== base && localCopy !== result && !localCopy.isRecycled) {
                     try { localCopy.recycle() } catch (_: Throwable) {}
                 }
@@ -1055,6 +1089,8 @@ fun removeBackground() {
 
     fun clearState() {
         _selectedImageUri.value = null
+        // Cancel filter job BEFORE recycling bitmaps — same TOCTOU fix.
+        filterJob?.cancel()
         recycleBitmaps()
         _displayedBitmap.value = null
         _selectedPreset.value = null
@@ -1065,7 +1101,6 @@ fun removeBackground() {
         _rotationDegrees.value = 0
         _selectedFilter.value = ImageFilter.ORIGINAL
         _isApplyingFilter.value = false
-        filterJob?.cancel()
         _processedImageUri.value = null
         _fileSizeKb.value = 0
         _isRemovingBackground.value = false
