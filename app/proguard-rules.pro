@@ -16,10 +16,10 @@
 }
 
 # Keep preset model classes
--keep class com.dhanuk.govphoto_resizer.data.model.** { *; }
+-keep class com.dhanuk.govphoto.data.model.** { *; }
 
 # Keep Room entities
--keep class com.dhanuk.govphoto_resizer.data.local.entity.** { *; }
+-keep class com.dhanuk.govphoto.data.local.entity.** { *; }
 
 # Keep Hilt
 -keep @dagger.hilt.android.HiltAndroidApp class *
@@ -41,7 +41,7 @@
 -dontwarn com.google.android.gms.**
 
 # Room DAO interfaces
--keep class com.dhanuk.govphoto_resizer.data.local.dao.** { *; }
+-keep class com.dhanuk.govphoto.data.local.dao.** { *; }
 
 # Kotlin metadata
 -keepattributes KotlinMetadata
@@ -64,4 +64,4 @@
 
 # DataStore Preferences — accessed via Kotlin reflection under minify
 -keep class androidx.datastore.preferences.** { *; }
--keep class com.dhanuk.govphoto_resizer.data.datastore.** { *; }
+-keep class com.dhanuk.govphoto.data.datastore.** { *; }
