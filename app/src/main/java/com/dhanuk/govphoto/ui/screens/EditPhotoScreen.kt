@@ -228,7 +228,7 @@ fun EditPhotoScreen(
         val fitScale = minOf(boxW / srcW, boxH / srcH)
         val cropScale = maxOf(boxW / srcW, boxH / srcH)
         if (fitScale > 0f) {
-            scale = (cropScale / fitScale).coerceIn(0.25f, 4f)
+            scale = (cropScale / fitScale).coerceIn(0.25f, 10f)
             offsetX = 0f
             offsetY = 0f
         }
@@ -423,7 +423,7 @@ Icon(
                 isApplyingFilter = isApplyingFilter,
                 onBoxSize = { previewBoxSize = it },
                 onTransform = { newScale, newOffsetX, newOffsetY ->
-                    val nextScale = (scale * newScale).coerceIn(0.25f, 4f)
+                    val nextScale = (scale * newScale).coerceIn(0.25f, 10f)
                     scale = nextScale
                     val maxPan = maxOf(previewBoxSize.width, previewBoxSize.height)
                         .toFloat().coerceAtLeast(1f) * nextScale
@@ -451,7 +451,7 @@ Icon(
                     )
                 },
                 onZoom = { factor ->
-                    scale = (scale * factor).coerceIn(0.25f, 4f)
+                    scale = (scale * factor).coerceIn(0.25f, 10f)
                     commitHistory()
                 }
             )
