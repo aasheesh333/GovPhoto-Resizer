@@ -593,6 +593,10 @@ fun analyzeFace() {
     }
 
     fun setSelectedPreset(presetId: String, presetName: String? = null) {
+        // Reset filter on every preset change: filters are only shown for
+        // non-PHOTO presets. A stale filter from a prior preset must not
+        // leak into a PHOTO (or MANUAL) preset's bakeTransform output.
+        _selectedFilter.value = ImageFilter.ORIGINAL
         // Custom Size preset is a virtual preset — not in the repository DB.
         // Build it from current custom width/height/format so that EditPhotoScreen
         // shows the CustomPresetInputs row (selectedPreset?.id == MANUAL_PRESET_ID).
@@ -622,10 +626,6 @@ fun analyzeFace() {
                 presetRepository.getPreset(presetId)
             }
             _selectedPreset.value = preset
-            // Reset filter: filters are only shown for non-PHOTO presets.
-            // A stale filter from a prior preset must not leak into a PHOTO
-            // preset's bakeTransform output.
-            _selectedFilter.value = ImageFilter.ORIGINAL
             _selectedPresetName.value = preset?.examName ?: presetName
 
             preset?.backgroundColor?.let { colorCode ->
