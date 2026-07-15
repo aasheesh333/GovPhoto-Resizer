@@ -216,5 +216,6 @@
     <string name="filter_lighten">हल्का करें</string>
     <string name="filter_high_contrast">उच्च कंट्रास्ट</string>
     <string name="cd_applying_filter">फिल्टर लागू हो रहा है</string>
+    <string name="filter_error_msg">फिल्टर लागू नहीं हो सका। मूल पर वापस लौट गए।</string>
 </resources>
 

@@ -118,6 +118,13 @@ class SharedPhotoViewModel @Inject constructor(
     private val _isApplyingFilter = MutableStateFlow(false)
     val isApplyingFilter: StateFlow<Boolean> = _isApplyingFilter.asStateFlow()
 
+    /**
+     * User-facing error message when a filter fails to apply (e.g. OOM).
+     * Consumed by the UI to show a Snackbar once.
+     */
+    private val _filterError = MutableStateFlow<String?>(null)
+    val filterError: StateFlow<String?> = _filterError.asStateFlow()
+
     private var filterJob: Job? = null
     /**
      * Monotonic counter incremented each time [reapplyFilter] launches a coroutine.
@@ -400,72 +407,72 @@ private fun decodeUriToOriginalBitmap(uri: Uri) {
             return
         }
         _isApplyingFilter.value = true
+        _filterError.value = null
         val myVersion = filterVersion.incrementAndGet()
         filterJob = viewModelScope.launch(Dispatchers.Default + coroutineExceptionHandler) {
-            // Guard: base may have been recycled by recycleBitmaps between
-            // the caller's null-check and this coroutine executing.
-            if (base.isRecycled) {
-                if (myVersion == filterVersion.get()) _isApplyingFilter.value = false
-                return@launch
-            }
-            // Downscale to MAX_FILTER_DIM to bound memory: filters allocate
-            // multiple IntArray(w*h) buffers. At 2048px that's ~128-176 MB
-            // peak → native SIGSEGV. 1024px keeps peak under ~48 MB.
-            // The downscale also serves as a private copy of base so
-            // setBaseBitmap recycling oldPreFilter cannot crash us mid-apply.
-            val localCopy = try {
-                if (maxOf(base.width, base.height) > MAX_FILTER_DIM) {
-                    Bitmap.createScaledBitmap(
-                        base,
-                        if (base.width >= base.height)
+            try {
+                // Guard: base may have been recycled by recycleBitmaps between
+                // the caller's null-check and this coroutine executing.
+                if (base.isRecycled) return@launch
+
+                // Downscale to MAX_FILTER_DIM to bound memory: filters allocate
+                // multiple IntArray(w*h) buffers. At 2048px that's ~128-176 MB
+                // peak → native SIGSEGV. 1024px keeps peak under ~48 MB.
+                // The downscale also serves as a private copy of base so
+                // setBaseBitmap recycling oldPreFilter cannot crash us mid-apply.
+                val localCopy = try {
+                    if (maxOf(base.width, base.height) > MAX_FILTER_DIM) {
+                        val newW = if (base.width >= base.height)
                             MAX_FILTER_DIM
                         else
-                            (base.width * MAX_FILTER_DIM / base.height),
-                        if (base.width >= base.height)
-                            (base.height * MAX_FILTER_DIM / base.width)
+                            (base.width * MAX_FILTER_DIM / base.height).coerceAtLeast(1)
+                        val newH = if (base.width >= base.height)
+                            (base.height * MAX_FILTER_DIM / base.width).coerceAtLeast(1)
                         else
-                            MAX_FILTER_DIM,
-                        false
-                    )
-                } else {
-                    base.copy(Bitmap.Config.ARGB_8888, false) ?: base
+                            MAX_FILTER_DIM
+                        Bitmap.createScaledBitmap(base, newW, newH, false)
+                    } else {
+                        base.copy(Bitmap.Config.ARGB_8888, false) ?: base
+                    }
+                } catch (oom: OutOfMemoryError) {
+                    Log.e(TAG, "filter downscale OOM, using base directly", oom)
+                    base
+                } catch (e: Throwable) {
+                    Log.e(TAG, "filter downscale failed, using base directly", e)
+                    base
                 }
-            } catch (_: OutOfMemoryError) {
-                base
-            }
-            try {
+
                 val result = ImageFilterProcessor.apply(localCopy, filter)
-                // apply() reads pixels from localCopy but does NOT recycle it.
-                // Recycle localCopy here (unless apply returned it directly).
+
+                // Recycle localCopy (unless apply returned it directly).
                 if (localCopy !== base && localCopy !== result && !localCopy.isRecycled) {
                     try { localCopy.recycle() } catch (_: Throwable) {}
                 }
+
                 // Re-check: if a newer filter was requested or base changed,
                 // discard this result — it is stale.
                 if (myVersion != filterVersion.get() || base !== _preFilterBitmap.value) {
                     if (result !== base && !result.isRecycled) result.recycle()
                     return@launch
                 }
-                val oldDisplayed = _displayedBitmap.value
+
+                // Don't recycle old displayed bitmap immediately — Compose may
+                // still be drawing it. Let GC collect it or recycle on next
+                // image change / clearState. This prevents white-flash.
                 _displayedBitmap.value = result
-                if (oldDisplayed != null && !oldDisplayed.isRecycled &&
-                    oldDisplayed !== result &&
-                    oldDisplayed !== base &&
-                    oldDisplayed !== _preFilterBitmap.value &&
-                    oldDisplayed !== _pristineOriginalBitmap.value &&
-                    oldDisplayed !== _originalBitmap.value
-                ) {
-                    try { oldDisplayed.recycle() } catch (_: Throwable) {}
-                }
             } catch (oom: OutOfMemoryError) {
                 Log.e(TAG, "reapplyFilter OOM", oom)
                 if (myVersion == filterVersion.get() && !base.isRecycled) {
                     _displayedBitmap.value = base
+                    _selectedFilter.value = ImageFilter.ORIGINAL
+                    _filterError.value = "FILTER_OOM"
                 }
-            } catch (e: Exception) {
-                Log.w(TAG, "reapplyFilter failed", e)
+            } catch (e: Throwable) {
+                Log.e(TAG, "reapplyFilter failed", e)
                 if (myVersion == filterVersion.get() && !base.isRecycled) {
                     _displayedBitmap.value = base
+                    _selectedFilter.value = ImageFilter.ORIGINAL
+                    _filterError.value = "FILTER_ERROR"
                 }
             } finally {
                 if (myVersion == filterVersion.get()) {
@@ -479,8 +486,12 @@ private fun decodeUriToOriginalBitmap(uri: Uri) {
     fun applyFilter(filter: ImageFilter) {
         if (_selectedFilter.value == filter) return
         _selectedFilter.value = filter
+        _filterError.value = null
         reapplyFilter()
     }
+
+    /** Called by UI after showing the error Snackbar to clear the state. */
+    fun consumeFilterError() { _filterError.value = null }
 
     /**
      * Sets the base (pre-filter) bitmap to [pristine] rotated by [rot] degrees
@@ -1101,6 +1112,7 @@ fun removeBackground() {
         _rotationDegrees.value = 0
         _selectedFilter.value = ImageFilter.ORIGINAL
         _isApplyingFilter.value = false
+        _filterError.value = null
         _processedImageUri.value = null
         _fileSizeKb.value = 0
         _isRemovingBackground.value = false

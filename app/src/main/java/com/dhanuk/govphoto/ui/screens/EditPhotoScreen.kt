@@ -31,6 +31,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -74,6 +76,19 @@ fun EditPhotoScreen(
     val isRemovingBackground by sharedViewModel.isRemovingBackground.collectAsState()
     val selectedFilter by sharedViewModel.selectedFilter.collectAsState()
     val isApplyingFilter by sharedViewModel.isApplyingFilter.collectAsState()
+    val filterError by sharedViewModel.filterError.collectAsState()
+
+    // Show Snackbar when a filter fails
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(filterError) {
+        filterError?.let {
+            snackbarHostState.showSnackbar(
+                message = context.getString(R.string.filter_error_msg),
+                duration = SnackbarDuration.Short
+            )
+            sharedViewModel.consumeFilterError()
+        }
+    }
 
     // Dynamic aspect ratio from preset
     val aspectRatio = sharedViewModel.aspectRatio
@@ -262,6 +277,7 @@ fun EditPhotoScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -465,8 +481,9 @@ Icon(
             } else {
                 FilterSelector(
                     selectedFilter = selectedFilter,
+                    enabled = !isApplyingFilter,
                     onFilterSelected = { filter ->
-                        if (filter == selectedFilter) return@FilterSelector
+                        if (filter == selectedFilter || isApplyingFilter) return@FilterSelector
                         sharedViewModel.applyFilter(filter)
                         commitHistory(filt = filter)
                     }
@@ -909,6 +926,7 @@ private fun BackgroundOptionItem(
 @Composable
 private fun FilterSelector(
     selectedFilter: ImageFilter,
+    enabled: Boolean = true,
     onFilterSelected: (ImageFilter) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -933,6 +951,7 @@ private fun FilterSelector(
                     FilterItem(
                         filter = filter,
                         isSelected = selectedFilter == filter,
+                        enabled = enabled,
                         onClick = { onFilterSelected(filter) },
                         modifier = Modifier.weight(1f)
                     )
@@ -946,6 +965,7 @@ private fun FilterSelector(
 private fun FilterItem(
     filter: ImageFilter,
     isSelected: Boolean,
+    enabled: Boolean = true,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -969,7 +989,11 @@ private fun FilterItem(
     Surface(
         modifier = modifier
             .height(96.dp)
-            .clickable(onClick = onClick),
+            .clickable(enabled = enabled, onClick = onClick)
+            .semantics(mergeDescendants = true) {
+                this.selected = isSelected
+                this.enabled = enabled
+            },
         shape = RoundedCornerShape(12.dp),
         border = if (isSelected) {
             androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)

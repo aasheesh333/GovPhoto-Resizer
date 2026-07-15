@@ -216,5 +216,6 @@
     <string name="filter_lighten">Lighten</string>
     <string name="filter_high_contrast">High Contrast</string>
     <string name="cd_applying_filter">Applying filter</string>
+    <string name="filter_error_msg">Could not apply filter. Reverted to original.</string>
 </resources>
 
