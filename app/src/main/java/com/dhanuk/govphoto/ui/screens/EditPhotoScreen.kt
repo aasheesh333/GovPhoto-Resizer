@@ -992,7 +992,6 @@ private fun FilterItem(
             .clickable(enabled = enabled, onClick = onClick)
             .semantics(mergeDescendants = true) {
                 this.selected = isSelected
-                this.enabled = enabled
             },
         shape = RoundedCornerShape(12.dp),
         border = if (isSelected) {
