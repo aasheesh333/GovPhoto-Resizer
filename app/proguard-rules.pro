@@ -60,3 +60,12 @@
 
 # Compose
 -dontwarn androidx.compose.**
+
+# DataStore Preferences — accessed via Kotlin reflection under minify
+-keep class androidx.datastore.preferences.** { *; }
+-keep class com.dhanuk.govphoto_resizer.data.datastore.** { *; }
+
+# Coroutines suspend lambdas
+-keepclassmembers class kotlinx.coroutines.** {
+    <methods>;
+}

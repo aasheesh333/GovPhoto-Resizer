@@ -622,6 +622,10 @@ fun analyzeFace() {
                 presetRepository.getPreset(presetId)
             }
             _selectedPreset.value = preset
+            // Reset filter: filters are only shown for non-PHOTO presets.
+            // A stale filter from a prior preset must not leak into a PHOTO
+            // preset's bakeTransform output.
+            _selectedFilter.value = ImageFilter.ORIGINAL
             _selectedPresetName.value = preset?.examName ?: presetName
 
             preset?.backgroundColor?.let { colorCode ->
@@ -763,7 +767,7 @@ fun removeBackground() {
         faceAnalysisJob = null
         bgRemovalJob = null
 
-        val source = _displayedBitmap.value ?: _originalBitmap.value ?: return false
+        val source = _displayedBitmap.value ?: _preFilterBitmap.value ?: return false
         if (source.isRecycled || userScale <= 0f) return false
         val srcW = source.width.toFloat()
         val srcH = source.height.toFloat()

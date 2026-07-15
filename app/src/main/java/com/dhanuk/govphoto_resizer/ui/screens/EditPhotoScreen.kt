@@ -385,6 +385,7 @@ Icon(
                         scale = 1f
                         offsetX = 0f
                         offsetY = 0f
+                        initialCoverApplied = false
                         sharedViewModel.autoFitToPreset()
                     }
                 }
