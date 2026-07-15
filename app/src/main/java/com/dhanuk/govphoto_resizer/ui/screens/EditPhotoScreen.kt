@@ -449,7 +449,8 @@ Icon(
             
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Background options only for PHOTO presets; filters for all presets.
+            // Background options only for PHOTO presets.
+            // Filters only for non-PHOTO presets (Signature/Thumb/Document).
             if (isPhotoPreset) {
                 BackgroundSelector(
                     selectedOption = selectedBackground,
@@ -460,18 +461,17 @@ Icon(
                     }
                 )
                 Spacer(modifier = Modifier.height(24.dp))
+            } else {
+                FilterSelector(
+                    selectedFilter = selectedFilter,
+                    onFilterSelected = { filter ->
+                        if (filter == selectedFilter) return@FilterSelector
+                        sharedViewModel.applyFilter(filter)
+                        commitHistory(filt = filter)
+                    }
+                )
+                Spacer(modifier = Modifier.height(24.dp))
             }
-
-            FilterSelector(
-                selectedFilter = selectedFilter,
-                onFilterSelected = { filter ->
-                    if (filter == selectedFilter) return@FilterSelector
-                    sharedViewModel.applyFilter(filter)
-                    commitHistory(filt = filter)
-                }
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
 
             CompressionControl(
                 value = compressionValue,
