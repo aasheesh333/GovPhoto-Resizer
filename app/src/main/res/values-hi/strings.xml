@@ -98,6 +98,23 @@
     <string name="large_buttons_desc">आसान टैपिंग के लिए बटन आकार बढ़ाएं</string>
     <string name="high_contrast_desc">उच्च कंट्रास्ट से दृश्यता बढ़ाएं</string>
     <string name="view_privacy_policy">गोपनीयता नीति देखें</string>
+    <string name="support_us_section">हमें सपोर्ट करें</string>
+    <string name="share_app">ऐप शेयर करें</string>
+    <string name="share_app_subtitle">अपने दोस्तों को GovPhoto के बारे में बताएं</string>
+    <string name="feedback">फीडबैक</string>
+    <string name="feedback_subtitle">अपने सुझाव हमें ईमेल करें</string>
+    <string name="privacy_policy_web">प्राइवेसी पॉलिसी</string>
+    <string name="privacy_policy_web_subtitle">हमारी प्राइवेसी पॉलिसी ऑनलाइन पढ़ें</string>
+    <string name="terms_of_service">सेवा की शर्तें</string>
+    <string name="terms_subtitle">हमारी सेवा की शर्तें पढ़ें</string>
+    <string name="contact_us">संपर्क करें</string>
+    <string name="contact_subtitle">हमसे संपर्क के तरीके</string>
+    <string name="share_app_chooser_title">GovPhoto शेयर करें</string>
+    <string name="cd_share_app">ऐप शेयर करें बटन</string>
+    <string name="cd_feedback">फीडबैक बटन</string>
+    <string name="cd_privacy_policy">प्राइवेसी पॉलिसी ब्राउज़र में खोलें</string>
+    <string name="cd_terms">सेवा की शर्तें ब्राउज़र में खोलें</string>
+    <string name="cd_contact">संपर्क पेज ब्राउज़र में खोलें</string>
     
     <!-- Permissions -->
     <string name="camera_permission_required">फोटो लेने के लिए कैमरा अनुमति आवश्यक है</string>
