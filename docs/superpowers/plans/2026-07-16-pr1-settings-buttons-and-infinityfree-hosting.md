@@ -597,10 +597,9 @@ Find the existing import block at the top of the file. After `import android.app
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
-import androidx.core.content.FileProvider
 ```
 
-(These 4 imports are the ONLY new imports this task needs. The existing `import androidx.compose.material.icons.filled.*` already covers `Icons.Default.Share`, `Icons.Default.Email`, `Icons.Default.PrivacyTip` (already used), `Icons.Default.Description`, `Icons.Default.ContactMail`.)
+(These 3 imports are the ONLY new imports this task needs. The existing `import androidx.compose.material.icons.filled.*` already covers `Icons.Default.Share`, `Icons.Default.Email`, `Icons.Default.PrivacyTip` (already used), `Icons.Default.Description`, `Icons.Default.ContactMail`. The existing crash-log code already uses `androidx.core.content.FileProvider` via fully-qualified name, so **do NOT add a new import for FileProvider** — it would be unused and trigger a reviewer warning.)
 
 - [ ] **Step 2: Insert the new "Support us" section right after the Appearance section's closing `}` + `Divider`**
 
