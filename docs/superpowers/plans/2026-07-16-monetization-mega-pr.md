@@ -1446,7 +1446,7 @@ git push
 package com.dhanuk.govphoto.data.push
 
 enum class PushCategory(val storageKey: String, val defaultEnabled: Boolean) {
-    RELEASE_NOTIES(storageKey = "push_release_notes", defaultEnabled = true),
+    RELEASE_NOTES(storageKey = "push_release_notes", defaultEnabled = true),
     EXAM_DEADLINES(storageKey = "push_exam_deadlines", defaultEnabled = false),
     SUPPORT_REPLIES(storageKey = "push_support_replies", defaultEnabled = true),
 }
@@ -1596,18 +1596,18 @@ class PushRepositoryTest {
     }
 
     @Test fun `defaults match spec`() {
-        assertEquals(true, PushCategory.RELEASE_NOTIES.defaultEnabled)
+        assertEquals(true, PushCategory.RELEASE_NOTES.defaultEnabled)
         assertEquals(false, PushCategory.EXAM_DEADLINES.defaultEnabled)
         assertEquals(true, PushCategory.SUPPORT_REPLIES.defaultEnabled)
     }
 
     @Test fun `toggle persists to fake store`() = runTest {
         val fake = FakeStore()
-        assertTrue(fake.isEnabled(PushCategory.RELEASE_NOTIES))
+        assertTrue(fake.isEnabled(PushCategory.RELEASE_NOTES))
         fake.setEnabled(PushCategory.EXAM_DEADLINES, true)
         assertTrue(fake.isEnabled(PushCategory.EXAM_DEADLINES))
-        fake.setEnabled(PushCategory.RELEASE_NOTIES, false)
-        assertFalse(fake.isEnabled(PushCategory.RELEASE_NOTIES))
+        fake.setEnabled(PushCategory.RELEASE_NOTES, false)
+        assertFalse(fake.isEnabled(PushCategory.RELEASE_NOTES))
     }
 }
 ```
@@ -1705,7 +1705,7 @@ In `NavHost.kt` Settings block:
                     isChecked = releaseNotesEnabled,
                     onCheckedChange = { v ->
                         releaseNotesEnabled = v
-                        pushRepository?.setCategoryEnabled(com.dhanuk.govphoto.data.push.PushCategory.RELEASE_NOTIES, v)
+                        pushRepository?.setCategoryEnabled(com.dhanuk.govphoto.data.push.PushCategory.RELEASE_NOTES, v)
                     }
                 )
                 SettingsToggle(
@@ -2201,7 +2201,7 @@ Add the interface methods (don't shadow existing Methods):
     // PushCategoryStore
     override suspend fun isEnabled(category: com.dhanuk.govphoto.data.push.PushCategory): Boolean {
         val pref = when (category) {
-            com.dhanuk.govphoto.data.push.PushCategory.RELEASE_NOTIES -> Keys.NOTIFY_RELEASE to true
+            com.dhanuk.govphoto.data.push.PushCategory.RELEASE_NOTES -> Keys.NOTIFY_RELEASE to true
             com.dhanuk.govphoto.data.push.PushCategory.EXAM_DEADLINES -> Keys.NOTIFY_EXAM_DEADLINES to false
             com.dhanuk.govphoto.data.push.PushCategory.SUPPORT_REPLIES -> Keys.NOTIFY_SUPPORT_REPLIES to true
         }
@@ -2209,7 +2209,7 @@ Add the interface methods (don't shadow existing Methods):
     }
     override suspend fun setEnabled(category: com.dhanuk.govphoto.data.push.PushCategory, enabled: Boolean) {
         val key = when (category) {
-            com.dhanuk.govphoto.data.push.PushCategory.RELEASE_NOTIES -> Keys.NOTIFY_RELEASE
+            com.dhanuk.govphoto.data.push.PushCategory.RELEASE_NOTES -> Keys.NOTIFY_RELEASE
             com.dhanuk.govphoto.data.push.PushCategory.EXAM_DEADLINES -> Keys.NOTIFY_EXAM_DEADLINES
             com.dhanuk.govphoto.data.push.PushCategory.SUPPORT_REPLIES -> Keys.NOTIFY_SUPPORT_REPLIES
         }
@@ -2302,7 +2302,7 @@ class SettingsRepositoryTest {
     @Test fun `notification defaults match spec`() = runTest {
         val r = repo()
         assertFalse(r.isEnabled(PushCategory.EXAM_DEADLINES))
-        assertTrue(r.isEnabled(PushCategory.RELEASE_NOTIES))
+        assertTrue(r.isEnabled(PushCategory.RELEASE_NOTES))
         assertTrue(r.isEnabled(PushCategory.SUPPORT_REPLIES))
     }
 
