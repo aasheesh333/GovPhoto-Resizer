@@ -5,6 +5,8 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+apply(from = "secrets.gradle.kts")
+
 android {
     namespace = "com.dhanuk.govphoto"
     compileSdk = 35
@@ -15,6 +17,9 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
+        buildConfigField("String", "PRIVACY_URL", "\"${project.findProperty("PRIVACY_URL") ?: "https://example.in/privacy.html"}\"")
+        buildConfigField("String", "TERMS_URL", "\"${project.findProperty("TERMS_URL") ?: "https://example.in/terms.html"}\"")
+        buildConfigField("String", "CONTACT_URL", "\"${project.findProperty("CONTACT_URL") ?: "https://example.in/contact.html"}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
