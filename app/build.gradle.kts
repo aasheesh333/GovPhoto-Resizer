@@ -22,6 +22,10 @@ android {
         buildConfigField("String", "PRIVACY_URL", "\"${project.findProperty("PRIVACY_URL") ?: "https://example.in/privacy.html"}\"")
         buildConfigField("String", "TERMS_URL", "\"${project.findProperty("TERMS_URL") ?: "https://example.in/terms.html"}\"")
         buildConfigField("String", "CONTACT_URL", "\"${project.findProperty("CONTACT_URL") ?: "https://example.in/contact.html"}\"")
+        buildConfigField("String", "ADMOB_APP_ID", "\"${project.findProperty("ADMOB_APP_ID") ?: "ca-app-pub-3940256099942544~3347511713"}\"")
+        buildConfigField("String", "ADMOB_BANNER_UNIT", "\"${project.findProperty("ADMOB_BANNER_UNIT") ?: "ca-app-pub-3940256099942544/6300978111"}\"")
+        buildConfigField("String", "ADMOB_INTERSTITIAL_UNIT", "\"${project.findProperty("ADMOB_INTERSTITIAL_UNIT") ?: "ca-app-pub-3940256099942544/1033173712"}\"")
+        buildConfigField("String", "ADMOB_REWARDED_UNIT", "\"${project.findProperty("ADMOB_REWARDED_UNIT") ?: "ca-app-pub-3940256099942544/5224354917"}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -56,6 +60,7 @@ android {
           ?: signingConfigs.getByName("debug")
       isMinifyEnabled = true
       isShrinkResources = true
+      buildConfigField("boolean", "FORCE_NO_ADS", "false")
       proguardFiles(
         getDefaultProguardFile("proguard-android-optimize.txt"),
         "proguard-rules.pro"
@@ -64,6 +69,7 @@ android {
         debug {
             isMinifyEnabled = false
             applicationIdSuffix = ".debug"
+            buildConfigField("boolean", "FORCE_NO_ADS", "true")
         }
     }
 
@@ -152,6 +158,10 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
     implementation("com.google.firebase:firebase-crashlytics-ktx")
     implementation("com.google.firebase:firebase-analytics-ktx")
+
+    // AdMob via Google Play Services Ads + UMP
+    implementation("com.google.android.gms:play-services-ads:22.6.0")
+    implementation("com.google.android.ump:user-messaging-platform:2.2.0")
 
     // Splash Screen API
     implementation("androidx.core:core-splashscreen:1.0.1")

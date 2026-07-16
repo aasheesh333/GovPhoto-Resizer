@@ -72,3 +72,11 @@
 # Firebase Analytics
 -keep class com.google.firebase.analytics.** { *; }
 -dontwarn com.google.firebase.analytics.**
+
+# AdMob
+-keep class com.google.android.gms.ads.** { *; }
+-dontwarn com.google.android.gms.ads.**
+
+# UMP
+-keep class com.google.android.ump.** { *; }
+-dontwarn com.google.android.ump.**

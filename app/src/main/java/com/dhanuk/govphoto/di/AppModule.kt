@@ -1,5 +1,7 @@
 package com.dhanuk.govphoto.di
 
+import com.dhanuk.govphoto.BuildConfig
+import com.dhanuk.govphoto.data.ads.AdStateProvider
 import com.dhanuk.govphoto.data.ml.FaceDetectorClient
 import com.dhanuk.govphoto.data.ml.MlKitFaceDetectorClient
 import com.dhanuk.govphoto.data.ml.MlKitSegmenterClient
@@ -29,4 +31,13 @@ object AppModule {
     @Provides
     @Singleton
     fun provideFaceDetectorClient(): FaceDetectorClient = MlKitFaceDetectorClient()
+
+    @Provides
+    @Singleton
+    fun provideAdStateProvider(): AdStateProvider =
+        object : AdStateProvider {
+            override val isPro: Boolean get() = false          // Re-wired in Task 4
+            override val adFreeUntilMs: Long get() = 0L        // Re-wired in Task 9
+            override val forceNoAds: Boolean get() = BuildConfig.DEBUG
+        }
 }

@@ -234,5 +234,8 @@
     <string name="filter_high_contrast">उच्च कंट्रास्ट</string>
     <string name="cd_applying_filter">फिल्टर लागू हो रहा है</string>
     <string name="filter_error_msg">फिल्टर लागू नहीं हो सका। मूल पर वापस लौट गए।</string>
+
+    <!-- AdMob placeholder -->
+    <string name="admob_app_id_placeholder">ca-app-pub-3940256099942544~3347511713</string>
 </resources>
 
