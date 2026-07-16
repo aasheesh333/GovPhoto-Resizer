@@ -65,3 +65,10 @@
 # DataStore Preferences — accessed via Kotlin reflection under minify
 -keep class androidx.datastore.preferences.** { *; }
 -keep class com.dhanuk.govphoto.data.datastore.** { *; }
+
+# Firebase Crashlytics — auto-shipped by SDK, no explicit rules needed
+# (verified by Firebase docs; Crashlytics Gradle plugin also bundles rules)
+
+# Firebase Analytics
+-keep class com.google.firebase.analytics.** { *; }
+-dontwarn com.google.firebase.analytics.**
