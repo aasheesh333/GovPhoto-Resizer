@@ -1,7 +1,6 @@
 package com.dhanuk.govphoto.data.ads
 
 import android.content.Context
-import com.dhanuk.govphoto.BuildConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,7 +12,7 @@ import javax.inject.Singleton
  * Holds ad-free state for the app. Composed of:
  *  - SubscriptionRepository.isPro (wired in Task 4 via isProProvider)
  *  - adFreeUntilMs (24h ad-free reward; from SettingsRepository, Task 9 via adStateProvider)
- *  - FORCE_NO_ADS BuildConfig flag (debug-only)
+ *  - forceNoAds (debug-only; sourced from AdStateProvider, bound to BuildConfig.DEBUG in AppModule)
  */
 interface AdStateProvider {
     /** False when subscriptions have not been wired yet. */
@@ -41,7 +40,6 @@ class AdsRepository @Inject constructor(
     fun refresh() {
         val now = System.currentTimeMillis()
         _isAdFree.value =
-            BuildConfig.FORCE_NO_ADS ||
             adStateProvider.forceNoAds ||
             adStateProvider.isPro ||
             (adStateProvider.adFreeUntilMs > now)
