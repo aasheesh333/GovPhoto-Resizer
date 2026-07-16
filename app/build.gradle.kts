@@ -32,9 +32,26 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            val ksFile = project.findProperty("KEYSTORE_FILE") as String?
+            if (ksFile != null && rootProject.file(ksFile).exists()) {
+                storeFile = rootProject.file(ksFile)
+                storePassword = project.findProperty("KEYSTORE_PASSWORD") as String
+                keyAlias = project.findProperty("KEY_ALIAS") as String
+                keyPassword = project.findProperty("KEY_PASSWORD") as String
+            }
+        }
+    }
+
   buildTypes {
     release {
-      signingConfig = signingConfigs.getByName("debug")
+      // Release signing uses the keystore decoded from KEYSTORE_BASE64 in CI.
+      // When that's absent (local dev), fall back to debug signing.
+      signingConfig = (rootProject.findProperty("KEYSTORE_FILE") as String?)
+          ?.takeIf { rootProject.file(it).exists() }
+          ?.let { signingConfigs.getByName("release") }
+          ?: signingConfigs.getByName("debug")
       isMinifyEnabled = true
       isShrinkResources = true
       proguardFiles(
