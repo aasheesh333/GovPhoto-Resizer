@@ -137,7 +137,10 @@ set_prop() {
   local key="$1"
   local val="$2"
   if grep -qE "^${key}=" "$SP"; then
-    # Replace existing (portable sed: use temp file to avoid -i platform differences)
+    # Replace existing (portable sed: use temp file to avoid -i platform differences).
+    # The `|` delimiter is safe for all current/known secret values: URLs cannot contain
+    # `|` unencoded; AdMob/RevenueCat/OneSignal keys are strictly alphanumeric+dash.
+    # If a future secret could legally contain `|`, switch to awk before adding it.
     sed -E "s|^${key}=.*|${key}=${val}|" "$SP" > "$SP.tmp" && mv "$SP.tmp" "$SP"
   else
     # Append
