@@ -79,7 +79,13 @@ data class PhotoPreset(
     val lastUpdated: String,
     
     @SerializedName("notes")
-    val notes: String? = null
+    val notes: String? = null,
+
+    @SerializedName("spec_source")
+    val specSource: String? = null,
+
+    @SerializedName("spec_verified_date")
+    val specVerifiedDate: String? = null
 ) {
     /**
      * Returns a formatted dimension string like "3.5cm x 4.5cm" or "600x600px"
