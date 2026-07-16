@@ -25,6 +25,19 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Populate secrets.properties from secrets
+        env:
+          PRIVACY_URL: ${{ secrets.PRIVACY_URL }}
+          TERMS_URL: ${{ secrets.TERMS_URL }}
+          CONTACT_URL: ${{ secrets.CONTACT_URL }}
+          ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+          ADMOB_BANNER_UNIT: ${{ secrets.ADMOB_BANNER_UNIT }}
+          ADMOB_INTERSTITIAL_UNIT: ${{ secrets.ADMOB_INTERSTITIAL_UNIT }}
+          ADMOB_REWARDED_UNIT: ${{ secrets.ADMOB_REWARDED_UNIT }}
+          REVENUECAT_API_KEY: ${{ secrets.REVENUECAT_API_KEY }}
+          ONESIGNAL_APP_ID: ${{ secrets.ONESIGNAL_APP_ID }}
+        run: bash app/scripts/populate-secrets.sh
+
       - name: Build Debug APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
@@ -88,6 +101,19 @@ jobs:
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
+
+      - name: Populate secrets.properties from secrets
+        env:
+          PRIVACY_URL: ${{ secrets.PRIVACY_URL }}
+          TERMS_URL: ${{ secrets.TERMS_URL }}
+          CONTACT_URL: ${{ secrets.CONTACT_URL }}
+          ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+          ADMOB_BANNER_UNIT: ${{ secrets.ADMOB_BANNER_UNIT }}
+          ADMOB_INTERSTITIAL_UNIT: ${{ secrets.ADMOB_INTERSTITIAL_UNIT }}
+          ADMOB_REWARDED_UNIT: ${{ secrets.ADMOB_REWARDED_UNIT }}
+          REVENUECAT_API_KEY: ${{ secrets.REVENUECAT_API_KEY }}
+          ONESIGNAL_APP_ID: ${{ secrets.ONESIGNAL_APP_ID }}
+        run: bash app/scripts/populate-secrets.sh
 
       - name: Run lint
         run: ./gradlew lintDebug --no-daemon
