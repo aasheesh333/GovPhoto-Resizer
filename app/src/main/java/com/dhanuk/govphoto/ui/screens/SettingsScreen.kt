@@ -1,6 +1,9 @@
 package com.dhanuk.govphoto.ui.screens
 
 import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -85,6 +88,106 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.dynamic_color_desc),
                     isChecked = settings.dynamicColor,
                     onCheckedChange = { viewModel.setDynamicColor(it) }
+                )
+            }
+
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+            // Support us Section
+            SettingsSection(title = stringResource(R.string.support_us_section)) {
+
+                // Share app
+                SettingsItem(
+                    icon = Icons.Default.Share,
+                    title = stringResource(R.string.share_app),
+                    subtitle = stringResource(R.string.share_app_subtitle),
+                    onClick = {
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, "GovPhoto Resizer")
+                            putExtra(
+                                Intent.EXTRA_TEXT,
+                                "Check out GovPhoto Resizer — resize photos & signatures for any Indian exam form. " +
+                                "Play Store link coming soon; in the meantime: https://play.google.com/store/apps/details?id=${context.packageName.removeSuffix(".debug")}"
+                            )
+                        }
+                        try {
+                            context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_app_chooser_title)))
+                        } catch (e: Exception) {
+                            Toast.makeText(context, context.getString(R.string.share_app_subtitle), Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                )
+
+                // Feedback (email to support)
+                SettingsItem(
+                    icon = Icons.Default.Email,
+                    title = stringResource(R.string.feedback),
+                    subtitle = stringResource(R.string.feedback_subtitle),
+                    onClick = {
+                        val emailIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "message/rfc822"
+                            putExtra(Intent.EXTRA_EMAIL, arrayOf("support@dhanuksoftwares.com"))
+                            putExtra(Intent.EXTRA_SUBJECT, "GovPhoto Resizer feedback")
+                            putExtra(
+                                Intent.EXTRA_TEXT,
+                                "\n\n--- Device info ---\n" +
+                                "Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\n" +
+                                "Android: ${android.os.Build.VERSION.RELEASE} (SDK ${android.os.Build.VERSION.SDK_INT})\n" +
+                                "App version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\n"
+                            )
+                        }
+                        try {
+                            context.startActivity(Intent.createChooser(emailIntent, context.getString(R.string.feedback)))
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "No email app found", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                )
+
+                // Open Privacy Policy in browser
+                SettingsItem(
+                    icon = Icons.Default.PrivacyTip,
+                    title = stringResource(R.string.privacy_policy_web),
+                    subtitle = stringResource(R.string.privacy_policy_web_subtitle),
+                    onClick = {
+                        val url = BuildConfig.PRIVACY_URL
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "No browser found", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                )
+
+                // Open Terms of Service in browser
+                SettingsItem(
+                    icon = Icons.Default.Description,
+                    title = stringResource(R.string.terms_of_service),
+                    subtitle = stringResource(R.string.terms_subtitle),
+                    onClick = {
+                        val url = BuildConfig.TERMS_URL
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "No browser found", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                )
+
+                // Open Contact page in browser
+                SettingsItem(
+                    icon = Icons.Default.ContactMail,
+                    title = stringResource(R.string.contact_us),
+                    subtitle = stringResource(R.string.contact_subtitle),
+                    onClick = {
+                        val url = BuildConfig.CONTACT_URL
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "No browser found", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 )
             }
 
