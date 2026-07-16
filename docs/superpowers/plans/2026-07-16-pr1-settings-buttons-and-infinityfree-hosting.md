@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add Share App + Feedback (email to support@dhanuksoftwares.com) + Privacy/Terms/Contact (web links hosted on InfinityFree) buttons to the Settings screen. Add the secrets-pipeline scaffolding (gradle.properties + BuildConfig fields + CI step) that subsequent PRs will reuse for AdMob/RevenueCat/OneSignal credentials.
+**Goal:** Add Share App + Feedback (email to support@dhanuksoftwares.com) + Privacy/Terms/Contact (web links hosted on InfinityFree) buttons to the Settings screen. Add the secrets-pipeline scaffolding (secrets.properties + secrets.gradle.kts script plugin + CI step) that subsequent PRs will reuse for AdMob/RevenueCat/OneSignal credentials.
 
-**Architecture:** Three InfinityFree-hosted static HTML pages (privacy.html / terms.html / contact.html) are written locally then uploaded to a `govphoto-resizer` folder under htdocs via the signed-in Playwright browser. Their public URLs are injected at build time from `gradle.properties` (gitignored, populated from GitHub Actions secrets) into `BuildConfig` fields. Settings screen gains a new "Support us" section with 5 menu items using the existing `SettingsItem` composable pattern. New string keys added to EN + HI. New `gradle.properties` gitignore entry.
+**Architecture:** Three InfinityFree-hosted static HTML pages (privacy.html / terms.html / contact.html) are written locally then uploaded to a `govphoto-resizer` folder under htdocs via the signed-in Playwright browser. Their public URLs are injected at build time from `secrets.properties` (gitignored, populated from GitHub Actions secrets) into `BuildConfig` fields via a tiny Gradle script plugin (`secrets.gradle.kts`). Settings screen gains a new "Support us" section with 5 menu items using the existing `SettingsItem` composable pattern. New string keys added to EN + HI. New `secrets.properties` gitignore entry.
 
 **Tech Stack:** Jetpack Compose Material 3, existing `SettingsItem` composable, existing R string resources, `Intent.ACTION_SEND` for share/email / `Intent.ACTION_VIEW` for web URLs, InfinityFree cPanel File Manager (web UI), GitHub Actions YAML.
 
@@ -18,7 +18,7 @@
 - `.gitignore` strict — use `git add <specific paths>` only
 - No local Gradle builds — CI-only verification (host crashes on local builds); push branch and let GitHub Actions verify
 - Support email: `support@dhanuksoftwares.com` (literally baked into source — this is public contact info, not a secret)
-- Build secrets pipeline: fallback defaults are placeholders (`https://example.in/...`); real values populated by CI from GH secrets into gitignored `gradle.properties`
+- Build secrets pipeline: fallback defaults are placeholders (`https://example.in/...`); real values populated by CI from GH secrets into gitignored `secrets.properties` (loaded via `secrets.gradle.kts` script plugin)
 - No hardcoded production API keys anywhere
 - No emojis in code or strings
 
@@ -30,16 +30,26 @@
 - `docs/superpowers/hosting/privacy.html` — source of the InfinityFree-hosted Privacy Policy page; gets uploaded to web host
 - `docs/superpowers/hosting/terms.html` — source of the Terms of Service page
 - `docs/superpowers/hosting/contact.html` — source of the Contact page
-- `app/scripts/populate-secrets.sh` — shell script run by CI before Gradle build; writes GitHub-secrets values into `gradle.properties`. Idempotent — does nothing if a secret is unset (debug builds keep fallback values).
-- `gradle.properties.template` — COMMITTED template with placeholder values + comments documenting each variable; copied to `gradle.properties` by `populate-secrets.sh` if missing
+- `app/scripts/populate-secrets.sh` — shell script run by CI before Gradle build; writes GitHub-secrets values into `secrets.properties` (separate from tracked `gradle.properties` which holds build config). Idempotent — does nothing if a secret is unset (debug builds keep fallback values).
+- `secrets.properties.template` — COMMITTED template with placeholder values + comments documenting each variable; copied to `secrets.properties` (gitignored) by `populate-secrets.sh` if missing
+- `app/secrets.gradle.kts` — small Gradle script plugin (applied via `apply(from = "secrets.gradle.kts")` in `app/build.gradle.kts`) that loads `secrets.properties` at the repo root and exposes its values via `extra` properties so `buildConfigField` can read them via `project.findProperty(...)`
 
 **Modified files (this PR touches exactly 6):**
-- `.gitignore` — add `gradle.properties` (one line)
-- `app/build.gradle.kts` — add `buildConfigField` for PRIVACY_URL / TERMS_URL / CONTACT_URL inside `defaultConfig` (lines ~14-17, inside the existing `defaultConfig {}` block)
+- `.gitignore` — add `secrets.properties` (one line) — NOT `gradle.properties` (that file is already tracked and holds build config)
+- `app/build.gradle.kts` — apply the secrets script plugin (1 line near top, after the `plugins {}` block) AND add `buildConfigField` for PRIVACY_URL / TERMS_URL / CONTACT_URL inside `defaultConfig`
 - `app/src/main/res/values/strings.xml` — add new string keys (EN)
 - `app/src/main/res/values-hi/strings.xml` — add new string keys (HI)
 - `app/src/main/java/com/dhanuk/govphoto/ui/screens/SettingsScreen.kt` — insert new "Support us" section between Appearance and Language sections
-- `.github/workflows/android-build.yml` — add one step "Populate gradle.properties from secrets" before `Build Debug APK`
+- `.github/workflows/android-build.yml` — add one step "Populate secrets.properties from secrets" before `Build Debug APK`
+
+**Modified files (this PR touches exactly 6):**
+**Modified files (this PR touches exactly 6):**
+- `.gitignore` — add `secrets.properties` (one line) — NOT `gradle.properties` (that file is already tracked and holds build config)
+- `app/build.gradle.kts` — apply the secrets script plugin (1 line near top, after the `plugins {}` block) AND add `buildConfigField` for PRIVACY_URL / TERMS_URL / CONTACT_URL inside `defaultConfig`
+- `app/src/main/res/values/strings.xml` — add new string keys (EN)
+- `app/src/main/res/values-hi/strings.xml` — add new string keys (HI)
+- `app/src/main/java/com/dhanuk/govphoto/ui/screens/SettingsScreen.kt` — insert new "Support us" section between Appearance and Language sections
+- `.github/workflows/android-build.yml` — add one step "Populate secrets.properties from secrets" before `Build Debug APK`
 
 **No changes** to: `AndroidManifest.xml` (no new permissions needed — `ACTION_VIEW` to a web URL requires no permission), `GovPhotoApp.kt`, `NavHost.kt`, Hilt DI, repositories, ViewModels.
 
@@ -52,26 +62,30 @@
 
 ---
 
-### Task 1: Secrets pipeline scaffolding (gradle.properties + populate-secrets.sh + .gitignore + template)
+### Task 1: Secrets pipeline scaffolding (secrets.properties + populate-secrets.sh + .gitignore + template + secrets.gradle.kts)
 
 **Files:**
 - Create: `app/scripts/populate-secrets.sh`
-- Create: `gradle.properties.template`
-- Modify: `.gitignore` (add one line: `gradle.properties`)
+- Create: `secrets.properties.template`
+- Create: `app/secrets.gradle.kts`
+- Modify: `.gitignore` (add one new line below the existing `local.properties` line: `secrets.properties`)
+
+**Why not `gradle.properties`:** The repo's `gradle.properties` is already tracked and holds project build config (`org.gradle.jvmargs`, `android.useAndroidX`, `android.nonTransitiveRClass`, `android.suppressUnsupportedCompileSdk=35`). Mixing secrets into it would either require committing them (unacceptable — secrets in git) or un-tracking the file (which would force every contributor / CI run to redefine those 5 build settings). Instead we use a **separate `secrets.properties`** (gitignored) loaded explicitly via a tiny Gradle script-plugin `app/secrets.gradle.kts`.
 
 **Interfaces:**
-- Produces: `populate-secrets.sh` — exits 0 on success, exit 1 only on missing Gradle wrapper (failures to read individual ENV vars are NOT fatal — they leave fallback defaults in place)
-- Produces: `gradle.properties` (at repo root, gitignored) — created from `.template` if absent; updated in-place if present
+- Produces: `populate-secrets.sh` — exits 0 on success, idempotent, FAILS to spin off secrets into the file even if env unset (fallback template values flow through)
+- Produces: `secrets.properties` at repo root (gitignored) — created from `.template` if absent; updated in-place if present
+- Produces: `app/secrets.gradle.kts` — applied in Task 2 via `apply(from = "secrets.gradle.kts")` in `app/build.gradle.kts`. The script plugin reads `secrets.properties` and exposes its values as Gradle project properties (using `extra.set(key, value)`) so that `project.findProperty("PRIVACY_URL")` in `app/build.gradle.kts` returns the value (or null → falls back to BuildConfig defaults).
 
-- [ ] **Step 1: Create `gradle.properties.template` with all 8 placeholder keys + comments**
+- [ ] **Step 1: Create `secrets.properties.template` with all 8 placeholder keys + comments**
 
-Create file `gradle.properties.template` with exactly this content:
+Create file `secrets.properties.template` with exactly this content:
 
 ```
 # GovPhoto Resizer — build secrets template
-# This file IS committed and is safe to share. Real values live in gradle.properties
+# This file IS committed and is safe to share. Real values live in secrets.properties
 # (gitignored) which is generated from this template by app/scripts/populate-secrets.sh.
-# CI populates gradle.properties from GitHub Actions secrets. Local builds keep the
+# CI populates secrets.properties from GitHub Actions secrets. Local builds keep the
 # placeholder values below (which produce debug-safe fallbacks in BuildConfig).
 
 # InfinityFree-hosted legal pages (PR1)
@@ -79,7 +93,7 @@ PRIVACY_URL=https://example.in/privacy.html
 TERMS_URL=https://example.in/terms.html
 CONTACT_URL=https://example.in/contact.html
 
-# AdMob (PR3 — populated later; placeholder here for forward-compat)
+# AdMob (PR3 — populated later; placeholder here for forward-compat — Google's official test ad units)
 ADMOB_APP_ID=ca-app-pub-3940256099942544~3347511713
 ADMOB_BANNER_UNIT=ca-app-pub-3940256099942544/6300978111
 ADMOB_INTERSTITIAL_UNIT=ca-app-pub-3940256099942544/1033173712
@@ -94,44 +108,45 @@ ONESIGNAL_APP_ID=test-onesignal-id
 
 - [ ] **Step 2: Create `app/scripts/populate-secrets.sh`**
 
-Create file `app/scripts/populate-secrets.sh` with exactly this content:
+Create file `app/scripts/populate-secrets.sh` with exactly this content (NO backslashes — `${KEY:-}` parameter expansion is literal):
 
 ```bash
 #!/usr/bin/env bash
-# Populates gradle.properties (at repo root) from GitHub Actions secrets.
+# Populates secrets.properties (at repo root) from GitHub Actions secrets.
 # Idempotent: skips any variable whose secret is unset (env var empty).
 # Safe to run in local builds — falls back to template values.
+# Does NOT touch gradle.properties (that file is tracked and holds build config).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-GP="$ROOT/gradle.properties"
-TEMPLATE="$ROOT/gradle.properties.template"
+SP="$ROOT/secrets.properties"
+TEMPLATE="$ROOT/secrets.properties.template"
 
-# Seed gradle.properties from template if absent
-if [ ! -f "$GP" ]; then
+# Seed secrets.properties from template if absent
+if [ ! -f "$SP" ]; then
   if [ ! -f "$TEMPLATE" ]; then
-    echo "ERROR: neither gradle.properties nor gradle.properties.template found" >&2
+    echo "ERROR: neither secrets.properties nor secrets.properties.template found" >&2
     exit 1
   fi
-  cp "$TEMPLATE" "$GP"
-  echo "Created gradle.properties from template"
+  cp "$TEMPLATE" "$SP"
+  echo "Created secrets.properties from template"
 fi
 
-# Helper: set or replace a key=value in gradle.properties
+# Helper: set or replace a key=value in secrets.properties
 set_prop() {
   local key="$1"
   local val="$2"
-  if grep -qE "^${key}=" "$GP"; then
-    # Replace existing
-    sed -i -E "s|^${key}=.*|${key}=${val}|" "$GP"
+  if grep -qE "^${key}=" "$SP"; then
+    # Replace existing (portable sed: use temp file to avoid -i platform differences)
+    sed -E "s|^${key}=.*|${key}=${val}|" "$SP" > "$SP.tmp" && mv "$SP.tmp" "$SP"
   else
-    # Append (with trailing newline safety)
-    echo "${key}=${val}" >> "$GP"
+    # Append
+    echo "${key}=${val}" >> "$SP"
   fi
 }
 
 # Each variable: read from env (secret), if non-empty, write
-[ -n "${PRIVACY_URL:-}" ]            && set_prop PRIVACY_URL "$PRIVACY_URL"
+[ -n "${PRIVACY_URL:-}" ]             && set_prop PRIVACY_URL "$PRIVACY_URL"
 [ -n "${TERMS_URL:-}" ]              && set_prop TERMS_URL "$TERMS_URL"
 [ -n "${CONTACT_URL:-}" ]            && set_prop CONTACT_URL "$CONTACT_URL"
 [ -n "${ADMOB_APP_ID:-}" ]           && set_prop ADMOB_APP_ID "$ADMOB_APP_ID"
@@ -141,53 +156,88 @@ set_prop() {
 [ -n "${REVENUECAT_API_KEY:-}" ]     && set_prop REVENUECAT_API_KEY "$REVENUECAT_API_KEY"
 [ -n "${ONESIGNAL_APP_ID:-}" ]       && set_prop ONESIGNAL_APP_ID "$ONESIGNAL_APP_ID"
 
-echo "gradle.properties ready"
+echo "secrets.properties ready"
 ```
 
-- [ ] **Step 3: Make script executable and verify**
+- [ ] **Step 3: Make script executable**
 
 Run: `chmod +x app/scripts/populate-secrets.sh`
 
-Verify locally with dry-run (does NOT touch real env):
+- [ ] **Step 4: Verify with dry-run (no env vars set)**
+
+Run:
 ```bash
-# Should produce a gradle.properties identical to template, since no env vars are set
 bash app/scripts/populate-secrets.sh
-diff gradle.properties gradle.properties.template
-# Expected: empty diff
-rm gradle.properties
+diff secrets.properties secrets.properties.template
+# Expected: empty diff (file is byte-identical to template)
+rm secrets.properties   # cleanup; transient gitignored artifact
 ```
 
-- [ ] **Step 4: Verify the script correctly updates when one secret is set**
+- [ ] **Step 5: Verify the script updates a key when its env var IS set**
 
 Run:
 ```bash
 PRIVACY_URL="https://mytest.example/privacy.html" bash app/scripts/populate-secrets.sh
-grep "^PRIVACY_URL=" gradle.properties
+grep "^PRIVACY_URL=" secrets.properties
 # Expected: PRIVACY_URL=https://mytest.example/privacy.html
-diff <(grep -v '^PRIVACY_URL=' gradle.properties) <(grep -v '^PRIVACY_URL=' gradle.properties.template)
-# Expected: empty diff (only PRIVACY_URL changed)
-rm gradle.properties
+
+# Diff against template, ignoring the one line we modified — should be empty
+diff <(grep -v '^PRIVACY_URL=' secrets.properties) <(grep -v '^PRIVACY_URL=' secrets.properties.template)
+# Expected: empty diff
+
+rm secrets.properties   # cleanup
 ```
 
-- [ ] **Step 5: Update `.gitignore` to ignore `gradle.properties`**
+- [ ] **Step 6: Create `app/secrets.gradle.kts` — the Gradle script plugin that loads secrets.properties**
 
-Edit `.gitignore` — find the existing line `local.properties` and add directly BELOW it a new line:
+Create file `app/secrets.gradle.kts` with exactly this content:
+
+```kotlin
+// Gradle script plugin: loads secrets.properties (gitignored) at repo root
+// and exposes its keys as Gradle project properties (via extra), so that
+// `project.findProperty("PRIVACY_URL")` in app/build.gradle.kts returns
+// the value (or null when the file is absent — caller falls back to defaults).
+//
+// Apply in app/build.gradle.kts with:
+//   apply(from = "secrets.gradle.kts")
+//
+// The file is intentionally a sibling of build.gradle.kts so the relative
+// apply path is short; it reads secrets.properties from the repo root
+// (two levels up).
+
+import java.util.Properties
+
+val secretsFile = rootProject.file("secrets.properties")
+if (secretsFile.exists()) {
+    val props = Properties().apply { secretsFile.inputStream().use { load(it) } }
+    props.forEach { (k, v) ->
+        // Expose as a Gradle project property. findProperty() reads these.
+        extensions.extraProperties.set(k.toString(), v.toString())
+    }
+    logger.info("Loaded ${props.size} secrets from secrets.properties")
+} else {
+    logger.info("secrets.properties not found — using in-source fallback BuildConfig values")
+}
+```
+
+- [ ] **Step 7: Update `.gitignore` to ignore `secrets.properties`**
+
+Edit `.gitignore` — find the existing line `local.properties` and add directly BELOW it a new line containing exactly:
 
 ```
-gradle.properties
+secrets.properties
 ```
 
-(Do NOT ignore `gradle.properties.template` — that file must be committed.)
+(Do NOT ignore `secrets.properties.template` — that file MUST be committed. Do NOT ignore `gradle.properties` — it is tracked and must remain so.)
 
-- [ ] **Step 6: Commit Task 1**
+- [ ] **Step 8: Commit Task 1**
 
 ```bash
-git add gradle.properties.template app/scripts/populate-secrets.sh .gitignore
-git commit -m "feat(build): add secrets pipeline scaffolding (gradle.properties + populate-secrets.sh)"
-
-git add docs/superpowers/plans/2026-07-16-pr1-settings-buttons-and-infinityfree-hosting.md
-git commit -m "docs: add PR1 implementation plan"
+git add secrets.properties.template app/scripts/populate-secrets.sh app/secrets.gradle.kts .gitignore
+git commit -m "feat(build): add secrets pipeline scaffolding (secrets.properties + populate-secrets.sh + secrets.gradle.kts)"
 ```
+
+(Do NOT re-commit the plan doc — it's already committed.)
 
 ---
 
@@ -203,11 +253,23 @@ git commit -m "docs: add PR1 implementation plan"
 
 - [ ] **Step 1: Read the existing `defaultConfig` block to know exact insertion point**
 
-Run: `sed -n '11,40p' app/build.gradle.kts`
+Run: `sed -n '1,40p' app/build.gradle.kts`
 
-Expected: lines 11-17 are `defaultConfig {` ... `applicationId` ... `minSdk` ... `targetSdk` ... `versionCode` ... `versionName` ... `}`. The new `buildConfigField` lines go between `versionName` and the closing `}`.
+Expected: the file starts with `plugins { ... }` block (lines 1-8), then `android {` block. `defaultConfig { ... }` is the nested block inside `android`, ending around line 18.
 
-- [ ] **Step 2: Edit `app/build.gradle.kts` — add 3 buildConfigField calls inside defaultConfig**
+- [ ] **Step 2: Apply the secrets script plugin at the top of `app/build.gradle.kts`**
+
+Find the closing `}` of the `plugins { ... }` block (typically around line 8). Add DIRECTLY BELOW it (outside any block):
+
+```kotlin
+apply(from = "secrets.gradle.kts")
+```
+
+8 spaces NOT needed — this is a top-level statement, so zero indent. There should be one blank line above and one below it.
+
+This line tells Gradle: when configuring this project, also run `app/secrets.gradle.kts` (which `extra.set`s the secrets values as project properties). After this, `project.findProperty("PRIVACY_URL")` in `app/build.gradle.kts` will return the value from `secrets.properties` (or null if the file is absent — caller falls back to in-source defaults).
+
+- [ ] **Step 3: Add 3 `buildConfigField` calls inside `defaultConfig`**
 
 Insert these 3 lines immediately AFTER the `versionName = "1.0.0"` line and BEFORE the closing `}` of `defaultConfig`:
 
@@ -217,19 +279,19 @@ Insert these 3 lines immediately AFTER the `versionName = "1.0.0"` line and BEFO
         buildConfigField("String", "CONTACT_URL", "\"${project.findProperty("CONTACT_URL") ?: "https://example.in/contact.html"}\"")
 ```
 
-Indendation must match surrounding code (8 spaces). `findProperty` reads from `gradle.properties` at repo root (auto-loaded by Gradle).
+Indentation must match surrounding code (8 spaces, same as `versionName`). `findProperty` reads from extra properties set by the `secrets.gradle.kts` script plugin (applied in Step 2); when the property is unset (file absent or key missing), the elvis `?:` substitutes the placeholder URL — keeping debug builds working without secrets present.
 
-- [ ] **Step 3: Sanity-check the edit reads cleanly**
+- [ ] **Step 4: Sanity-check the edits read cleanly**
 
-Run: `sed -n '15,22p' app/build.gradle.kts`
+Run: `sed -n '1,25p' app/build.gradle.kts`
 
-Expected: 3 new `buildConfigField` lines present between `versionName` and `}`.
+Expected: `apply(from = "secrets.gradle.kts")` line present after the plugins block, AND 3 new `buildConfigField` lines present inside `defaultConfig` between `versionName` and `}`.
 
-- [ ] **Step 4: Commit Task 2**
+- [ ] **Step 5: Commit Task 2**
 
 ```bash
 git add app/build.gradle.kts
-git commit -m "feat(build): add PRIVACY_URL/TERMS_URL/CONTACT_URL BuildConfig fields"
+git commit -m "feat(build): apply secrets.gradle.kts + add PRIVACY_URL/TERMS_URL/CONTACT_URL BuildConfig fields"
 ```
 
 ---
@@ -744,7 +806,7 @@ git commit -m "feat(settings): add Support us section with Share/Feedback/Privac
 
 **Interfaces:**
 - Consumes: GitHub Actions secrets (none of which exist yet — they default to empty and populate-secrets.sh leaves template fallbacks in place, so build does NOT fail without secrets).
-- Produces: `gradle.properties` at repo root, populated with whatever secrets ARE present (zero in this PR; lines for PRIVACY_URL etc. will be activated in Task 7 once InfinityFree URLs are known).
+- Produces: `secrets.properties` at repo root, populated with whatever secrets ARE present (zero in this PR; lines for PRIVACY_URL etc. will be activated in Task 7 once InfinityFree URLs are known).
 
 - [ ] **Step 1: Inspect the current `.github/workflows/android-build.yml` structure**
 
@@ -758,7 +820,7 @@ In the `build:` job, immediately AFTER the `Grant execute permission for gradlew
 
 ```yaml
 
-      - name: Populate gradle.properties from secrets
+      - name: Populate secrets.properties from secrets
         env:
           PRIVACY_URL: \${{ secrets.PRIVACY_URL }}
           TERMS_URL: \${{ secrets.TERMS_URL }}
@@ -776,15 +838,15 @@ In the `build:` job, immediately AFTER the `Grant execute permission for gradlew
 
 **Important detail for implementer:** The `${{ ... }}` interpolations are GitHub Actions template syntax; the actual YAML MUST contain `${{ secrets.PRIVACY_URL }}` written exactly like that (no quotes, no escaping).
 
-- [ ] **Step 3: Add the same `Populate gradle.properties from secrets` step into the `lint:` job too**
+- [ ] **Step 3: Add the same `Populate secrets.properties from secrets` step into the `lint:` job too**
 
-The lint job also runs `./gradlew lintDebug` which reads `gradle.properties` (for the buildConfigField values via `findProperty`). Lint check on the free tier of GitHub Actions doesn't actually use the secrets, but it does need a `gradle.properties` file to exist so `findProperty` doesn't error out. Lint fallback values work fine.
+The lint job also runs `./gradlew lintDebug` which calls `findProperty()` for the buildConfigField values (which reads from extra properties set by `secrets.gradle.kts`). Lint check on the free tier of GitHub Actions doesn't actually use the secrets, but the script plugin needs a `secrets.properties` file to exist (template fallbacks flow through). Lint fallback values work fine.
 
-Insert the identical `Populate gradle.properties from secrets` block into the `lint:` job, after `chmod +x gradlew` and before `- name: Run lint`.
+Insert the identical `Populate secrets.properties from secrets` block into the `lint:` job, after `chmod +x gradlew` and before `- name: Run lint`.
 
 - [ ] **Step 4: Verify the YAML is well-formed**
 
-Run: `python3 -c "import yaml; d = yaml.safe_load(open('.github/workflows/android-build.yml')); assert 'build' in d['jobs'] and 'lint' in d['jobs']; assert any('Populate gradle.properties' in s.get('name','') for s in d['jobs']['build']['steps']) == True; assert any('Populate gradle.properties' in s.get('name','') for s in d['jobs']['lint']['steps']) == True; print('OK')"`
+Run: `python3 -c "import yaml; d = yaml.safe_load(open('.github/workflows/android-build.yml')); assert 'build' in d['jobs'] and 'lint' in d['jobs']; assert any('Populate secrets.properties' in s.get('name','') for s in d['jobs']['build']['steps']) == True; assert any('Populate secrets.properties' in s.get('name','') for s in d['jobs']['lint']['steps']) == True; print('OK')"`
 
 Expected: prints `OK`.
 
@@ -794,7 +856,7 @@ Expected: prints `OK`.
 
 ```bash
 git add .github/workflows/android-build.yml
-git commit -m "ci: populate gradle.properties from GH secrets before builds (PR1 wires only URLs; AdMob/RC/OneSignal reserved)"
+git commit -m "ci: populate secrets.properties from GH secrets before builds (PR1 wires only URLs; AdMob/RC/OneSignal reserved)"
 ```
 
 ---
@@ -911,7 +973,7 @@ After all 3 are added, return to this plan and continue.
 
 - [ ] **Step 15: No git commit for Task 7 — it's pure external-platform work**
 
-URLs now live in GitHub secrets. `populate-secrets.sh` (Task 1) will pick them up at the next CI run. The in-repo fallbacks (`https://example.in/...` in `gradle.properties.template` and `BuildConfig` defaults) remain in place for local builds and as safety nets.
+URLs now live in GitHub secrets. `populate-secrets.sh` (Task 1) will pick them up at the next CI run. The in-repo fallbacks (`https://example.in/...` in `secrets.properties.template` and `BuildConfig` defaults) remain in place for local builds and as safety nets.
 
 ---
 
@@ -960,9 +1022,9 @@ gh pr create \
 Adds:
 - New \`Support us\` section in Settings with 5 rows: Share App, Feedback (mailto: support@dhanuksoftwares.com), Privacy Policy / Terms / Contact (open via ACTION_VIEW)
 - 3 standalone HTML pages (privacy/terms/contact) drafted app-specifically for an Indian photo-editing utility, DPDP-Act 2023 aware, hosted on InfinityFree under \`/govphoto-resizer/\`
-- Secrets pipeline scaffolding: \`gradle.properties.template\` + \`populate-secrets.sh\` + CI step that reads 8 GH secrets (PR1 wires only PRIVACY_URL/TERMS_URL/CONTACT_URL; remaining 5 reserved for PR3 AdMob / PR4 RevenueCat / PR5 OneSignal)
+- Secrets pipeline scaffolding: \`secrets.properties.template\` + \`populate-secrets.sh\` + \`secrets.gradle.kts\` + CI step that reads 8 GH secrets (PR1 wires only PRIVACY_URL/TERMS_URL/CONTACT_URL; remaining 5 reserved for PR3 AdMob / PR4 RevenueCat / PR5 OneSignal)
 - 17 new EN+HI string keys
-- \`.gitignore\` extended to ignore \`gradle.properties\` (template committed; values via CI)
+- \`.gitignore\` extended to ignore \`secrets.properties\` (template committed; values via CI)
 
 Upcoming PRs (separate plans): PR2 Firebase Crashlytics+Analytics; PR3 AdMob; PR4 RevenueCat paywall; PR5 OneSignal push.
 
@@ -977,7 +1039,7 @@ CI run: <paste the run URL>"
 
 **1. Spec coverage:** Spec §3 PR1 row says: "Settings: Share App + Feedback + Privacy/Terms/Contact URLs (InfinityFree-hosted)". Plan covers all 5 buttons (Task 5), 3 pages authored (Task 4), uploaded to InfinityFree (Task 7), URLs reach BuildConfig (Task 2), wires to CI secrets (Task 6), final PR (Task 8). ✓ All spec content addressed.
 
-Spec §4.2 (secrets pipeline) — `populate-secrets.sh` + `gradle.properties.template` + CI step done. Reserves 5 keys for PRs 3-5 (DRY'd — same script reused). ✓
+Spec §4.2 (secrets pipeline) — `populate-secrets.sh` + `secrets.properties.template` + `secrets.gradle.kts` + CI step done. Reserves 5 keys for PRs 3-5 (DRY'd — same script reused). ✓
 
 **2. Placeholder scan:** Every step has actual content. The only "TBD"-style item is "<PRIVACY_URL_CAPTURED>" in Task 7's curl verification, which IS runtime state captured during execution — there is no way to know this URL ahead of time without browsing; it's correctly left for the executor. ✓
 
