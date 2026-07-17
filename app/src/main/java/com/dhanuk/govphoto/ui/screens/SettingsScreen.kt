@@ -326,7 +326,7 @@ fun SettingsScreen(
                     label = stringResource(R.string.english),
                     isSelected = settings.language == AppLanguage.ENGLISH,
                     onClick = {
-                        viewModel.setLanguage(AppLanguage.ENGLISH)
+                        viewModel.applyLanguage(AppLanguage.ENGLISH)
                         (context as? Activity)?.recreate()
                     }
                 )
@@ -334,7 +334,7 @@ fun SettingsScreen(
                     label = stringResource(R.string.hindi),
                     isSelected = settings.language == AppLanguage.HINDI,
                     onClick = {
-                        viewModel.setLanguage(AppLanguage.HINDI)
+                        viewModel.applyLanguage(AppLanguage.HINDI)
                         (context as? Activity)?.recreate()
                     }
                 )

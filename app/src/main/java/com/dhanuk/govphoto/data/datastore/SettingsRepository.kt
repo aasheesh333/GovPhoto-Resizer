@@ -90,6 +90,16 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         sharedPrefs.edit().putString("language", lang.tag).apply()
     }
 
+    /**
+     * Writes the locale cache synchronously so that a subsequent Activity.recreate()
+     * sees the new language in attachBaseContext() without racing the async DataStore
+     * write in [setLanguage]. Call this on the main thread right before recreate();
+     * [setLanguage] remains the source of truth for the persisted DataStore value.
+     */
+    fun setLanguageSync(lang: AppLanguage) {
+        sharedPrefs.edit().putString("language", lang.tag).commit()
+    }
+
     suspend fun setDynamicColor(enabled: Boolean) {
         context.dataStore.edit { prefs -> prefs[Keys.DYNAMIC_COLOR] = enabled }
     }

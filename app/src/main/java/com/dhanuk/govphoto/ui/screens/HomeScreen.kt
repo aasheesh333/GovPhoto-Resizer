@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -182,10 +183,16 @@ private fun HomeHeader(settingsViewModel: SettingsViewModel) {
 @Composable
 private fun LanguageToggle(settingsViewModel: SettingsViewModel) {
     val settings by settingsViewModel.state.collectAsState()
+    val context = LocalContext.current
     val isHindi = settings.language == AppLanguage.HINDI
     OutlinedButton(
         onClick = {
-            settingsViewModel.setLanguage(if (isHindi) AppLanguage.ENGLISH else AppLanguage.HINDI)
+            // Apply synchronously to the locale cache so the subsequent recreate()
+            // picks up the new language in attachBaseContext(); without recreate the
+            // toggle never visibly switched language from the home screen.
+            val newLang = if (isHindi) AppLanguage.ENGLISH else AppLanguage.HINDI
+            settingsViewModel.applyLanguage(newLang)
+            (context as? android.app.Activity)?.recreate()
         },
         shape = RoundedCornerShape(24.dp),
         border = ButtonDefaults.outlinedButtonBorder.copy(

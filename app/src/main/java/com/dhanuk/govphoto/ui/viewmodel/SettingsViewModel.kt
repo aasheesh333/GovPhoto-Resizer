@@ -22,6 +22,17 @@ class SettingsViewModel @Inject constructor(
     )
 
     fun setLanguage(lang: AppLanguage) = viewModelScope.launch { repo.setLanguage(lang) }
+
+    /**
+     * Apply a language change so that an immediately-following Activity.recreate()
+     * picks up the new locale in attachBaseContext() without racing the async
+     * DataStore write. Writes the locale cache synchronously, then persists the
+     * DataStore value asynchronously (source of truth for cold starts).
+     */
+    fun applyLanguage(lang: AppLanguage) {
+        repo.setLanguageSync(lang)
+        viewModelScope.launch { repo.setLanguage(lang) }
+    }
     fun setDynamicColor(enabled: Boolean) = viewModelScope.launch { repo.setDynamicColor(enabled) }
     fun setDarkMode(pref: DarkModePref) = viewModelScope.launch { repo.setDarkMode(pref) }
     fun setLargeButtons(enabled: Boolean) = viewModelScope.launch { repo.setLargeButtons(enabled) }
