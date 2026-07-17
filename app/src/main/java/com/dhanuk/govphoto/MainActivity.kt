@@ -159,6 +159,24 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * When the app is UI-hidden under memory pressure, pause the banner ad so
+     * its network/refresh work stops competing for resources. The ad resumes
+     * on onResume. Mirrors AdView.pause() semantics that the AdMob docs
+     * recommend for parent activities.
+     */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
+            runCatching {
+                dagger.hilt.android.EntryPointAccessors.fromApplication(
+                    applicationContext,
+                    AdsManagerEntryPoint::class.java,
+                ).adsManager().pause()
+            }
+        }
+    }
+
     // NOTE: AdsManager is a process-scoped @Singleton holding the shared
     // banner AdView. Calling destroy() here would tear down the AdView on
     // every config change / language recreate and the banner would be dead
