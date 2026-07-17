@@ -30,6 +30,10 @@ android {
         buildConfigField("String", "ONESIGNAL_APP_ID", "\"${project.findProperty("ONESIGNAL_APP_ID") ?: "test-onesignal-id"}\"")
 
         manifestPlaceholders["onesignal_app_id"] = project.findProperty("ONESIGNAL_APP_ID") ?: "test-onesignal-id"
+        // Route the real AdMob App ID (from secrets.properties / CI secrets) into the
+        // manifest meta-data via a placeholder, so production builds use the live ID
+        // while local dev falls back to Google's official test App ID.
+        manifestPlaceholders["ADMOB_APP_ID"] = project.findProperty("ADMOB_APP_ID") ?: "ca-app-pub-3940256099942544~3347511713"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

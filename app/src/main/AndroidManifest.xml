@@ -52,10 +52,10 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- AdMob Application ID -->
+        <!-- AdMob Application ID (real ID injected from secrets via manifestPlaceholder) -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="@string/admob_app_id_placeholder" />
+            android:value="${ADMOB_APP_ID}" />
     </application>
 
 </manifest>
