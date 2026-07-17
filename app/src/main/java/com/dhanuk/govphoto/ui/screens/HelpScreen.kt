@@ -180,7 +180,7 @@ fun HelpScreen(
                             IconButton(onClick = { searchQuery = "" }) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
-                                    contentDescription = "Clear search"
+                                    contentDescription = stringResource(R.string.cd_clear_search)
                                 )
                             }
                         }

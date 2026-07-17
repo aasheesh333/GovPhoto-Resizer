@@ -143,7 +143,7 @@ fun PreviewValidationScreen(
                         IconButton(onClick = { processedImageUri?.let { shareImage(it) } }) {
                             Icon(
                                 imageVector = Icons.Default.Share,
-                                contentDescription = "Share",
+                                contentDescription = stringResource(R.string.cd_share),
                                 tint = Color.White
                             )
                         }
@@ -403,14 +403,14 @@ private fun PreviewCard(
                         if (processedBitmap != null && !processedBitmap.isRecycled) {
                             androidx.compose.foundation.Image(
                                 bitmap = processedBitmap.asImageBitmap(),
-                                contentDescription = "Processed photo",
+                                contentDescription = stringResource(R.string.cd_processed_photo),
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Fit
                             )
                         } else if (originalBitmap != null && !originalBitmap.isRecycled) {
                             androidx.compose.foundation.Image(
                                 bitmap = originalBitmap.asImageBitmap(),
-                                contentDescription = "Processable photo",
+                                contentDescription = stringResource(R.string.cd_processable_photo),
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )
@@ -420,7 +420,7 @@ private fun PreviewCard(
                                     .data(imageUri)
                                     .crossfade(true)
                                     .build(),
-                                contentDescription = "Processed photo",
+                                contentDescription = stringResource(R.string.cd_processed_photo),
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )
@@ -462,7 +462,7 @@ private fun PreviewCard(
                         if (srcBmp != null && !srcBmp.isRecycled) {
                             androidx.compose.foundation.Image(
                                 bitmap = srcBmp.asImageBitmap(),
-                                contentDescription = "Original photo",
+                                contentDescription = stringResource(R.string.cd_original_photo),
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Fit
                             )
@@ -472,7 +472,7 @@ private fun PreviewCard(
                                     .data(imageUri)
                                     .crossfade(true)
                                     .build(),
-                                contentDescription = "Original photo",
+                                contentDescription = stringResource(R.string.cd_original_photo),
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Fit
                             )

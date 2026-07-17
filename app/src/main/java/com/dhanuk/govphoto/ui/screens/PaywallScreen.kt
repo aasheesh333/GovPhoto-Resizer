@@ -110,7 +110,7 @@ fun PaywallScreen(
             // Three plan cards
             PaywallTierCard(
                 tier = PaywallTier.WEEKLY,
-                title = "Weekly",
+                title = stringResource(R.string.paywall_tier_weekly),
                 periodLabel = stringResource(R.string.paywall_period_weekly),
                 priceInr = PaywallTier.WEEKLY.priceInr,
                 rcPackage = weeklyPkg,
@@ -120,7 +120,7 @@ fun PaywallScreen(
             )
             PaywallTierCard(
                 tier = PaywallTier.MONTHLY,
-                title = "Monthly",
+                title = stringResource(R.string.paywall_tier_monthly),
                 periodLabel = stringResource(R.string.paywall_period_monthly),
                 priceInr = PaywallTier.MONTHLY.priceInr,
                 rcPackage = monthlyPkg,
@@ -130,7 +130,7 @@ fun PaywallScreen(
             )
             PaywallTierCard(
                 tier = PaywallTier.ANNUAL,
-                title = "Annual",
+                title = stringResource(R.string.paywall_tier_annual),
                 periodLabel = stringResource(R.string.paywall_period_yearly),
                 priceInr = PaywallTier.ANNUAL.priceInr,
                 rcPackage = annualPkg,

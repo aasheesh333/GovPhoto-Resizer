@@ -302,5 +302,23 @@
     <string name="custom_dimensions">Custom Dimensions</string>
     <string name="width_px">Width (px)</string>
     <string name="height_px">Height (px)</string>
+
+    <!-- Accessibility / labels (TalkBack reads these in the user's locale) -->
+    <string name="cd_selected_photo">Selected photo</string>
+    <string name="cd_reset_edits">Reset edits</string>
+    <string name="cd_rotate_90">Rotate 90 degrees</string>
+    <string name="cd_zoom_out">Zoom out</string>
+    <string name="cd_zoom_in">Zoom in</string>
+    <string name="cd_share">Share</string>
+    <string name="cd_processed_photo">Processed photo</string>
+    <string name="cd_processable_photo">Processable photo</string>
+    <string name="cd_original_photo">Original photo</string>
+    <string name="cd_clear_search">Clear search</string>
+    <string name="format_label">Format:</string>
+
+    <!-- Paywall tier titles -->
+    <string name="paywall_tier_weekly">Weekly</string>
+    <string name="paywall_tier_monthly">Monthly</string>
+    <string name="paywall_tier_annual">Annual</string>
 </resources>
 

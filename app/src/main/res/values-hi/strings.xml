@@ -302,5 +302,23 @@
     <string name="custom_dimensions">कस्टम आयाम</string>
     <string name="width_px">चौड़ाई (px)</string>
     <string name="height_px">ऊँचाई (px)</string>
+
+    <!-- Accessibility / labels (TalkBack reads these in the user's locale) -->
+    <string name="cd_selected_photo">चुनी गई फोटो</string>
+    <string name="cd_reset_edits">बदलाव रीसेट करें</string>
+    <string name="cd_rotate_90">90 डिग्री घुमाएं</string>
+    <string name="cd_zoom_out">ज़ूम आउट</string>
+    <string name="cd_zoom_in">ज़ूम इन</string>
+    <string name="cd_share">साझा करें</string>
+    <string name="cd_processed_photo">प्रसंस्कृत फोटो</string>
+    <string name="cd_processable_photo">संसाधित फोटो</string>
+    <string name="cd_original_photo">मूल फोटो</string>
+    <string name="cd_clear_search">खोज साफ़ करें</string>
+    <string name="format_label">प्रारूप:</string>
+
+    <!-- Paywall tier titles -->
+    <string name="paywall_tier_weekly">साप्ताहिक</string>
+    <string name="paywall_tier_monthly">मासिक</string>
+    <string name="paywall_tier_annual">वार्षिक</string>
 </resources>
 

@@ -560,7 +560,7 @@ private fun PhotoPreviewWithImage(
         if (bitmap != null && !bitmap.isRecycled) {
             androidx.compose.foundation.Image(
                 bitmap = bitmap.asImageBitmap(),
-                contentDescription = "Selected photo",
+                contentDescription = stringResource(R.string.cd_selected_photo),
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer(
@@ -582,7 +582,7 @@ private fun PhotoPreviewWithImage(
                     .data(imageUri)
                     .crossfade(true)
                     .build(),
-                contentDescription = "Selected photo",
+                contentDescription = stringResource(R.string.cd_selected_photo),
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer(
@@ -733,7 +733,7 @@ private fun PhotoPreviewWithImage(
             ) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
-                    contentDescription = "Reset edits",
+                    contentDescription = stringResource(R.string.cd_reset_edits),
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -749,7 +749,7 @@ private fun PhotoPreviewWithImage(
             ) {
                 Icon(
                     imageVector = Icons.Default.RotateRight,
-                    contentDescription = "Rotate 90 degrees",
+                    contentDescription = stringResource(R.string.cd_rotate_90),
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -765,7 +765,7 @@ private fun PhotoPreviewWithImage(
             ) {
                 Icon(
                     imageVector = Icons.Default.ZoomOut,
-                    contentDescription = "Zoom out",
+                    contentDescription = stringResource(R.string.cd_zoom_out),
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -794,7 +794,7 @@ private fun PhotoPreviewWithImage(
             ) {
                 Icon(
                     imageVector = Icons.Default.ZoomIn,
-                    contentDescription = "Zoom in",
+                    contentDescription = stringResource(R.string.cd_zoom_in),
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -1230,7 +1230,7 @@ private fun CustomPresetInputs(viewModel: SharedPhotoViewModel) {
         // Format Selection
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "Format:",
+                text = stringResource(R.string.format_label),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
