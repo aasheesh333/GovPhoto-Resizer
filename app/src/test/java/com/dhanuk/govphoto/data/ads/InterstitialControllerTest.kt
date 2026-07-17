@@ -6,7 +6,7 @@ import kotlin.test.assertTrue
 
 class InterstitialControllerTest {
 
-    private val policy = Triple(minIntervalMs = 120_000L, perSessionCap = 5, minSaveCount = 1)
+    private val policy = Triple(120_000L, 5, 1)
 
     private fun RateLimiter.canShowPolicy() = canShow(policy.first, policy.second, policy.third)
 
