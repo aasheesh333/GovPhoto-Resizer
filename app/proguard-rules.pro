@@ -62,6 +62,17 @@
 # Compose
 -dontwarn androidx.compose.**
 
+# Compose animation: R8 strips KeyframesSpecConfig.at() on BOM 2024.01.00,
+# causing NoSuchMethodError KeyframesSpec$KeyframeEntity.at(...) at runtime
+# in release builds. Affects M3 Switch, Slider, CircularProgressIndicator,
+# and any keyframes{}-based spec. Keep the keyframes class graph + members.
+-keep class androidx.compose.animation.core.KeyframesSpec { *; }
+-keep class androidx.compose.animation.core.KeyframesSpec$* { *; }
+-keep class androidx.compose.animation.core.KeyframesSpecConfig { *; }
+-keepclassmembers class androidx.compose.animation.core.** {
+    public <methods>;
+}
+
 # DataStore Preferences — accessed via Kotlin reflection under minify
 -keep class androidx.datastore.preferences.** { *; }
 -keep class com.dhanuk.govphoto.data.datastore.** { *; }

@@ -22,6 +22,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.ui.components.GovButton
 import com.dhanuk.govphoto.ui.components.GovOutlinedButton
+import com.dhanuk.govphoto.ui.components.SafeCircularSpinner
 import com.dhanuk.govphoto.ui.viewmodel.PaywallViewModel
 import com.revenuecat.purchases.PackageType
 import com.revenuecat.purchases.Package
@@ -64,7 +65,10 @@ fun PaywallScreen(
             Text(stringResource(R.string.paywall_hero_subtitle), style = MaterialTheme.typography.bodyMedium)
 
             if (state.loading) {
-                CircularProgressIndicator()
+                SafeCircularSpinner(
+                    modifier = Modifier.size(36.dp),
+                    strokeWidth = 3.dp,
+                )
                 return@Column
             }
             if (state.subscribed) {

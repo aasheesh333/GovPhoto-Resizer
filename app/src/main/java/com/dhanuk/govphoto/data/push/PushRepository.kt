@@ -30,12 +30,14 @@ class PushRepository @Inject constructor(
         for (cat in PushCategory.entries) {
             val enabled = store.isEnabled(cat)
             // Send a tag-bracket map - OneSignal accepts key-value tags only at user-level.
-            OneSignal.User.addTag(cat.storageKey, if (enabled) "1" else "0")
+            // Guard: if OneSignal init failed/was never called, addTag throws and would
+            // crash the notification-settings toggles. Best-effort, swallow SDK errors.
+            runCatching { OneSignal.User.addTag(cat.storageKey, if (enabled) "1" else "0") }
         }
     }
 
     fun setCategoryEnabled(category: PushCategory, enabled: Boolean) = scope.launch {
         store.setEnabled(category, enabled)
-        OneSignal.User.addTag(category.storageKey, if (enabled) "1" else "0")
+        runCatching { OneSignal.User.addTag(category.storageKey, if (enabled) "1" else "0") }
     }
 }
