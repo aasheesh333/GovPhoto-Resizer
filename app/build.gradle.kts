@@ -165,7 +165,7 @@ dependencies {
     implementation("com.google.android.ump:user-messaging-platform:2.2.0")
 
     // RevenueCat
-    implementation("com.revenuecat.purchases:purchases:5.9.0")
+    implementation("com.revenuecat.purchases:purchases:5.8.2")
 
     // Splash Screen API
     implementation("androidx.core:core-splashscreen:1.0.1")
