@@ -62,21 +62,7 @@ class MainActivity : ComponentActivity() {
             params,
             object : com.google.android.ump.ConsentInformation.OnConsentInfoUpdateSuccessListener {
                 override fun onConsentInfoUpdateSuccess() {
-                    if (consentInfo.isConsentFormAvailable) {
-                        consentInfo.loadConsentForm(
-                            this@MainActivity,
-                            object : com.google.android.ump.UserMessagingPlatform.OnConsentFormLoadSuccessListener {
-                                override fun onConsentFormLoadSuccess(form: com.google.android.ump.ConsentForm) {
-                                    form.show(this@MainActivity) { initializeMobileAds() }
-                                }
-                            },
-                            object : com.google.android.ump.UserMessagingPlatform.OnConsentFormLoadFailureListener {
-                                override fun onConsentFormLoadFailure(formError: com.google.android.ump.FormError) {
-                                    initializeMobileAds()
-                                }
-                            }
-                        )
-                    } else {
+                    com.google.android.ump.UserMessagingPlatform.loadAndShowConsentFormIfRequired(this@MainActivity) { _ ->
                         initializeMobileAds()
                     }
                 }

@@ -1,15 +1,19 @@
 package com.dhanuk.govphoto
 
 import android.app.Application
-import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
 import com.google.firebase.crashlytics.ktx.crashlytics
+import com.google.firebase.ktx.Firebase
 import com.dhanuk.govphoto.data.subscription.SubscriptionRepository
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.HiltAndroidApp
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 @EntryPoint
 @InstallIn(SingletonComponent::class)
@@ -38,17 +42,19 @@ class GovPhotoApp : Application() {
 
         // RevenueCat
         com.revenuecat.purchases.Purchases.configure(
-            com.revenuecat.purchases.Purchases.Configuration.Builder(
+            com.revenuecat.purchases.PurchasesConfiguration.Builder(
                 this,
                 BuildConfig.REVENUECAT_API_KEY,
             ).build()
         )
 
         val entryPoint = EntryPointAccessors.fromApplication(this, GovPhotoAppEntryPoint::class.java)
-        entryPoint.subscriptionRepository().bind()
+        CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
+            entryPoint.subscriptionRepository().bind()
+        }
 
         // OneSignal — init in background to avoid blocking onCreate
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob()).launch {
+        CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
             entryPoint.pushRepository().init()
         }
 
