@@ -6,6 +6,9 @@ import com.dhanuk.govphoto.data.ml.FaceDetectorClient
 import com.dhanuk.govphoto.data.ml.MlKitFaceDetectorClient
 import com.dhanuk.govphoto.data.ml.MlKitSegmenterClient
 import com.dhanuk.govphoto.data.ml.SegmenterClient
+import com.dhanuk.govphoto.data.datastore.SettingsRepository
+import com.dhanuk.govphoto.data.datastore.CachedIsProStore
+import com.dhanuk.govphoto.data.push.PushCategoryStore
 import com.dhanuk.govphoto.data.subscription.SubscriptionRepository
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -32,6 +35,14 @@ object AppModule {
     @Provides
     @Singleton
     fun provideFaceDetectorClient(): FaceDetectorClient = MlKitFaceDetectorClient()
+
+    @Provides
+    @Singleton
+    fun provideCachedIsProStore(repo: SettingsRepository): CachedIsProStore = repo
+
+    @Provides
+    @Singleton
+    fun providePushCategoryStore(repo: SettingsRepository): PushCategoryStore = repo
 
     @Provides
     @Singleton
