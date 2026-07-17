@@ -77,10 +77,15 @@ class PushRepository @Inject constructor(
      * and for a push token to be registered on the OneSignal dashboard.
      * [fallbackToSettings] = true routes the user to system notification settings
      * after the OS prompt has been permanently denied.
+     *
+     * Fire-and-forget: launches on the repo's IO scope so callers (e.g. the
+     * NotificationPermissionGate) don't need to be in a coroutine themselves.
      */
     fun promptForPermission(fallbackToSettings: Boolean = true) {
-        runCatching { OneSignal.Notifications.requestPermission(fallbackToSettings) }
-            .onFailure { Log.w(TAG, "requestPermission failed", it) }
+        scope.launch {
+            runCatching { OneSignal.Notifications.requestPermission(fallbackToSettings) }
+                .onFailure { Log.w(TAG, "requestPermission failed", it) }
+        }
     }
 
     private companion object {

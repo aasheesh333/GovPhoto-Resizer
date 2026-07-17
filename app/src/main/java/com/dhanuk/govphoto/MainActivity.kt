@@ -107,7 +107,8 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            val settings by hiltViewModel<SettingsViewModel>().state.collectAsState()
+            val settingsViewModel: SettingsViewModel = hiltViewModel()
+            val settings by settingsViewModel.state.collectAsState()
             // Resolve dark theme from pref
             val isDark = when (settings.darkMode) {
                 DarkModePref.SYSTEM -> isSystemInDarkTheme()
