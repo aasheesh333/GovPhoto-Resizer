@@ -122,7 +122,7 @@ private fun PlanCard(
     isSelected: Boolean,
     onSelect: () -> Unit,
 ) {
-    val priceStr = pkg.product.priceString
+    val priceStr = pkg.product.price.formatted
     val period = when (pkg.packageType) {
         PackageType.WEEKLY -> stringResource(R.string.paywall_period_weekly)
         PackageType.MONTHLY -> stringResource(R.string.paywall_period_monthly)

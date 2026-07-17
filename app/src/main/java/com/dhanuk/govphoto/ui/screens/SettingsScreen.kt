@@ -153,14 +153,14 @@ fun SettingsScreen(
 
                 // Privacy choices (UMP form)
                 SettingsItem(
-                    icon = Icons.Default.AdOff,
+                    icon = Icons.Default.Cookie,
                     title = stringResource(R.string.privacy_choices),
                     subtitle = stringResource(R.string.privacy_choices_subtitle),
                     onClick = {
                         val activity = context as? android.app.Activity
                         if (activity != null) {
                             val ci = com.google.android.ump.UserMessagingPlatform.getConsentInformation(activity)
-                            if (ci.isPrivacyOptionsAvailable) {
+                            if (ci.isPrivacyOptionsRequired) {
                                 com.google.android.ump.UserMessagingPlatform.showPrivacyOptionsForm(activity) { /* user dismissed; ignore error */ }
                             } else {
                                 android.widget.Toast.makeText(context, context.getString(R.string.privacy_choices_not_available), android.widget.Toast.LENGTH_SHORT).show()

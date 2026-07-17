@@ -40,9 +40,10 @@ class SubscriptionRepository @Inject constructor(
     suspend fun bind() {
         if (Purchases.isConfigured) {
             _isPro.value = cachedStore.getCachedIsPro()
-            Purchases.sharedInstance.getCustomerInfo { info ->
-                applyCustomerInfo(info)
-            }
+            Purchases.sharedInstance.getCustomerInfo(object : com.revenuecat.purchases.interfaces.ReceiveCustomerInfoCallback {
+                override fun onReceived(info: CustomerInfo) = applyCustomerInfo(info)
+                override fun onError(error: com.revenuecat.purchases.PurchasesError) = Unit
+            })
         }
     }
 
