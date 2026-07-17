@@ -39,12 +39,8 @@ fun SettingsScreen(
 ) {
     val settings by viewModel.state.collectAsState()
     val context = LocalContext.current
-    var showPrivacyPolicy by remember { mutableStateOf(false) }
     val sharedPreferences = remember { context.getSharedPreferences("govphoto_settings", android.content.Context.MODE_PRIVATE) }
     var preventScreenshots by remember { mutableStateOf(sharedPreferences.getBoolean("prevent_screenshots", false)) }
-    var releaseNotesEnabled by remember { mutableStateOf(true) }
-    var examDeadlinesEnabled by remember { mutableStateOf(false) }
-    var supportRepliesEnabled by remember { mutableStateOf(true) }
 
     Scaffold(
         topBar = {
@@ -236,98 +232,6 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.remove_ads_subtitle),
                     onClick = onNavigateToPaywall
                 )
-
-                SettingsItem(
-                    icon = Icons.Default.PlayCircle,
-                    title = stringResource(R.string.rewarded_ad_free_button),
-                    subtitle = stringResource(R.string.rewarded_ad_free_subtitle),
-                    onClick = {
-                        if (BuildConfig.DEBUG || BuildConfig.FORCE_NO_ADS) {
-                            android.widget.Toast.makeText(context, context.getString(R.string.rewarded_ad_failed_toast), android.widget.Toast.LENGTH_SHORT).show()
-                            return@SettingsItem
-                        }
-                        val activity = context as? android.app.Activity
-                        if (activity == null) {
-                            android.widget.Toast.makeText(context, context.getString(R.string.rewarded_ad_failed_toast), android.widget.Toast.LENGTH_SHORT).show()
-                            return@SettingsItem
-                        }
-                        // Load + show rewarded ad; on user-earned reward, persist ad-free for 24h
-                        val adRequest = com.google.android.gms.ads.AdRequest.Builder().build()
-                        com.google.android.gms.ads.rewarded.RewardedAd.load(
-                            context.applicationContext,
-                            BuildConfig.ADMOB_REWARDED_UNIT,
-                            adRequest,
-                            object : com.google.android.gms.ads.rewarded.RewardedAdLoadCallback() {
-                                override fun onAdLoaded(ad: com.google.android.gms.ads.rewarded.RewardedAd) {
-                                    android.widget.Toast.makeText(context, context.getString(R.string.rewarded_ad_loaded_toast), android.widget.Toast.LENGTH_SHORT).show()
-                                    ad.show(activity) { rewardItem ->
-                                        // Persist ad-free for 24h - task 9 will swap this to SettingsRepository
-                                        val untilMs = System.currentTimeMillis() + 24 * 3_600_000L
-                                        // Direct write to a prefs file as interim storage
-                                        val prefs = context.getSharedPreferences("govphoto_ad_free", android.content.Context.MODE_PRIVATE)
-                                        prefs.edit().putLong("ad_free_until_ms", untilMs).apply()
-                                        // Force adsRepository refresh via EntryPoint
-                                        runCatching {
-                                            dagger.hilt.android.EntryPointAccessors.fromApplication(
-                                                context.applicationContext,
-                                                AdsRefreshEntryPoint::class.java,
-                                            ).adsRepository().refresh()
-                                        }
-                                        android.widget.Toast.makeText(context, context.getString(R.string.rewarded_ad_granted_toast), android.widget.Toast.LENGTH_LONG).show()
-                                    }
-                                }
-
-                                override fun onAdFailedToLoad(error: com.google.android.gms.ads.LoadAdError) {
-                                    android.widget.Toast.makeText(context, context.getString(R.string.rewarded_ad_failed_toast), android.widget.Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        )
-                    }
-                )
-            }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-            // Notifications Section
-            SettingsSection(title = stringResource(R.string.notifications_section)) {
-                val pushRepository = remember {
-                    runCatching {
-                        dagger.hilt.android.EntryPointAccessors.fromApplication(
-                            context.applicationContext,
-                            PushEntryPoint::class.java,
-                        ).pushRepository()
-                    }.getOrNull()
-                }
-                SettingsToggle(
-                    icon = Icons.Default.Campaign,
-                    title = stringResource(R.string.notify_release_notes),
-                    subtitle = stringResource(R.string.notify_release_notes_desc),
-                    isChecked = releaseNotesEnabled,
-                    onCheckedChange = { v ->
-                        releaseNotesEnabled = v
-                        pushRepository?.setCategoryEnabled(com.dhanuk.govphoto.data.push.PushCategory.RELEASE_NOTES, v)
-                    }
-                )
-                SettingsToggle(
-                    icon = Icons.Default.NotificationsActive,
-                    title = stringResource(R.string.notify_exam_deadlines),
-                    subtitle = stringResource(R.string.notify_exam_deadlines_desc),
-                    isChecked = examDeadlinesEnabled,
-                    onCheckedChange = { v ->
-                        examDeadlinesEnabled = v
-                        pushRepository?.setCategoryEnabled(com.dhanuk.govphoto.data.push.PushCategory.EXAM_DEADLINES, v)
-                    }
-                )
-                SettingsToggle(
-                    icon = Icons.Default.MarkEmailRead,
-                    title = stringResource(R.string.notify_support_replies),
-                    subtitle = stringResource(R.string.notify_support_replies_desc),
-                    isChecked = supportRepliesEnabled,
-                    onCheckedChange = { v ->
-                        supportRepliesEnabled = v
-                        pushRepository?.setCategoryEnabled(com.dhanuk.govphoto.data.push.PushCategory.SUPPORT_REPLIES, v)
-                    }
-                )
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -401,12 +305,6 @@ fun SettingsScreen(
                     subtitle = BuildConfig.VERSION_NAME
                 )
                 SettingsItem(
-                    icon = Icons.Default.PrivacyTip,
-                    title = stringResource(R.string.privacy_policy),
-                    subtitle = stringResource(R.string.view_privacy_policy),
-                    onClick = { showPrivacyPolicy = true }
-                )
-                SettingsItem(
                     icon = Icons.Default.BugReport,
                     title = stringResource(R.string.share_crash_log),
                     subtitle = stringResource(R.string.share_crash_log_desc),
@@ -444,35 +342,6 @@ fun SettingsScreen(
             )
         }
     }
-
-    if (showPrivacyPolicy) {
-        PrivacyPolicyDialog(onDismiss = { showPrivacyPolicy = false })
-    }
-}
-
-@Composable
-private fun PrivacyPolicyDialog(onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.privacy_policy), fontWeight = FontWeight.Bold) },
-        text = {
-            Text(
-                text = """GovPhoto Resizer respects your privacy.
-
-All photos are processed on-device. No image data is uploaded to any server.
-
-App settings (language, theme, accessibility) are stored locally using encrypted preferences.
-
-Optional photo history is saved on your device only. No personal data is collected or transmitted.
-
-For background removal and face detection, on-device ML Kit models run entirely offline.""",
-                style = MaterialTheme.typography.bodyMedium
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("OK") }
-        }
-    )
 }
 
 @Composable
@@ -656,16 +525,4 @@ Icon(
             }
         }
     }
-}
-
-@dagger.hilt.EntryPoint
-@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
-interface PushEntryPoint {
-    fun pushRepository(): com.dhanuk.govphoto.data.push.PushRepository
-}
-
-@dagger.hilt.EntryPoint
-@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
-interface AdsRefreshEntryPoint {
-    fun adsRepository(): com.dhanuk.govphoto.data.ads.AdsRepository
 }

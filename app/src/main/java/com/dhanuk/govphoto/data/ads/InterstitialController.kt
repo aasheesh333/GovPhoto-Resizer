@@ -70,7 +70,9 @@ class InterstitialController @Inject constructor(
         if (BuildConfig.DEBUG || BuildConfig.FORCE_NO_ADS) return false
         if (adsRepository.isAdFree.value) return false
         val ad = loadedAd ?: return false.also { maybePreload(); }
-        if (!rateLimiter.canShow(minIntervalMs = 60_000L, perSessionCap = 3, minSaveCount = 2)) return false
+        // Policy: interstitial eligible on every save, with a 2-minute cooldown
+        // between ads and a per-session cap of 5.
+        if (!rateLimiter.canShow(minIntervalMs = 120_000L, perSessionCap = 5, minSaveCount = 1)) return false
         ad.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdDismissedFullScreenContent() {
                 loadedAd = null

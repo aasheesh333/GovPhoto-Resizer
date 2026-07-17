@@ -100,13 +100,6 @@ fun AllFormsScreen(
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
-                    IconButton(onClick = { /* Notifications */ }) {
-                        Icon(
-                            imageVector = Icons.Outlined.Notifications,
-                            contentDescription = stringResource(R.string.cd_notification),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
                 }
                 
                 // Search Bar

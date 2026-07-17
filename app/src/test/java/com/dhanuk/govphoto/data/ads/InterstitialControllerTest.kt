@@ -6,32 +6,41 @@ import kotlin.test.assertTrue
 
 class InterstitialControllerTest {
 
-    @Test fun `first save can't show`() {
+    private val policy = Triple(minIntervalMs = 120_000L, perSessionCap = 5, minSaveCount = 1)
+
+    private fun RateLimiter.canShowPolicy() = canShow(policy.first, policy.second, policy.third)
+
+    @Test fun `first save is eligible`() {
         val rl = RateLimiter(now = { 1_000 }, saveCount = 1)
-        assertFalse(rl.canShow(minIntervalMs = 60_000, perSessionCap = 3, minSaveCount = 2))
+        assertTrue(rl.canShowPolicy())
     }
 
-    @Test fun `second save without cooldown can show`() {
-        val rl = RateLimiter(now = { 1_000 }, saveCount = 2)
-        assertTrue(rl.canShow(minIntervalMs = 60_000, perSessionCap = 3, minSaveCount = 2))
+    @Test fun `no saves blocked`() {
+        val rl = RateLimiter(now = { 1_000 }, saveCount = 0)
+        assertFalse(rl.canShowPolicy())
     }
 
-    @Test fun `cooldown gate`() {
-        val rl = RateLimiter(now = { 10_000 }, saveCount = 2, lastShowMs = 5_000, shownInSession = 1)
-        assertFalse(rl.canShow(minIntervalMs = 60_000, perSessionCap = 3, minSaveCount = 2))
+    @Test fun `cooldown gate within 2 min`() {
+        val rl = RateLimiter(now = { 10_000 }, saveCount = 1, lastShowMs = 5_000, shownInSession = 1)
+        assertFalse(rl.canShowPolicy())
     }
 
-    @Test fun `per-session cap of 3`() {
-        val rl = RateLimiter(now = { 999_999 }, saveCount = 2, lastShowMs = 0L, shownInSession = 3)
-        assertFalse(rl.canShow(minIntervalMs = 60_000, perSessionCap = 3, minSaveCount = 2))
+    @Test fun `cooldown opens after 2 min`() {
+        val rl = RateLimiter(now = { 125_000 }, saveCount = 1, lastShowMs = 5_000, shownInSession = 1)
+        assertTrue(rl.canShowPolicy())
+    }
+
+    @Test fun `per-session cap of 5`() {
+        val rl = RateLimiter(now = { 999_999 }, saveCount = 1, lastShowMs = 0L, shownInSession = 5)
+        assertFalse(rl.canShowPolicy())
     }
 
     @Test fun `markShown advances state`() {
-        val rl = RateLimiter(now = { 1_000 }, saveCount = 2)
+        val rl = RateLimiter(now = { 1_000 }, saveCount = 1)
         rl.markShown()
-        // After a show, cooldown applies.
-        assertFalse(rl.canShow(minIntervalMs = 60_000, perSessionCap = 3, minSaveCount = 2))
-        // 60s later, cap-2 still allows one more.
-        rl.now = { 61_000 }; assertTrue(rl.canShow(minIntervalMs = 60_000, perSessionCap = 3, minSaveCount = 2))
+        // After a show, the 2-min cooldown applies.
+        assertFalse(rl.canShowPolicy())
+        // 2 min later, within the session cap, one more is allowed.
+        rl.now = { 121_000 }; assertTrue(rl.canShowPolicy())
     }
 }
