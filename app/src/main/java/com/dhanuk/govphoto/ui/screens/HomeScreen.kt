@@ -551,6 +551,7 @@ private fun DocumentTypeCard(
             }
             Button(
                 onClick = onClick,
+                modifier = Modifier.minGovButtonHeight(),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
@@ -576,6 +577,8 @@ private fun BrowseAllFormsButton(onClick: () -> Unit) {
     ) {
         Button(
             onClick = onClick,
+            modifier = Modifier
+                .minGovButtonHeight(),
             shape = RoundedCornerShape(24.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary

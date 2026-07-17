@@ -88,11 +88,13 @@ fun SettingsScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 // Dynamic Color toggle
+                val dynamicColorSupported = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
                 SettingsToggle(
                     icon = Icons.Default.Palette,
                     title = stringResource(R.string.dynamic_color),
                     subtitle = stringResource(R.string.dynamic_color_desc),
-                    isChecked = settings.dynamicColor,
+                    isChecked = settings.dynamicColor && dynamicColorSupported,
+                    enabled = dynamicColorSupported,
                     onCheckedChange = { viewModel.setDynamicColor(it) }
                 )
             }
@@ -158,8 +160,15 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.privacy_choices_subtitle),
                     onClick = {
                         val activity = context as? android.app.Activity
-                        if (activity != null) {
-                            com.google.android.ump.UserMessagingPlatform.showPrivacyOptionsForm(activity) { error ->
+                        val consentInfo = com.google.android.ump.UserMessagingPlatform.getConsentInformation(context)
+                        when {
+                            activity == null ->
+                                android.widget.Toast.makeText(context, context.getString(R.string.privacy_choices_not_available), android.widget.Toast.LENGTH_SHORT).show()
+                            // No consent form required for this region/user -> show a friendly
+                            // message instead of silently failing or erroring inside the SDK.
+                            !consentInfo.isPrivacyOptionsAvailable ->
+                                android.widget.Toast.makeText(context, context.getString(R.string.privacy_choices_not_required), android.widget.Toast.LENGTH_SHORT).show()
+                            else -> com.google.android.ump.UserMessagingPlatform.showPrivacyOptionsForm(activity) { error ->
                                 if (error != null) {
                                     android.widget.Toast.makeText(context, context.getString(R.string.privacy_choices_not_available), android.widget.Toast.LENGTH_SHORT).show()
                                 }
@@ -551,7 +560,8 @@ private fun SettingsToggle(
     title: String,
     subtitle: String,
     isChecked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -567,14 +577,14 @@ private fun SettingsToggle(
 Icon(
             imageVector = icon,
             contentDescription = stringResource(R.string.cd_settings_toggle),
-            tint = MaterialTheme.colorScheme.primary,
+            tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(24.dp)
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                color = MaterialTheme.colorScheme.onSurface
+                color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = subtitle,
@@ -585,6 +595,7 @@ Icon(
         Switch(
             checked = isChecked,
             onCheckedChange = onCheckedChange,
+            enabled = enabled,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                 checkedTrackColor = MaterialTheme.colorScheme.primary

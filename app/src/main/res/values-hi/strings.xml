@@ -267,6 +267,7 @@
     <string name="privacy_choices">गोपनीयता विकल्प</string>
     <string name="privacy_choices_subtitle">विज्ञापन सम्मति वरीयताएं प्रबंधित करें</string>
     <string name="privacy_choices_not_available">गोपनीयता विकल्प अभी उपलब्ध नहीं हैं।</string>
+    <string name="privacy_choices_not_required">आपके क्षेत्र में गोपनीयता विकल्प आवश्यक नहीं हैं।</string>
     <string name="rewarded_ad_free_button">विज्ञापन देखें — 24 घंटे के लिए विज्ञापन-मुक्त</string>
     <string name="rewarded_ad_free_subtitle">छोटा वीडियो देखें और 24 घंटे के लिए विज्ञापन हटाएं</string>
     <string name="rewarded_ad_loaded_toast">विज्ञापन लोड हो गया। शुरू करने के लिए टैप करें।</string>

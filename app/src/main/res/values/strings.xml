@@ -267,6 +267,7 @@
     <string name="privacy_choices">Privacy choices</string>
     <string name="privacy_choices_subtitle">Manage ad consent preferences</string>
     <string name="privacy_choices_not_available">Privacy options are not available yet.</string>
+    <string name="privacy_choices_not_required">Privacy options are not required in your region.</string>
     <string name="rewarded_ad_free_button">Watch ad for 24 hours ad-free</string>
     <string name="rewarded_ad_free_subtitle">Tap to watch a short video and remove ads for 24 hours</string>
     <string name="rewarded_ad_loaded_toast">Ad loaded. Tap to start.</string>
