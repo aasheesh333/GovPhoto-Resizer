@@ -2,10 +2,12 @@ package com.dhanuk.govphoto.data.datastore
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.dhanuk.govphoto.data.push.PushCategory
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.FixMethodOrder
@@ -56,6 +58,12 @@ class SettingsRepositoryTest {
         assertEquals(AppLanguage.ENGLISH, state.language)
         assertEquals(false, state.dynamicColor)
         assertEquals(DarkModePref.LIGHT, state.darkMode)
+        assertEquals(false, state.cachedIsPro)
+        assertEquals(0L, state.adFreeUntilMs)
+        assertEquals(0, state.saveCount)
+        assertEquals(true, state.releaseNotificationsEnabled)
+        assertEquals(false, state.examDeadlineNotificationsEnabled)
+        assertEquals(true, state.supportNotificationsEnabled)
     }
 
     @Test
@@ -81,5 +89,32 @@ class SettingsRepositoryTest {
     fun e_setLanguage_updates_cached_locale_tag() = runTest {
         repo.setLanguage(AppLanguage.HINDI)
         assertEquals("hi", repo.getCachedLanguageTag())
+    }
+
+    @Test
+    fun f_cachedIsPro_round_trips() = runTest {
+        repo.setCachedIsPro(true)
+        assertTrue(repo.getCachedIsPro())
+        assertEquals(true, repo.state.first().cachedIsPro)
+    }
+
+    @Test
+    fun g_notification_defaults_match_spec() = runTest {
+        assertFalse(repo.isEnabled(PushCategory.EXAM_DEADLINES))
+        assertTrue(repo.isEnabled(PushCategory.RELEASE_NOTES))
+        assertTrue(repo.isEnabled(PushCategory.SUPPORT_REPLIES))
+    }
+
+    @Test
+    fun h_saveCount_increments() = runTest {
+        repo.bumpSaveCount()
+        repo.bumpSaveCount()
+        assertEquals(2, repo.state.first().saveCount)
+    }
+
+    @Test
+    fun i_adFreeUntilMs_round_trips() = runTest {
+        repo.setAdFreeUntilMs(12345L)
+        assertEquals(12345L, repo.state.first().adFreeUntilMs)
     }
 }
