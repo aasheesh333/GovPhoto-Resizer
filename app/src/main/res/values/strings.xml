@@ -10,6 +10,11 @@
     <string name="select_document_type">Select Document Type</string>
     <string name="view_all">View All</string>
     <string name="browse_all_forms">Browse All Forms</string>
+    <string name="app_tagline_short">Resize Photos</string>
+    <string name="compliant_subtitle">Compliant with all government standards</string>
+    <string name="custom_size">Custom Size</string>
+    <string name="custom_size_subtitle">Manual Width &amp; Height</string>
+    <string name="select">Select</string>
     
     <!-- Navigation -->
     <string name="nav_home">Home</string>
@@ -98,6 +103,10 @@
     <string name="large_buttons_desc">Increase button sizes for easier tapping</string>
     <string name="high_contrast_desc">Improve visibility with higher contrast</string>
     <string name="view_privacy_policy">View privacy policy</string>
+    <string name="prevent_screenshots">Prevent Screenshots</string>
+    <string name="prevent_screenshots_desc">Block screenshots for sensitive document photos</string>
+    <string name="share_crash_log">Share Crash Log</string>
+    <string name="share_crash_log_desc">Send diagnostic info to support</string>
     <string name="support_us_section">Support us</string>
     <string name="share_app">Share app</string>
     <string name="share_app_subtitle">Tell a friend about GovPhoto</string>

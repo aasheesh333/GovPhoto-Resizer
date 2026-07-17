@@ -165,14 +165,14 @@ private fun HomeHeader(settingsViewModel: SettingsViewModel) {
             
             // Title and Subtitle
             Text(
-                text = stringResource(R.string.app_tagline).substringBefore(" for"),
+                text = stringResource(R.string.app_tagline_short),
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold
                 ),
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "Compliant with all government standards",
+                text = stringResource(R.string.compliant_subtitle),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -482,8 +482,8 @@ private fun DocumentTypeSection(
             // Custom Size Card
             DocumentTypeCard(
                 icon = Icons.Default.Edit,
-                title = "Custom Size",
-                subtitle = "Manual Width & Height",
+                title = stringResource(R.string.custom_size),
+                subtitle = stringResource(R.string.custom_size_subtitle),
                 onClick = { onPresetClick(com.dhanuk.govphoto.data.model.PhotoPreset.MANUAL_PRESET_ID) }
             )
             
@@ -559,7 +559,7 @@ private fun DocumentTypeCard(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
             ) {
                 Text(
-                    text = "Select",
+                    text = stringResource(R.string.select),
                     style = MaterialTheme.typography.labelLarge.copy(
                         fontWeight = FontWeight.Bold
                     )

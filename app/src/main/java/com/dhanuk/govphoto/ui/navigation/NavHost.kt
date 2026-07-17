@@ -6,6 +6,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -141,6 +142,7 @@ fun GovPhotoNavHost(
         }
 
         composable(Screen.History.route) {
+            val context = LocalContext.current
             HistoryScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onPhotoSelected = { imagePath ->
@@ -148,7 +150,6 @@ fun GovPhotoNavHost(
                         setDataAndType(android.net.Uri.parse(imagePath), "image/*")
                         addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
-                    val context = navController.context
                     context.startActivity(intent)
                 }
             )

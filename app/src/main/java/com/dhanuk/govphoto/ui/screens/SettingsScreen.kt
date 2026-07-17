@@ -99,7 +99,7 @@ fun SettingsScreen(
                 )
             }
 
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // Support us Section
             SettingsSection(title = stringResource(R.string.support_us_section)) {
@@ -223,7 +223,7 @@ fun SettingsScreen(
                 )
             }
 
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // Subscription Section
             SettingsSection(title = stringResource(R.string.subscription_section)) {
@@ -283,7 +283,7 @@ fun SettingsScreen(
                 )
             }
 
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // Notifications Section
             SettingsSection(title = stringResource(R.string.notifications_section)) {
@@ -327,7 +327,7 @@ fun SettingsScreen(
                 )
             }
 
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // Language Section
             SettingsSection(title = stringResource(R.string.language)) {
@@ -349,7 +349,7 @@ fun SettingsScreen(
                 )
             }
 
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // Accessibility Section
             SettingsSection(title = stringResource(R.string.accessibility)) {
@@ -369,8 +369,8 @@ fun SettingsScreen(
                 )
                 SettingsToggle(
                     icon = Icons.Default.Lock,
-                    title = "Prevent Screenshots",
-                    subtitle = "Block screenshots for sensitive document photos",
+                    title = stringResource(R.string.prevent_screenshots),
+                    subtitle = stringResource(R.string.prevent_screenshots_desc),
                     isChecked = preventScreenshots,
                     onCheckedChange = {
                         preventScreenshots = it
@@ -388,7 +388,7 @@ fun SettingsScreen(
                 )
             }
 
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // About Section
             SettingsSection(title = stringResource(R.string.about)) {
@@ -405,8 +405,8 @@ fun SettingsScreen(
                 )
                 SettingsItem(
                     icon = Icons.Default.BugReport,
-                    title = "Share Crash Log",
-                    subtitle = "Send diagnostic info to support",
+                    title = stringResource(R.string.share_crash_log),
+                    subtitle = stringResource(R.string.share_crash_log_desc),
                     onClick = {
                         try {
                             val crashFile = java.io.File(context.filesDir, "last_crash.txt")

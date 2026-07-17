@@ -10,6 +10,11 @@
     <string name="select_document_type">दस्तावेज़ का प्रकार चुनें</string>
     <string name="view_all">सभी देखें</string>
     <string name="browse_all_forms">सभी फॉर्म ब्राउज़ करें</string>
+    <string name="app_tagline_short">फोटो रीसाइज़ करें</string>
+    <string name="compliant_subtitle">सभी सरकारी मानकों के अनुरूप</string>
+    <string name="custom_size">कस्टम आकार</string>
+    <string name="custom_size_subtitle">मैन्युअल चौड़ाई और ऊँचाई</string>
+    <string name="select">चुनें</string>
     
     <!-- Navigation -->
     <string name="nav_home">होम</string>
@@ -98,6 +103,10 @@
     <string name="large_buttons_desc">आसान टैपिंग के लिए बटन आकार बढ़ाएं</string>
     <string name="high_contrast_desc">उच्च कंट्रास्ट से दृश्यता बढ़ाएं</string>
     <string name="view_privacy_policy">गोपनीयता नीति देखें</string>
+    <string name="prevent_screenshots">स्क्रीनशॉट रोकें</string>
+    <string name="prevent_screenshots_desc">संवेदनशील दस्तावेज़ फोटो के स्क्रीनशॉट ब्लॉक करें</string>
+    <string name="share_crash_log">क्रैश लॉग साझा करें</string>
+    <string name="share_crash_log_desc">सपोर्ट को डायग्नोस्टिक जानकारी भेजें</string>
     <string name="support_us_section">हमें सपोर्ट करें</string>
     <string name="share_app">ऐप शेयर करें</string>
     <string name="share_app_subtitle">अपने दोस्तों को GovPhoto के बारे में बताएं</string>
