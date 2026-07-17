@@ -82,16 +82,16 @@ class PaywallViewModelTest {
     fun purchase_failure_sets_error_and_does_not_invoke_onSuccess() = runTest {
         coEvery { repo.purchase(any(), any()) } returns Result.failure(RuntimeException("card declined"))
         val pkg = mockk<Package>(relaxed = true)
-        // The Activity mock below never has methods invoked on it (the VM only
-        // forwards it to the (stubbed) repository), so the relaxed mock
-        // created via inference is enough — no need to instantiate Activity
-        // directly, which would require Robolectric.
-        val activity = mockk(relaxed = true)
         var successCalled = false
         val onSuccess: () -> Unit = { successCalled = true }
 
         val vm = PaywallViewModel(repo)
-        vm.purchase(activity, pkg, onSuccess)
+        // Pass the activity mock inline (inferred as Activity from the parameter
+        // type) to match the restore tests' working pattern. Storing it in a
+        // 'val activity = mockk(...)' first would fail to compile (mockk cannot
+        // infer T without context) and instantiating mockk<Activity> explicitly
+        // would need Robolectric.
+        vm.purchase(mockk(relaxed = true), pkg, onSuccess)
 
         assertNotNull(vm.state.value.error)
         assertEquals("card declined", vm.state.value.error)
