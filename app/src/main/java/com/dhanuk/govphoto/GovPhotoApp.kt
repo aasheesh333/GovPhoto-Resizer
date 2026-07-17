@@ -1,6 +1,7 @@
 package com.dhanuk.govphoto
 
 import android.app.Application
+import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
 import com.google.firebase.crashlytics.ktx.crashlytics
 import com.dhanuk.govphoto.data.subscription.SubscriptionRepository
@@ -32,7 +33,7 @@ class GovPhotoApp : Application() {
         // Default: collection enabled in release only; this is belt-and-suspenders
         // and matches the crashlyticsCollectionEnabled default. Override via manifest
         // or here for explicit control in the future.
-        crashlytics.setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG)
+        Firebase.crashlytics.setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG)
 
         // RevenueCat
         com.revenuecat.purchases.Purchases.configure(
@@ -45,26 +46,5 @@ class GovPhotoApp : Application() {
         val entryPoint = EntryPointAccessors.fromApplication(this, GovPhotoAppEntryPoint::class.java)
         entryPoint.subscriptionRepository().bind()
 
-        // UMP consent flow -> MobileAds.initialize()
-        val consentInfo = com.google.android.ump.UserMessagingPlatform.getConsentInformation(this)
-        val params = com.google.android.ump.ConsentRequestParameters.Builder()
-            .setTagForUnderAgeOfConsent(false)
-            .build()
-        consentInfo.requestConsentInfoUpdate(
-            this,
-            params,
-            {
-                if (consentInfo.isConsentFormAvailable) {
-                    consentInfo.loadConsentForm { _ -> initializeMobileAds() }
-                } else {
-                    initializeMobileAds()
-                }
-            },
-            { initializeMobileAds() }
-        )
-    }
-
-    private fun initializeMobileAds() {
-        com.google.android.gms.ads.MobileAds.initialize(this)
     }
 }
