@@ -38,6 +38,8 @@ class SettingsViewModel @Inject constructor(
     fun setLargeButtons(enabled: Boolean) = viewModelScope.launch { repo.setLargeButtons(enabled) }
     fun setHighContrast(enabled: Boolean) = viewModelScope.launch { repo.setHighContrast(enabled) }
     fun setOnboardingComplete(done: Boolean) = viewModelScope.launch { repo.setOnboardingComplete(done) }
+    fun setNotificationPermissionAsked(asked: Boolean) =
+        viewModelScope.launch { repo.setNotificationPermissionAsked(asked) }
     fun setLastPresetId(id: String?) = viewModelScope.launch { repo.setLastPresetId(id) }
     fun setCachedIsPro(cached: Boolean) = viewModelScope.launch { repo.setCachedIsPro(cached) }
     fun setAdFreeUntilMs(untilMs: Long) = viewModelScope.launch { repo.setAdFreeUntilMs(untilMs) }

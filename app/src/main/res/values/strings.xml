@@ -260,6 +260,7 @@
     <string name="paywall_done">Done</string>
     <string name="paywall_already_pro">You already have GovPhoto Pro. Thank you.</string>
     <string name="paywall_legal">Auto-renews. Cancel anytime in Play Store. By subscribing you agree to the Terms and Privacy Policy.</string>
+    <string name="paywall_billing_not_ready">Billing setup in progress. Try again later.</string>
     <string name="cd_best_value">Best value badge</string>
 
     <!-- Monetization / Settings new sections -->
@@ -282,5 +283,11 @@
     <string name="rewarded_ad_loaded_toast">Ad loaded. Tap to start.</string>
     <string name="rewarded_ad_granted_toast">24 hours of ad-free unlocked. Thanks for supporting our work.</string>
     <string name="rewarded_ad_failed_toast">Ad failed to load. Please try again later.</string>
+
+    <!-- Notification permission (OneSignal) -->
+    <string name="notif_perm_title">Stay updated?</string>
+    <string name="notif_perm_message">We\'ll send you important updates like bug fixes, new releases and exam reminders. No spam.</string>
+    <string name="notif_perm_allow">Allow</string>
+    <string name="notif_perm_later">Not now</string>
 </resources>
 
