@@ -27,12 +27,14 @@ import com.dhanuk.govphoto.BuildConfig
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.data.datastore.AppLanguage
 import com.dhanuk.govphoto.data.datastore.DarkModePref
+import com.dhanuk.govphoto.ui.ads.BannerAd
 import com.dhanuk.govphoto.ui.viewmodel.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToPaywall: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val settings by viewModel.state.collectAsState()
@@ -40,6 +42,9 @@ fun SettingsScreen(
     var showPrivacyPolicy by remember { mutableStateOf(false) }
     val sharedPreferences = remember { context.getSharedPreferences("govphoto_settings", android.content.Context.MODE_PRIVATE) }
     var preventScreenshots by remember { mutableStateOf(sharedPreferences.getBoolean("prevent_screenshots", false)) }
+    var releaseNotesEnabled by remember { mutableStateOf(true) }
+    var examDeadlinesEnabled by remember { mutableStateOf(false) }
+    var supportRepliesEnabled by remember { mutableStateOf(true) }
 
     Scaffold(
         topBar = {
@@ -66,13 +71,14 @@ fun SettingsScreen(
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(MaterialTheme.colorScheme.background)
-                .verticalScroll(rememberScrollState())
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(paddingValues)
+                    .background(MaterialTheme.colorScheme.background)
+                    .verticalScroll(rememberScrollState())
+            ) {
             // Appearance Section
             SettingsSection(title = stringResource(R.string.appearance)) {
                 // Theme selector
@@ -145,6 +151,24 @@ fun SettingsScreen(
                     }
                 )
 
+                // Privacy choices (UMP form)
+                SettingsItem(
+                    icon = Icons.Default.AdOff,
+                    title = stringResource(R.string.privacy_choices),
+                    subtitle = stringResource(R.string.privacy_choices_subtitle),
+                    onClick = {
+                        val activity = context as? android.app.Activity
+                        if (activity != null) {
+                            val ci = com.google.android.ump.ConsentInformation.getInstance(activity)
+                            if (ci.isPrivacyOptionsAvailable) {
+                                ci.showPrivacyOptionsForm(activity) { /* user dismissed; ignore error */ }
+                            } else {
+                                android.widget.Toast.makeText(context, context.getString(R.string.privacy_choices_not_available), android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                )
+
                 // Open Privacy Policy in browser
                 SettingsItem(
                     icon = Icons.Default.PrivacyTip,
@@ -187,6 +211,62 @@ fun SettingsScreen(
                         } catch (e: Exception) {
                             Toast.makeText(context, "No browser found", Toast.LENGTH_SHORT).show()
                         }
+                    }
+                )
+            }
+
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+            // Subscription Section
+            SettingsSection(title = stringResource(R.string.subscription_section)) {
+                SettingsItem(
+                    icon = Icons.Default.WorkspacePremium,
+                    title = stringResource(R.string.remove_ads),
+                    subtitle = stringResource(R.string.remove_ads_subtitle),
+                    onClick = onNavigateToPaywall
+                )
+            }
+
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+            // Notifications Section
+            SettingsSection(title = stringResource(R.string.notifications_section)) {
+                val pushRepository = remember {
+                    runCatching {
+                        dagger.hilt.android.EntryPointAccessors.fromApplication(
+                            context.applicationContext,
+                            PushEntryPoint::class.java,
+                        ).pushRepository()
+                    }.getOrNull()
+                }
+                SettingsToggle(
+                    icon = Icons.Default.Campaign,
+                    title = stringResource(R.string.notify_release_notes),
+                    subtitle = stringResource(R.string.notify_release_notes_desc),
+                    isChecked = releaseNotesEnabled,
+                    onCheckedChange = { v ->
+                        releaseNotesEnabled = v
+                        pushRepository?.setCategoryEnabled(com.dhanuk.govphoto.data.push.PushCategory.RELEASE_NOTES, v)
+                    }
+                )
+                SettingsToggle(
+                    icon = Icons.Default.NotificationsActive,
+                    title = stringResource(R.string.notify_exam_deadlines),
+                    subtitle = stringResource(R.string.notify_exam_deadlines_desc),
+                    isChecked = examDeadlinesEnabled,
+                    onCheckedChange = { v ->
+                        examDeadlinesEnabled = v
+                        pushRepository?.setCategoryEnabled(com.dhanuk.govphoto.data.push.PushCategory.EXAM_DEADLINES, v)
+                    }
+                )
+                SettingsToggle(
+                    icon = Icons.Default.MarkEmailRead,
+                    title = stringResource(R.string.notify_support_replies),
+                    subtitle = stringResource(R.string.notify_support_replies_desc),
+                    isChecked = supportRepliesEnabled,
+                    onCheckedChange = { v ->
+                        supportRepliesEnabled = v
+                        pushRepository?.setCategoryEnabled(com.dhanuk.govphoto.data.push.PushCategory.SUPPORT_REPLIES, v)
                     }
                 )
             }
@@ -297,6 +377,12 @@ fun SettingsScreen(
             }
 
             Spacer(modifier = Modifier.height(32.dp))
+            }
+            BannerAd(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+            )
         }
     }
 
@@ -509,4 +595,10 @@ Icon(
             }
         }
     }
+}
+
+@dagger.hilt.EntryPoint
+@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
+interface PushEntryPoint {
+    fun pushRepository(): com.dhanuk.govphoto.data.push.PushRepository
 }

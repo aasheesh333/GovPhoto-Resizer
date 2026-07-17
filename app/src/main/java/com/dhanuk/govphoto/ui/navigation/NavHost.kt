@@ -156,7 +156,8 @@ fun GovPhotoNavHost(
 
         composable(Screen.Settings.route) {
             SettingsScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToPaywall = { navController.navigate(Screen.Paywall.route) }
             )
         }
 

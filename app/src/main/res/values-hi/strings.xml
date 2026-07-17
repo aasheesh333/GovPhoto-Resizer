@@ -252,5 +252,25 @@
     <string name="paywall_already_pro">आपके पास GovPhoto Pro है। धन्यवाद।</string>
     <string name="paywall_legal">ऑटो-नवीनीकरण होगा। Play Store में कभी भी रद्द करें। सदस्यता लेने पर आप नियम और गोपनीयता नीति से सहमत होते हैं।</string>
     <string name="cd_best_value">सर्वोत्तम ऑफ़र बैज</string>
+
+    <!-- Monetization / Settings new sections (Hindi) -->
+    <string name="subscription_section">सदस्यता</string>
+    <string name="remove_ads">विज्ञापन हटाएं</string>
+    <string name="remove_ads_subtitle">GovPhoto Pro पाएं — हमेशा विज्ञापन-मुक्त</string>
+    <string name="notifications_section">सूचनाएं</string>
+    <string name="notify_release_notes">रिलीज़ नोट्स</string>
+    <string name="notify_release_notes_desc">नई सुविधाएं, प्रीसेट, बग सुधार</string>
+    <string name="notify_exam_deadlines">परीक्षा की समय-सीमा</string>
+    <string name="notify_exam_deadlines_desc">परीक्षा फ़ॉर्म विंडो बंद होने पर अलर्ट</string>
+    <string name="notify_support_replies">सहायता उत्तर</string>
+    <string name="notify_support_replies_desc">हमारी टीम के उत्तर पर सूचना</string>
+    <string name="privacy_choices">गोपनीयता विकल्प</string>
+    <string name="privacy_choices_subtitle">विज्ञापन सम्मति वरीयताएं प्रबंधित करें</string>
+    <string name="privacy_choices_not_available">गोपनीयता विकल्प अभी उपलब्ध नहीं हैं।</string>
+    <string name="rewarded_ad_free_button">विज्ञापन देखें — 24 घंटे के लिए विज्ञापन-मुक्त</string>
+    <string name="rewarded_ad_free_subtitle">छोटा वीडियो देखें और 24 घंटे के लिए विज्ञापन हटाएं</string>
+    <string name="rewarded_ad_loaded_toast">विज्ञापन लोड हो गया। शुरू करने के लिए टैप करें।</string>
+    <string name="rewarded_ad_granted_toast">24 घंटे विज्ञापन-मुक्त सेवा सक्रिय। सहयोग के लिए धन्यवाद।</string>
+    <string name="rewarded_ad_failed_toast">विज्ञापन लोड विफल। कृपया बाद में पुनः प्रयास करें।</string>
 </resources>
 
