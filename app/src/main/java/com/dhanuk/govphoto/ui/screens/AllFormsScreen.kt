@@ -24,6 +24,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.data.model.PhotoPreset
 import com.dhanuk.govphoto.data.model.PresetCategory
+import com.dhanuk.govphoto.ui.ads.BannerAd
 import com.dhanuk.govphoto.ui.theme.*
 import com.dhanuk.govphoto.ui.viewmodel.AllFormsViewModel
 
@@ -171,37 +172,44 @@ fun AllFormsScreen(
             }
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(MaterialTheme.colorScheme.background),
-            contentPadding = PaddingValues(bottom = 24.dp)
-        ) {
-            groupedPresets.forEach { (category, presets) ->
-                // Category Header
-                item(key = "header_${category.name}") {
-                    CategoryHeader(
-                        title = category.displayName,
-                        count = presets.size
-                    )
-                }
-                
-                // Presets in this category
-                items(
-                    items = presets,
-                    key = { it.id }
-                ) { preset ->
-                    FormListItem(
-                        icon = getCategoryIcon(category),
-                        iconBgColor = getCategoryBgColor(category),
-                        iconTint = getCategoryTint(category),
-                        title = preset.examName,
-                        subtitle = preset.getFormattedDimensions(),
-                        onClick = { onPresetSelected(preset.id) }
-                    )
+        Column(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(paddingValues)
+                    .background(MaterialTheme.colorScheme.background),
+                contentPadding = PaddingValues(bottom = 24.dp)
+            ) {
+                groupedPresets.forEach { (category, presets) ->
+                    // Category Header
+                    item(key = "header_${category.name}") {
+                        CategoryHeader(
+                            title = category.displayName,
+                            count = presets.size
+                        )
+                    }
+                    
+                    // Presets in this category
+                    items(
+                        items = presets,
+                        key = { it.id }
+                    ) { preset ->
+                        FormListItem(
+                            icon = getCategoryIcon(category),
+                            iconBgColor = getCategoryBgColor(category),
+                            iconTint = getCategoryTint(category),
+                            title = preset.examName,
+                            subtitle = preset.getFormattedDimensions(),
+                            onClick = { onPresetSelected(preset.id) }
+                        )
+                    }
                 }
             }
+            BannerAd(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+            )
         }
     }
 }

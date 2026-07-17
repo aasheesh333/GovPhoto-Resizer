@@ -46,11 +46,15 @@ object AppModule {
     @Provides
     @Singleton
     fun provideAdStateProvider(
+        @dagger.hilt.android.qualifiers.ApplicationContext ctx: android.content.Context,
         subscriptionRepository: SubscriptionRepository,
     ): AdStateProvider =
         object : AdStateProvider {
             override val isPro: Boolean get() = subscriptionRepository.isPro.value
-            override val adFreeUntilMs: Long get() = 0L        // Re-wired in Task 9
+            override val adFreeUntilMs: Long get() {
+                return ctx.getSharedPreferences("govphoto_ad_free", android.content.Context.MODE_PRIVATE)
+                    .getLong("ad_free_until_ms", 0L)
+            }
             override val forceNoAds: Boolean get() = BuildConfig.DEBUG
         }
 

@@ -26,8 +26,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.fillMaxWidth
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.data.datastore.AppLanguage
+import com.dhanuk.govphoto.ui.ads.BannerAd
 import com.dhanuk.govphoto.ui.theme.*
 import com.dhanuk.govphoto.ui.viewmodel.HomeViewModel
 import com.dhanuk.govphoto.ui.viewmodel.RecentPresetUiItem
@@ -62,41 +65,48 @@ fun HomeScreen(
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-        ) {
-            // Header Section
-            HomeHeader(settingsViewModel = settingsViewModel)
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Quick Upload Button
-            QuickUploadButton(
-                onClick = { onNavigateToUpload("quick_upload") }
-            )
-            
-            // Recent Presets Row (only shown when not empty)
-            if (recentPresets.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(20.dp))
-                RecentPresetsRow(
-                    recentPresets = recentPresets,
+        Column(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                // Header Section
+                HomeHeader(settingsViewModel = settingsViewModel)
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Quick Upload Button
+                QuickUploadButton(
+                    onClick = { onNavigateToUpload("quick_upload") }
+                )
+                
+                // Recent Presets Row (only shown when not empty)
+                if (recentPresets.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(20.dp))
+                    RecentPresetsRow(
+                        recentPresets = recentPresets,
+                        onPresetClick = onNavigateToUpload
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Document Type Section
+                DocumentTypeSection(
+                    onViewAllClick = onNavigateToAllForms,
                     onPresetClick = onNavigateToUpload
                 )
+                
+                Spacer(modifier = Modifier.height(80.dp))
             }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Document Type Section
-            DocumentTypeSection(
-                onViewAllClick = onNavigateToAllForms,
-                onPresetClick = onNavigateToUpload
+            BannerAd(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
             )
-            
-            Spacer(modifier = Modifier.height(80.dp))
         }
     }
 }

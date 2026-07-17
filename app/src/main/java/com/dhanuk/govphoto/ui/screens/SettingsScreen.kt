@@ -225,6 +225,50 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.remove_ads_subtitle),
                     onClick = onNavigateToPaywall
                 )
+
+                SettingsItem(
+                    icon = Icons.Default.PlayCircle,
+                    title = stringResource(R.string.rewarded_ad_free_button),
+                    subtitle = stringResource(R.string.rewarded_ad_free_subtitle),
+                    onClick = {
+                        if (BuildConfig.DEBUG || BuildConfig.FORCE_NO_ADS) {
+                            android.widget.Toast.makeText(context, context.getString(R.string.rewarded_ad_failed_toast), android.widget.Toast.LENGTH_SHORT).show()
+                            return@SettingsItem
+                        }
+                        val activity = context as? android.app.Activity
+                        if (activity == null) {
+                            android.widget.Toast.makeText(context, context.getString(R.string.rewarded_ad_failed_toast), android.widget.Toast.LENGTH_SHORT).show()
+                            return@SettingsItem
+                        }
+                        // Load + show rewarded ad; on user-earned reward, persist ad-free for 24h
+                        val rewardedAd = com.google.android.gms.ads.rewarded.RewardedAd(context.applicationContext, BuildConfig.ADMOB_REWARDED_UNIT)
+                        val adRequest = com.google.android.gms.ads.AdRequest.Builder().build()
+                        rewardedAd.loadAd(adRequest, object : com.google.android.gms.ads.rewarded.RewardedAdLoadCallback() {
+                            override fun onAdLoaded() {
+                                android.widget.Toast.makeText(context, context.getString(R.string.rewarded_ad_loaded_toast), android.widget.Toast.LENGTH_SHORT).show()
+                                rewardedAd.show(activity) { rewardItem ->
+                                    // Persist ad-free for 24h - task 9 will swap this to SettingsRepository
+                                    val untilMs = System.currentTimeMillis() + 24 * 3_600_000L
+                                    // Direct write to a prefs file as interim storage
+                                    val prefs = context.getSharedPreferences("govphoto_ad_free", android.content.Context.MODE_PRIVATE)
+                                    prefs.edit().putLong("ad_free_until_ms", untilMs).apply()
+                                    // Force adsRepository refresh via EntryPoint
+                                    runCatching {
+                                        dagger.hilt.android.EntryPointAccessors.fromApplication(
+                                            context.applicationContext,
+                                            AdsRefreshEntryPoint::class.java,
+                                        ).adsRepository().refresh()
+                                    }
+                                    android.widget.Toast.makeText(context, context.getString(R.string.rewarded_ad_granted_toast), android.widget.Toast.LENGTH_LONG).show()
+                                }
+                            }
+
+                            override fun onAdFailedToLoad(error: com.google.android.gms.ads.LoadAdError) {
+                                android.widget.Toast.makeText(context, context.getString(R.string.rewarded_ad_failed_toast), android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        })
+                    }
+                )
             }
 
             Divider(modifier = Modifier.padding(vertical = 8.dp))
@@ -601,4 +645,10 @@ Icon(
 @dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
 interface PushEntryPoint {
     fun pushRepository(): com.dhanuk.govphoto.data.push.PushRepository
+}
+
+@dagger.hilt.EntryPoint
+@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
+interface AdsRefreshEntryPoint {
+    fun adsRepository(): com.dhanuk.govphoto.data.ads.AdsRepository
 }

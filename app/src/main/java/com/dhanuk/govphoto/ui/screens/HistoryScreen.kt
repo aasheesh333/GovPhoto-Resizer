@@ -26,6 +26,7 @@ import coil.request.ImageRequest
 import kotlinx.coroutines.delay
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.data.local.entity.PhotoHistoryEntity
+import com.dhanuk.govphoto.ui.ads.BannerAd
 import com.dhanuk.govphoto.ui.viewmodel.HistoryViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,25 +65,36 @@ fun HistoryScreen(
             )
         }
     ) { paddingValues ->
-        if (history.isEmpty()) {
-            EmptyHistoryState(modifier = Modifier.padding(paddingValues))
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .background(MaterialTheme.colorScheme.background),
-                contentPadding = PaddingValues(vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                items(history, key = { it.id }) { item ->
-                    HistoryRow(
-                        item = item,
-                        onClick = { onPhotoSelected(item.processedImagePath) },
-                        onDelete = { viewModel.delete(item) }
-                    )
+        Column(modifier = Modifier.fillMaxSize()) {
+            if (history.isEmpty()) {
+                EmptyHistoryState(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(paddingValues)
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(paddingValues)
+                        .background(MaterialTheme.colorScheme.background),
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(history, key = { it.id }) { item ->
+                        HistoryRow(
+                            item = item,
+                            onClick = { onPhotoSelected(item.processedImagePath) },
+                            onDelete = { viewModel.delete(item) }
+                        )
+                    }
                 }
             }
+            BannerAd(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+            )
         }
     }
 }

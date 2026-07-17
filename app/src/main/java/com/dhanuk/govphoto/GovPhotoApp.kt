@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 interface GovPhotoAppEntryPoint {
     fun subscriptionRepository(): SubscriptionRepository
     fun pushRepository(): com.dhanuk.govphoto.data.push.PushRepository
+    fun interstitialController(): com.dhanuk.govphoto.data.ads.InterstitialController
 }
 
 /**
