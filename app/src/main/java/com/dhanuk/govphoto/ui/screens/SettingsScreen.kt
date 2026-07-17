@@ -166,7 +166,7 @@ fun SettingsScreen(
                                 android.widget.Toast.makeText(context, context.getString(R.string.privacy_choices_not_available), android.widget.Toast.LENGTH_SHORT).show()
                             // No consent form required for this region/user -> show a friendly
                             // message instead of silently failing or erroring inside the SDK.
-                            !consentInfo.isPrivacyOptionsAvailable ->
+                            !consentInfo.isPrivacyOptionsAvailable() ->
                                 android.widget.Toast.makeText(context, context.getString(R.string.privacy_choices_not_required), android.widget.Toast.LENGTH_SHORT).show()
                             else -> com.google.android.ump.UserMessagingPlatform.showPrivacyOptionsForm(activity) { error ->
                                 if (error != null) {

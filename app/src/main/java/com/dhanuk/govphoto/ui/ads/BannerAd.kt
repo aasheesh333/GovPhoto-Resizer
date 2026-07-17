@@ -52,7 +52,7 @@ fun BannerAd(modifier: Modifier = Modifier) {
     val canRequestAds = remember {
         runCatching {
             com.google.android.ump.UserMessagingPlatform
-                .getConsentInformation(context.applicationContext).canRequestAds
+                .getConsentInformation(context.applicationContext).canRequestAds()
         }.getOrDefault(false)
     }
     if (!canRequestAds) return
