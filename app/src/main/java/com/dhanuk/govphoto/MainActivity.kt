@@ -18,6 +18,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.dhanuk.govphoto.BuildConfig
 import com.dhanuk.govphoto.data.datastore.DarkModePref
 import com.dhanuk.govphoto.ui.navigation.GovPhotoNavHost
+import com.dhanuk.govphoto.ui.components.NotificationPermissionGate
 import com.dhanuk.govphoto.ui.theme.GovPhotoTheme
 import com.dhanuk.govphoto.ui.theme.LocalAppLanguage
 import com.dhanuk.govphoto.ui.theme.LocalHighContrast
@@ -52,7 +53,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // UMP consent flow -> MobileAds.initialize()
+        val adsManager = runCatching {
+            dagger.hilt.android.EntryPointAccessors.fromApplication(
+                applicationContext,
+                AdsManagerEntryPoint::class.java,
+            ).adsManager()
+        }.getOrNull()
+
+        // UMP consent flow -> MobileAds.initialize() + AdsManager.onConsentReady()
         val consentInfo = com.google.android.ump.UserMessagingPlatform.getConsentInformation(this)
         val params = com.google.android.ump.ConsentRequestParameters.Builder()
             .setTagForUnderAgeOfConsent(false)
@@ -64,12 +72,16 @@ class MainActivity : ComponentActivity() {
                 override fun onConsentInfoUpdateSuccess() {
                     com.google.android.ump.UserMessagingPlatform.loadAndShowConsentFormIfRequired(this@MainActivity) { _ ->
                         initializeMobileAds()
+                        adsManager?.onConsentReady()
                     }
                 }
             },
             object : com.google.android.ump.ConsentInformation.OnConsentInfoUpdateFailureListener {
                 override fun onConsentInfoUpdateFailure(error: com.google.android.ump.FormError) {
                     initializeMobileAds()
+                    // Try loading anyway — AdsManager.canRequestAds() will short-circuit
+                    // if consent is still unavailable.
+                    adsManager?.onConsentReady()
                 }
             }
         )
@@ -113,7 +125,9 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        GovPhotoNavHost()
+                        NotificationPermissionGate(settingsViewModel = settingsViewModel) {
+                            GovPhotoNavHost()
+                        }
                     }
                 }
             }
@@ -124,6 +138,36 @@ class MainActivity : ComponentActivity() {
         com.google.android.gms.ads.MobileAds.initialize(this)
     }
 
+    override fun onResume() {
+        super.onResume()
+        runCatching {
+            dagger.hilt.android.EntryPointAccessors.fromApplication(
+                applicationContext,
+                AdsManagerEntryPoint::class.java,
+            ).adsManager().resume()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        runCatching {
+            dagger.hilt.android.EntryPointAccessors.fromApplication(
+                applicationContext,
+                AdsManagerEntryPoint::class.java,
+            ).adsManager().pause()
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        runCatching {
+            dagger.hilt.android.EntryPointAccessors.fromApplication(
+                applicationContext,
+                AdsManagerEntryPoint::class.java,
+            ).adsManager().destroy()
+        }
+    }
+
     private fun applyLocale(base: Context, tag: String): Context {
         val locale = Locale(tag)
         Locale.setDefault(locale)
@@ -132,4 +176,10 @@ class MainActivity : ComponentActivity() {
         config.setLocale(locale)
         return base.createConfigurationContext(config) ?: base
     }
+}
+
+@dagger.hilt.EntryPoint
+@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
+private interface AdsManagerEntryPoint {
+    fun adsManager(): com.dhanuk.govphoto.data.ads.AdsManager
 }
