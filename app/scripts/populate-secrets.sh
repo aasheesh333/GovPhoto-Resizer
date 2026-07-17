@@ -46,4 +46,11 @@ set_prop() {
 [ -n "${REVENUECAT_API_KEY:-}" ]     && set_prop REVENUECAT_API_KEY "$REVENUECAT_API_KEY"
 [ -n "${ONESIGNAL_APP_ID:-}" ]       && set_prop ONESIGNAL_APP_ID "$ONESIGNAL_APP_ID"
 
+# Keystore signing (PR2)
+[ -n "${KEYSTORE_PASSWORD:-}" ] && set_prop KEYSTORE_PASSWORD "$KEYSTORE_PASSWORD"
+[ -n "${KEY_PASSWORD:-}" ]      && set_prop KEY_PASSWORD "$KEY_PASSWORD"
+[ -n "${KEY_ALIAS:-}" ]         && set_prop KEY_ALIAS "$KEY_ALIAS"
+# KEYSTORE_FILE is set by decode-keystore.sh (writes release-keystore.jks if secret was set)
+[ -f "$ROOT/release-keystore.jks" ] && set_prop KEYSTORE_FILE "$ROOT/release-keystore.jks"
+
 echo "secrets.properties ready"

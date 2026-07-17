@@ -52,6 +52,28 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // UMP consent flow -> MobileAds.initialize()
+        val consentInfo = com.google.android.ump.UserMessagingPlatform.getConsentInformation(this)
+        val params = com.google.android.ump.ConsentRequestParameters.Builder()
+            .setTagForUnderAgeOfConsent(false)
+            .build()
+        consentInfo.requestConsentInfoUpdate(
+            this,
+            params,
+            object : com.google.android.ump.ConsentInformation.OnConsentInfoUpdateSuccessListener {
+                override fun onConsentInfoUpdateSuccess() {
+                    com.google.android.ump.UserMessagingPlatform.loadAndShowConsentFormIfRequired(this@MainActivity) { _ ->
+                        initializeMobileAds()
+                    }
+                }
+            },
+            object : com.google.android.ump.ConsentInformation.OnConsentInfoUpdateFailureListener {
+                override fun onConsentInfoUpdateFailure(error: com.google.android.ump.FormError) {
+                    initializeMobileAds()
+                }
+            }
+        )
+
         // Always-on uncaught handler: write last_crash.txt then delegate.
         // Helps diagnose "instant app close on Save" after process death.
         val previous = Thread.getDefaultUncaughtExceptionHandler()
@@ -96,6 +118,10 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun initializeMobileAds() {
+        com.google.android.gms.ads.MobileAds.initialize(this)
     }
 
     private fun applyLocale(base: Context, tag: String): Context {

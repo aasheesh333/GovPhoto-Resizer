@@ -71,5 +71,8 @@ app/src/main/assets/_od_failures.txt
 # Playwright MCP browser artifacts (snapshots, console logs from browser-driven tasks)
 .playwright-mcp/
 
+# Superpowers skill scratch (browser setup capture files with sensitive platform/keystore values)
+.superpowers/
+
 # Mac
 .DS_Store

@@ -24,6 +24,7 @@ import com.dhanuk.govphoto.ui.screens.OnboardingScreen
 import com.dhanuk.govphoto.ui.screens.PhotoUploadScreen
 import com.dhanuk.govphoto.ui.screens.PreviewValidationScreen
 import com.dhanuk.govphoto.ui.screens.SaveSuccessScreen
+import com.dhanuk.govphoto.ui.screens.PaywallScreen
 import com.dhanuk.govphoto.ui.screens.SettingsScreen
 import com.dhanuk.govphoto.ui.viewmodel.SettingsViewModel
 import com.dhanuk.govphoto.ui.viewmodel.SharedPhotoViewModel
@@ -155,7 +156,8 @@ fun GovPhotoNavHost(
 
         composable(Screen.Settings.route) {
             SettingsScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToPaywall = { navController.navigate(Screen.Paywall.route) }
             )
         }
 
@@ -174,6 +176,15 @@ fun GovPhotoNavHost(
                 presets = emptyList(),
                 onNavigateBack = { navController.popBackStack() },
                 onProcessComplete = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Paywall.route) {
+            PaywallScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onSubscribeSuccess = {
+                    navController.popBackStack()
+                }
             )
         }
     }

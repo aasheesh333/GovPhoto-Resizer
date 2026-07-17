@@ -234,5 +234,43 @@
     <string name="filter_high_contrast">High Contrast</string>
     <string name="cd_applying_filter">Applying filter</string>
     <string name="filter_error_msg">Could not apply filter. Reverted to original.</string>
+
+    <!-- AdMob placeholder -->
+    <string name="admob_app_id_placeholder">ca-app-pub-3940256099942544~3347511713</string>
+
+    <!-- Paywall -->
+    <string name="paywall_title">GovPhoto Pro</string>
+    <string name="paywall_hero_title">Ad-free forever</string>
+    <string name="paywall_hero_subtitle">Remove all ads. Support development.</string>
+    <string name="paywall_period_weekly">week</string>
+    <string name="paywall_period_monthly">month</string>
+    <string name="paywall_period_yearly">year</string>
+    <string name="paywall_best_value">Best value</string>
+    <string name="paywall_subscribe">Subscribe</string>
+    <string name="paywall_restore">Restore purchases</string>
+    <string name="paywall_done">Done</string>
+    <string name="paywall_already_pro">You already have GovPhoto Pro. Thank you.</string>
+    <string name="paywall_legal">Auto-renews. Cancel anytime in Play Store. By subscribing you agree to the Terms and Privacy Policy.</string>
+    <string name="cd_best_value">Best value badge</string>
+
+    <!-- Monetization / Settings new sections -->
+    <string name="subscription_section">Subscription</string>
+    <string name="remove_ads">Remove ads</string>
+    <string name="remove_ads_subtitle">Unlock GovPhoto Pro — ad-free forever</string>
+    <string name="notifications_section">Notifications</string>
+    <string name="notify_release_notes">Release notes</string>
+    <string name="notify_release_notes_desc">New features, presets, bug fixes</string>
+    <string name="notify_exam_deadlines">Exam deadlines</string>
+    <string name="notify_exam_deadlines_desc">Alerts when exam form windows close soon</string>
+    <string name="notify_support_replies">Support replies</string>
+    <string name="notify_support_replies_desc">Notify when our team replies to your message</string>
+    <string name="privacy_choices">Privacy choices</string>
+    <string name="privacy_choices_subtitle">Manage ad consent preferences</string>
+    <string name="privacy_choices_not_available">Privacy options are not available yet.</string>
+    <string name="rewarded_ad_free_button">Watch ad for 24 hours ad-free</string>
+    <string name="rewarded_ad_free_subtitle">Tap to watch a short video and remove ads for 24 hours</string>
+    <string name="rewarded_ad_loaded_toast">Ad loaded. Tap to start.</string>
+    <string name="rewarded_ad_granted_toast">24 hours of ad-free unlocked. Thanks for supporting our work.</string>
+    <string name="rewarded_ad_failed_toast">Ad failed to load. Please try again later.</string>
 </resources>
 

@@ -3,6 +3,8 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
+    id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
 apply(from = "secrets.gradle.kts")
@@ -20,6 +22,14 @@ android {
         buildConfigField("String", "PRIVACY_URL", "\"${project.findProperty("PRIVACY_URL") ?: "https://example.in/privacy.html"}\"")
         buildConfigField("String", "TERMS_URL", "\"${project.findProperty("TERMS_URL") ?: "https://example.in/terms.html"}\"")
         buildConfigField("String", "CONTACT_URL", "\"${project.findProperty("CONTACT_URL") ?: "https://example.in/contact.html"}\"")
+        buildConfigField("String", "ADMOB_APP_ID", "\"${project.findProperty("ADMOB_APP_ID") ?: "ca-app-pub-3940256099942544~3347511713"}\"")
+        buildConfigField("String", "ADMOB_BANNER_UNIT", "\"${project.findProperty("ADMOB_BANNER_UNIT") ?: "ca-app-pub-3940256099942544/6300978111"}\"")
+        buildConfigField("String", "ADMOB_INTERSTITIAL_UNIT", "\"${project.findProperty("ADMOB_INTERSTITIAL_UNIT") ?: "ca-app-pub-3940256099942544/1033173712"}\"")
+        buildConfigField("String", "ADMOB_REWARDED_UNIT", "\"${project.findProperty("ADMOB_REWARDED_UNIT") ?: "ca-app-pub-3940256099942544/5224354917"}\"")
+        buildConfigField("String", "REVENUECAT_API_KEY", "\"${project.findProperty("REVENUECAT_API_KEY") ?: "goog_test_key"}\"")
+        buildConfigField("String", "ONESIGNAL_APP_ID", "\"${project.findProperty("ONESIGNAL_APP_ID") ?: "test-onesignal-id"}\"")
+
+        manifestPlaceholders["onesignal_app_id"] = project.findProperty("ONESIGNAL_APP_ID") ?: "test-onesignal-id"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -32,11 +42,29 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            val ksFile = project.findProperty("KEYSTORE_FILE") as String?
+            if (ksFile != null && rootProject.file(ksFile).exists()) {
+                storeFile = rootProject.file(ksFile)
+                storePassword = project.findProperty("KEYSTORE_PASSWORD") as String
+                keyAlias = project.findProperty("KEY_ALIAS") as String
+                keyPassword = project.findProperty("KEY_PASSWORD") as String
+            }
+        }
+    }
+
   buildTypes {
     release {
-      signingConfig = signingConfigs.getByName("debug")
+      // Release signing uses the keystore decoded from KEYSTORE_BASE64 in CI.
+      // When that's absent (local dev), fall back to debug signing.
+      signingConfig = (rootProject.findProperty("KEYSTORE_FILE") as String?)
+          ?.takeIf { rootProject.file(it).exists() }
+          ?.let { signingConfigs.getByName("release") }
+          ?: signingConfigs.getByName("debug")
       isMinifyEnabled = true
       isShrinkResources = true
+      buildConfigField("boolean", "FORCE_NO_ADS", "false")
       proguardFiles(
         getDefaultProguardFile("proguard-android-optimize.txt"),
         "proguard-rules.pro"
@@ -45,6 +73,7 @@ android {
         debug {
             isMinifyEnabled = false
             applicationIdSuffix = ".debug"
+            buildConfigField("boolean", "FORCE_NO_ADS", "true")
         }
     }
 
@@ -129,6 +158,21 @@ dependencies {
     // DataStore Preferences
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
+    // Firebase BoM + Crashlytics + Analytics
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation("com.google.firebase:firebase-crashlytics-ktx")
+    implementation("com.google.firebase:firebase-analytics-ktx")
+
+    // AdMob via Google Play Services Ads + UMP
+    implementation("com.google.android.gms:play-services-ads:22.6.0")
+    implementation("com.google.android.ump:user-messaging-platform:2.2.0")
+
+    // RevenueCat
+    implementation("com.revenuecat.purchases:purchases:8.10.7")
+
+    // OneSignal
+    implementation("com.onesignal:OneSignal:5.1.5")
+
     // Splash Screen API
     implementation("androidx.core:core-splashscreen:1.0.1")
 
@@ -137,6 +181,7 @@ dependencies {
 
     // Testing
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:1.9.22")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
     testImplementation("io.mockk:mockk:1.13.9")
     testImplementation("org.robolectric:robolectric:4.11.1")

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -50,9 +51,12 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.dhanuk.govphoto.R
+import com.dhanuk.govphoto.data.ads.InterstitialController
+import com.dhanuk.govphoto.ui.ads.BannerAd
 import com.dhanuk.govphoto.ui.components.GovButton
 import com.dhanuk.govphoto.ui.components.GovOutlinedButton
 import com.dhanuk.govphoto.ui.viewmodel.SharedPhotoViewModel
+import dagger.hilt.android.EntryPointAccessors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,6 +96,22 @@ fun SaveSuccessScreen(
         heightCm = ((heightPx.toFloat() / dpi * 2.54f).toInt())
     }
     val formatName = selectedPreset?.format?.uppercase() ?: "JPG"
+
+    val activity = context as? android.app.Activity
+    LaunchedEffect(Unit) {
+        // mark save count + trigger interstitial (AdMob rate-limit enforced inside controller)
+        val controller = runCatching {
+            EntryPointAccessors.fromApplication(
+                context.applicationContext,
+                SaveSuccessInterstitialEntryPoint::class.java,
+            ).interstitialController()
+        }.getOrNull() ?: return@LaunchedEffect
+        controller.recordSaveReceived()
+        // Slight delay so the success screen paints before the interstitial
+        kotlinx.coroutines.delay(300)
+        activity?.let { controller.tryShow(it) }
+    }
+
     val detailsText = stringResource(
         R.string.save_success_details,
         widthCm,
@@ -148,15 +168,16 @@ fun SaveSuccessScreen(
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
             Box(
                 modifier = Modifier
                     .size(120.dp)
@@ -262,6 +283,18 @@ fun SaveSuccessScreen(
                     enabled = processedImageUri != null
                 )
             }
+            BannerAd(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+            )
         }
     }
+}
+}
+
+@dagger.hilt.EntryPoint
+@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
+interface SaveSuccessInterstitialEntryPoint {
+    fun interstitialController(): InterstitialController
 }

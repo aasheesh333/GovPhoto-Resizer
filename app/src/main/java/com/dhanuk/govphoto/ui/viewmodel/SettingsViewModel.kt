@@ -28,4 +28,7 @@ class SettingsViewModel @Inject constructor(
     fun setHighContrast(enabled: Boolean) = viewModelScope.launch { repo.setHighContrast(enabled) }
     fun setOnboardingComplete(done: Boolean) = viewModelScope.launch { repo.setOnboardingComplete(done) }
     fun setLastPresetId(id: String?) = viewModelScope.launch { repo.setLastPresetId(id) }
+    fun setCachedIsPro(cached: Boolean) = viewModelScope.launch { repo.setCachedIsPro(cached) }
+    fun setAdFreeUntilMs(untilMs: Long) = viewModelScope.launch { repo.setAdFreeUntilMs(untilMs) }
+    fun recordSave() = viewModelScope.launch { repo.bumpSaveCount() }
 }

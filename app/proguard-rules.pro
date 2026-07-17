@@ -65,3 +65,28 @@
 # DataStore Preferences — accessed via Kotlin reflection under minify
 -keep class androidx.datastore.preferences.** { *; }
 -keep class com.dhanuk.govphoto.data.datastore.** { *; }
+
+# Firebase Crashlytics — auto-shipped by SDK, no explicit rules needed
+# (verified by Firebase docs; Crashlytics Gradle plugin also bundles rules)
+
+# Firebase Analytics
+-keep class com.google.firebase.analytics.** { *; }
+-dontwarn com.google.firebase.analytics.**
+
+# AdMob
+-keep class com.google.android.gms.ads.** { *; }
+-dontwarn com.google.android.gms.ads.**
+
+# UMP
+-keep class com.google.android.ump.** { *; }
+-dontwarn com.google.android.ump.**
+
+# RevenueCat
+-keep class com.revenuecat.purchases.** { *; }
+-keep class com.revenuecat.purchases.google.** { *; }
+-keepclassmembers class com.revenuecat.purchases.** { *; }
+-dontwarn com.revenuecat.purchases.**
+
+# OneSignal
+-keep class com.onesignal.** { *; }
+-dontwarn com.onesignal.**
