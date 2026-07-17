@@ -80,3 +80,9 @@
 # UMP
 -keep class com.google.android.ump.** { *; }
 -dontwarn com.google.android.ump.**
+
+# RevenueCat
+-keep class com.revenuecat.purchases.** { *; }
+-keep class com.revenuecat.purchases.google.** { *; }
+-keepclassmembers class com.revenuecat.purchases.** { *; }
+-dontwarn com.revenuecat.purchases.**

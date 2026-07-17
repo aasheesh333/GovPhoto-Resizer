@@ -2,10 +2,12 @@ package com.dhanuk.govphoto.di
 
 import com.dhanuk.govphoto.BuildConfig
 import com.dhanuk.govphoto.data.ads.AdStateProvider
+import com.dhanuk.govphoto.data.datastore.CachedIsProStore
 import com.dhanuk.govphoto.data.ml.FaceDetectorClient
 import com.dhanuk.govphoto.data.ml.MlKitFaceDetectorClient
 import com.dhanuk.govphoto.data.ml.MlKitSegmenterClient
 import com.dhanuk.govphoto.data.ml.SegmenterClient
+import com.dhanuk.govphoto.data.subscription.SubscriptionRepository
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dagger.Module
@@ -34,9 +36,20 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideAdStateProvider(): AdStateProvider =
+    fun provideCachedIsProStore(): CachedIsProStore =
+        object : CachedIsProStore {
+            private var v = false
+            override suspend fun getCachedIsPro(): Boolean = v
+            override suspend fun setCachedIsPro(value: Boolean) { v = value }
+        }
+
+    @Provides
+    @Singleton
+    fun provideAdStateProvider(
+        subscriptionRepository: SubscriptionRepository,
+    ): AdStateProvider =
         object : AdStateProvider {
-            override val isPro: Boolean get() = false          // Re-wired in Task 4
+            override val isPro: Boolean get() = subscriptionRepository.isPro.value
             override val adFreeUntilMs: Long get() = 0L        // Re-wired in Task 9
             override val forceNoAds: Boolean get() = BuildConfig.DEBUG
         }

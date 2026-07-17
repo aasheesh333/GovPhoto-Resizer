@@ -80,3 +80,8 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
 
     fun getCachedLanguageTag(): String? = sharedPrefs.getString("language", null)
 }
+
+interface CachedIsProStore {
+    suspend fun getCachedIsPro(): Boolean
+    suspend fun setCachedIsPro(value: Boolean)
+}

@@ -3,7 +3,18 @@ package com.dhanuk.govphoto
 import android.app.Application
 import com.google.firebase.FirebaseApp
 import com.google.firebase.crashlytics.ktx.crashlytics
+import com.dhanuk.govphoto.data.subscription.SubscriptionRepository
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
 import dagger.hilt.android.HiltAndroidApp
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface GovPhotoAppEntryPoint {
+    fun subscriptionRepository(): SubscriptionRepository
+}
 
 /**
  * Main Application class for GovPhoto Resizer.
@@ -22,6 +33,17 @@ class GovPhotoApp : Application() {
         // and matches the crashlyticsCollectionEnabled default. Override via manifest
         // or here for explicit control in the future.
         crashlytics.setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG)
+
+        // RevenueCat
+        com.revenuecat.purchases.Purchases.configure(
+            com.revenuecat.purchases.Purchases.Configuration.Builder(
+                this,
+                BuildConfig.REVENUECAT_API_KEY,
+            ).build()
+        )
+
+        val entryPoint = EntryPointAccessors.fromApplication(this, GovPhotoAppEntryPoint::class.java)
+        entryPoint.subscriptionRepository().bind()
 
         // UMP consent flow -> MobileAds.initialize()
         val consentInfo = com.google.android.ump.UserMessagingPlatform.getConsentInformation(this)

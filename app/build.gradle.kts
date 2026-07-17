@@ -26,6 +26,7 @@ android {
         buildConfigField("String", "ADMOB_BANNER_UNIT", "\"${project.findProperty("ADMOB_BANNER_UNIT") ?: "ca-app-pub-3940256099942544/6300978111"}\"")
         buildConfigField("String", "ADMOB_INTERSTITIAL_UNIT", "\"${project.findProperty("ADMOB_INTERSTITIAL_UNIT") ?: "ca-app-pub-3940256099942544/1033173712"}\"")
         buildConfigField("String", "ADMOB_REWARDED_UNIT", "\"${project.findProperty("ADMOB_REWARDED_UNIT") ?: "ca-app-pub-3940256099942544/5224354917"}\"")
+        buildConfigField("String", "REVENUECAT_API_KEY", "\"${project.findProperty("REVENUECAT_API_KEY") ?: "goog_test_key"}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -162,6 +163,9 @@ dependencies {
     // AdMob via Google Play Services Ads + UMP
     implementation("com.google.android.gms:play-services-ads:22.6.0")
     implementation("com.google.android.ump:user-messaging-platform:2.2.0")
+
+    // RevenueCat
+    implementation("com.revenuecat.purchases:purchases:5.9.0")
 
     // Splash Screen API
     implementation("androidx.core:core-splashscreen:1.0.1")
