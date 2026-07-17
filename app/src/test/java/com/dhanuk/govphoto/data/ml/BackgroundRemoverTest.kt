@@ -96,4 +96,17 @@ class BackgroundRemoverTest {
         assertEquals(16, scaled.size)
         assertEquals(1f, scaled[0], 0.01f)
     }
+
+    @Test
+    fun smoothstep_clamps_and_curves() {
+        // Below the lower edge -> fully background.
+        assertEquals(0f, remover.smoothstep(0.35f, 0.65f, 0.2f), 0.001f)
+        // Above the upper edge -> fully subject.
+        assertEquals(1f, remover.smoothstep(0.35f, 0.65f, 0.8f), 0.001f)
+        // At the midpoint -> 0.5 (symmetric S-curve).
+        assertEquals(0.5f, remover.smoothstep(0.35f, 0.65f, 0.5f), 0.001f)
+        // Degenerate equal edges -> step function.
+        assertEquals(0f, remover.smoothstep(0.5f, 0.5f, 0.4f), 0.001f)
+        assertEquals(1f, remover.smoothstep(0.5f, 0.5f, 0.6f), 0.001f)
+    }
 }
