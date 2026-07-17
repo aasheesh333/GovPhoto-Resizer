@@ -142,9 +142,9 @@ private fun HistoryRow(
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val dismissState = rememberDismissState(
+    val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            if (value != DismissValue.Default) {
+            if (value != SwipeToDismissBoxValue.Settled) {
                 onDelete()
                 true
             } else {
@@ -153,9 +153,9 @@ private fun HistoryRow(
         }
     )
 
-    SwipeToDismiss(
+    SwipeToDismissBox(
         state = dismissState,
-        background = {
+        backgroundContent = {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -164,21 +164,21 @@ private fun HistoryRow(
                     .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
-Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = stringResource(R.string.cd_delete_history),
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.cd_delete_history),
                     tint = MaterialTheme.colorScheme.onErrorContainer
                 )
             }
         },
-        dismissContent = {
-            HistoryRowContent(item = item, onClick = onClick)
-        },
-        directions = setOf(DismissDirection.EndToStart),
+        enableDismissFromStartToEnd = false,
+        enableDismissFromEndToStart = true,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp)
-    )
+    ) {
+        HistoryRowContent(item = item, onClick = onClick)
+    }
 }
 
 @Composable
