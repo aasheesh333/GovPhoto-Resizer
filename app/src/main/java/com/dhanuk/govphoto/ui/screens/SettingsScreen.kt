@@ -159,9 +159,9 @@ fun SettingsScreen(
                     onClick = {
                         val activity = context as? android.app.Activity
                         if (activity != null) {
-                            val ci = com.google.android.ump.ConsentInformation.getInstance(activity)
+                            val ci = com.google.android.ump.UserMessagingPlatform.getConsentInformation(activity)
                             if (ci.isPrivacyOptionsAvailable) {
-                                ci.showPrivacyOptionsForm(activity) { /* user dismissed; ignore error */ }
+                                com.google.android.ump.UserMessagingPlatform.showPrivacyOptionsForm(activity) { /* user dismissed; ignore error */ }
                             } else {
                                 android.widget.Toast.makeText(context, context.getString(R.string.privacy_choices_not_available), android.widget.Toast.LENGTH_SHORT).show()
                             }

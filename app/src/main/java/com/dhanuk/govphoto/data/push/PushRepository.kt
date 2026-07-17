@@ -18,10 +18,9 @@ class PushRepository @Inject constructor(
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    /** OnInit: enable OneSignal with verbose logging in debug. Tag user with category state. */
+    /** OnInit: enable OneSignal with default logging. Tag user with category state. */
     suspend fun init() {
         OneSignal.initWithContext(context, BuildConfig.ONESIGNAL_APP_ID)
-        OneSignal.Debug.logLevel = if (BuildConfig.DEBUG) com.onesignal.Debug.LOG_LEVEL.DEBUG else com.onesignal.Debug.LOG_LEVEL.WARN
         refreshTags()
     }
 

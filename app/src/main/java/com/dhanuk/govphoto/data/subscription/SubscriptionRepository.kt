@@ -8,8 +8,8 @@ import com.revenuecat.purchases.Offerings
 import com.revenuecat.purchases.Package
 import com.revenuecat.purchases.Purchases
 import com.revenuecat.purchases.awaitOfferings
-import com.revenuecat.purchases.awaitRestorePurchases
-import com.revenuecat.purchases.purchase
+import com.revenuecat.purchases.awaitPurchase
+import com.revenuecat.purchases.awaitRestore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -19,8 +19,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Singleton
@@ -41,9 +40,9 @@ class SubscriptionRepository @Inject constructor(
     suspend fun bind() {
         if (Purchases.isConfigured) {
             _isPro.value = cachedStore.getCachedIsPro()
-            Purchases.sharedInstance.customerInfoFlow
-                .onEach { info -> applyCustomerInfo(info) }
-                .launchIn(scope)
+            Purchases.sharedInstance.getCustomerInfo { info ->
+                applyCustomerInfo(info)
+            }
         }
     }
 
@@ -60,7 +59,7 @@ class SubscriptionRepository @Inject constructor(
     suspend fun purchase(activity: Activity, packageToBuy: Package): Result<CustomerInfo> =
         runCatching {
             val result = withContext(Dispatchers.Main) {
-                Purchases.sharedInstance.purchase(
+                Purchases.sharedInstance.awaitPurchase(
                     com.revenuecat.purchases.PurchaseParams.Builder(activity, packageToBuy).build()
                 )
             }
@@ -69,7 +68,7 @@ class SubscriptionRepository @Inject constructor(
         }
 
     suspend fun restorePurchases(): Result<CustomerInfo> = runCatching {
-        withContext(Dispatchers.IO) { Purchases.sharedInstance.awaitRestorePurchases() }.also { info ->
+        withContext(Dispatchers.IO) { Purchases.sharedInstance.awaitRestore() }.also { info ->
             applyCustomerInfo(info)
         }
     }
