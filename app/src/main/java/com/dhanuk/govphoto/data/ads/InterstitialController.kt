@@ -21,7 +21,7 @@ class RateLimiter(
     fun canShow(minIntervalMs: Long, perSessionCap: Int, minSaveCount: Int): Boolean {
         if (saveCount < minSaveCount) return false
         if (shownInSession >= perSessionCap) return false
-        if (now() - lastShowMs < minIntervalMs) return false
+        if (lastShowMs > 0L && now() - lastShowMs < minIntervalMs) return false
         return true
     }
 
