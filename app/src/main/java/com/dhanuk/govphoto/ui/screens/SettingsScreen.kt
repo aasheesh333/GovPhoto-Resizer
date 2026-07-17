@@ -159,11 +159,10 @@ fun SettingsScreen(
                     onClick = {
                         val activity = context as? android.app.Activity
                         if (activity != null) {
-                            val ci = com.google.android.ump.UserMessagingPlatform.getConsentInformation(activity)
-                            if (ci.isPrivacyOptionsRequired) {
-                                com.google.android.ump.UserMessagingPlatform.showPrivacyOptionsForm(activity) { /* user dismissed; ignore error */ }
-                            } else {
-                                android.widget.Toast.makeText(context, context.getString(R.string.privacy_choices_not_available), android.widget.Toast.LENGTH_SHORT).show()
+                            com.google.android.ump.UserMessagingPlatform.showPrivacyOptionsForm(activity) { error ->
+                                if (error != null) {
+                                    android.widget.Toast.makeText(context, context.getString(R.string.privacy_choices_not_available), android.widget.Toast.LENGTH_SHORT).show()
+                                }
                             }
                         }
                     }
@@ -241,32 +240,36 @@ fun SettingsScreen(
                             return@SettingsItem
                         }
                         // Load + show rewarded ad; on user-earned reward, persist ad-free for 24h
-                        val rewardedAd = com.google.android.gms.ads.rewarded.RewardedAd(context.applicationContext, BuildConfig.ADMOB_REWARDED_UNIT)
                         val adRequest = com.google.android.gms.ads.AdRequest.Builder().build()
-                        rewardedAd.loadAd(adRequest, object : com.google.android.gms.ads.rewarded.RewardedAdLoadCallback() {
-                            override fun onAdLoaded() {
-                                android.widget.Toast.makeText(context, context.getString(R.string.rewarded_ad_loaded_toast), android.widget.Toast.LENGTH_SHORT).show()
-                                rewardedAd.show(activity) { rewardItem ->
-                                    // Persist ad-free for 24h - task 9 will swap this to SettingsRepository
-                                    val untilMs = System.currentTimeMillis() + 24 * 3_600_000L
-                                    // Direct write to a prefs file as interim storage
-                                    val prefs = context.getSharedPreferences("govphoto_ad_free", android.content.Context.MODE_PRIVATE)
-                                    prefs.edit().putLong("ad_free_until_ms", untilMs).apply()
-                                    // Force adsRepository refresh via EntryPoint
-                                    runCatching {
-                                        dagger.hilt.android.EntryPointAccessors.fromApplication(
-                                            context.applicationContext,
-                                            AdsRefreshEntryPoint::class.java,
-                                        ).adsRepository().refresh()
+                        com.google.android.gms.ads.rewarded.RewardedAd.load(
+                            context.applicationContext,
+                            BuildConfig.ADMOB_REWARDED_UNIT,
+                            adRequest,
+                            object : com.google.android.gms.ads.rewarded.RewardedAdLoadCallback() {
+                                override fun onAdLoaded(ad: com.google.android.gms.ads.rewarded.RewardedAd) {
+                                    android.widget.Toast.makeText(context, context.getString(R.string.rewarded_ad_loaded_toast), android.widget.Toast.LENGTH_SHORT).show()
+                                    ad.show(activity) { rewardItem ->
+                                        // Persist ad-free for 24h - task 9 will swap this to SettingsRepository
+                                        val untilMs = System.currentTimeMillis() + 24 * 3_600_000L
+                                        // Direct write to a prefs file as interim storage
+                                        val prefs = context.getSharedPreferences("govphoto_ad_free", android.content.Context.MODE_PRIVATE)
+                                        prefs.edit().putLong("ad_free_until_ms", untilMs).apply()
+                                        // Force adsRepository refresh via EntryPoint
+                                        runCatching {
+                                            dagger.hilt.android.EntryPointAccessors.fromApplication(
+                                                context.applicationContext,
+                                                AdsRefreshEntryPoint::class.java,
+                                            ).adsRepository().refresh()
+                                        }
+                                        android.widget.Toast.makeText(context, context.getString(R.string.rewarded_ad_granted_toast), android.widget.Toast.LENGTH_LONG).show()
                                     }
-                                    android.widget.Toast.makeText(context, context.getString(R.string.rewarded_ad_granted_toast), android.widget.Toast.LENGTH_LONG).show()
+                                }
+
+                                override fun onAdFailedToLoad(error: com.google.android.gms.ads.LoadAdError) {
+                                    android.widget.Toast.makeText(context, context.getString(R.string.rewarded_ad_failed_toast), android.widget.Toast.LENGTH_SHORT).show()
                                 }
                             }
-
-                            override fun onAdFailedToLoad(error: com.google.android.gms.ads.LoadAdError) {
-                                android.widget.Toast.makeText(context, context.getString(R.string.rewarded_ad_failed_toast), android.widget.Toast.LENGTH_SHORT).show()
-                            }
-                        })
+                        )
                     }
                 )
             }

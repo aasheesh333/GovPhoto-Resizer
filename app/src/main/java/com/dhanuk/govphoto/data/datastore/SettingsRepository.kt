@@ -112,12 +112,11 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
 
     // PushCategoryStore
     override suspend fun isEnabled(category: PushCategory): Boolean {
-        val pref = when (category) {
-            PushCategory.RELEASE_NOTES -> Keys.NOTIFY_RELEASE to true
-            PushCategory.EXAM_DEADLINES -> Keys.NOTIFY_EXAM_DEADLINES to false
-            PushCategory.SUPPORT_REPLIES -> Keys.NOTIFY_SUPPORT_REPLIES to true
+        return when (category) {
+            PushCategory.RELEASE_NOTES -> context.dataStore.data.first()[Keys.NOTIFY_RELEASE] ?: true
+            PushCategory.EXAM_DEADLINES -> context.dataStore.data.first()[Keys.NOTIFY_EXAM_DEADLINES] ?: false
+            PushCategory.SUPPORT_REPLIES -> context.dataStore.data.first()[Keys.NOTIFY_SUPPORT_REPLIES] ?: true
         }
-        return context.dataStore.data.first()[pref.first] ?: pref.second
     }
     override suspend fun setEnabled(category: PushCategory, enabled: Boolean) {
         val key = when (category) {
