@@ -2,7 +2,7 @@ package com.dhanuk.govphoto
 
 import android.app.Application
 import com.google.firebase.FirebaseApp
-import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.google.firebase.crashlytics.ktx.crashlytics
 import dagger.hilt.android.HiltAndroidApp
 
 /**
@@ -21,10 +21,10 @@ class GovPhotoApp : Application() {
         // Default: collection enabled in release only; this is belt-and-suspenders
         // and matches the crashlyticsCollectionEnabled default. Override via manifest
         // or here for explicit control in the future.
-        FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG)
+        crashlytics.setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG)
 
         // UMP consent flow -> MobileAds.initialize()
-        val consentInfo = com.google.android.ump.ConsentInformation.getInstance(this)
+        val consentInfo = com.google.android.ump.UserMessagingPlatform.getConsentInformation(this)
         val params = com.google.android.ump.ConsentRequestParameters.Builder()
             .setTagForUnderAgeOfConsent(false)
             .build()
