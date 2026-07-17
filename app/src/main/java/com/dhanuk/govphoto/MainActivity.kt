@@ -159,15 +159,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        runCatching {
-            dagger.hilt.android.EntryPointAccessors.fromApplication(
-                applicationContext,
-                AdsManagerEntryPoint::class.java,
-            ).adsManager().destroy()
-        }
-    }
+    // NOTE: AdsManager is a process-scoped @Singleton holding the shared
+    // banner AdView. Calling destroy() here would tear down the AdView on
+    // every config change / language recreate and the banner would be dead
+    // for the rest of the process (the singleton survives Activity recreate).
+    // The OS reclaims the AdView when the process dies; onDestroy is left
+    // empty intentionally.
 
     private fun applyLocale(base: Context, tag: String): Context {
         val locale = Locale(tag)
