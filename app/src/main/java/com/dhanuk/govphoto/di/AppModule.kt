@@ -53,4 +53,13 @@ object AppModule {
             override val adFreeUntilMs: Long get() = 0L        // Re-wired in Task 9
             override val forceNoAds: Boolean get() = BuildConfig.DEBUG
         }
+
+    @Provides
+    @Singleton
+    fun providePushCategoryStore(): com.dhanuk.govphoto.data.push.PushCategoryStore =
+        object : com.dhanuk.govphoto.data.push.PushCategoryStore {
+            private val map = com.dhanuk.govphoto.data.push.PushCategory.entries.associateBy { it }.mapValues { it.value.defaultEnabled }.toMutableMap()
+            override suspend fun isEnabled(category: com.dhanuk.govphoto.data.push.PushCategory): Boolean = map[category] ?: category.defaultEnabled
+            override suspend fun setEnabled(category: com.dhanuk.govphoto.data.push.PushCategory, enabled: Boolean) { map[category] = enabled }
+        }
 }

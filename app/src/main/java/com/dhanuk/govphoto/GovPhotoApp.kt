@@ -15,6 +15,7 @@ import dagger.hilt.components.SingletonComponent
 @InstallIn(SingletonComponent::class)
 interface GovPhotoAppEntryPoint {
     fun subscriptionRepository(): SubscriptionRepository
+    fun pushRepository(): com.dhanuk.govphoto.data.push.PushRepository
 }
 
 /**
@@ -45,6 +46,11 @@ class GovPhotoApp : Application() {
 
         val entryPoint = EntryPointAccessors.fromApplication(this, GovPhotoAppEntryPoint::class.java)
         entryPoint.subscriptionRepository().bind()
+
+        // OneSignal — init in background to avoid blocking onCreate
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob()).launch {
+            entryPoint.pushRepository().init()
+        }
 
     }
 }

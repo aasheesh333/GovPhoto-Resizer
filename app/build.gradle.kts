@@ -27,6 +27,9 @@ android {
         buildConfigField("String", "ADMOB_INTERSTITIAL_UNIT", "\"${project.findProperty("ADMOB_INTERSTITIAL_UNIT") ?: "ca-app-pub-3940256099942544/1033173712"}\"")
         buildConfigField("String", "ADMOB_REWARDED_UNIT", "\"${project.findProperty("ADMOB_REWARDED_UNIT") ?: "ca-app-pub-3940256099942544/5224354917"}\"")
         buildConfigField("String", "REVENUECAT_API_KEY", "\"${project.findProperty("REVENUECAT_API_KEY") ?: "goog_test_key"}\"")
+        buildConfigField("String", "ONESIGNAL_APP_ID", "\"${project.findProperty("ONESIGNAL_APP_ID") ?: "test-onesignal-id"}\"")
+
+        manifestPlaceholders["onesignal_app_id"] = project.findProperty("ONESIGNAL_APP_ID") ?: "test-onesignal-id"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -166,6 +169,9 @@ dependencies {
 
     // RevenueCat
     implementation("com.revenuecat.purchases:purchases:5.8.2")
+
+    // OneSignal
+    implementation("com.onesignal:OneSignal:5.1.5")
 
     // Splash Screen API
     implementation("androidx.core:core-splashscreen:1.0.1")
