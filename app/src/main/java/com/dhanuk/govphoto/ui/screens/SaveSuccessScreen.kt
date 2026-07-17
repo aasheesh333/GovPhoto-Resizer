@@ -269,7 +269,7 @@ fun SaveSuccessScreen(
                 )
 
                 GovOutlinedButton(
-                    text = "Done",
+                    text = stringResource(R.string.done),
                     onClick = onNavigateHome,
                     modifier = Modifier.fillMaxWidth()
                 )

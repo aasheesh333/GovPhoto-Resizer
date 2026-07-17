@@ -86,7 +86,7 @@ fun AllFormsScreen(
                         IconButton(onClick = onNavigateBack) {
                             Icon(
                                 imageVector = Icons.Default.ArrowBack,
-                                contentDescription = "Back",
+                                contentDescription = stringResource(R.string.cd_back_button),
                                 tint = MaterialTheme.colorScheme.onBackground
                             )
                         }
@@ -112,7 +112,7 @@ fun AllFormsScreen(
                         .padding(bottom = 16.dp)
                 )
                 
-                Divider(color = MaterialTheme.colorScheme.outlineVariant)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
         },
         bottomBar = {
@@ -238,7 +238,7 @@ private fun SearchBar(
                 IconButton(onClick = { onQueryChange("") }) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Clear",
+                        contentDescription = stringResource(R.string.cd_clear),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -346,7 +346,7 @@ private fun FormListItem(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        Divider(
+        HorizontalDivider(
             modifier = Modifier.padding(start = 80.dp),
             color = MaterialTheme.colorScheme.outlineVariant
         )

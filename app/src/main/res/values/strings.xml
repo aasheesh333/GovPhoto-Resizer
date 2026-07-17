@@ -289,5 +289,18 @@
     <string name="notif_perm_message">We\'ll send you important updates like bug fixes, new releases and exam reminders. No spam.</string>
     <string name="notif_perm_allow">Allow</string>
     <string name="notif_perm_later">Not now</string>
+
+    <!-- Localized UI strings (previously hardcoded) -->
+    <string name="done">Done</string>
+    <string name="cd_clear">Clear</string>
+    <string name="select_clear_photo">Select a clear, front-facing photo</string>
+    <string name="discard_title">Discard edits?</string>
+    <string name="discard_message">Your changes will be lost. Are you sure you want to go back?</string>
+    <string name="discard_confirm">Discard</string>
+    <string name="discard_cancel">Keep editing</string>
+    <string name="no_image_selected">No image selected</string>
+    <string name="custom_dimensions">Custom Dimensions</string>
+    <string name="width_px">Width (px)</string>
+    <string name="height_px">Height (px)</string>
 </resources>
 

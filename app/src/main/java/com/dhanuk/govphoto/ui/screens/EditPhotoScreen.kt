@@ -121,20 +121,20 @@ fun EditPhotoScreen(
     if (showExitDialog) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showExitDialog = false },
-            title = { Text("Discard edits?") },
-            text = { Text("Your changes will be lost. Are you sure you want to go back?") },
+            title = { Text(stringResource(R.string.discard_title)) },
+            text = { Text(stringResource(R.string.discard_message)) },
             confirmButton = {
                 androidx.compose.material3.TextButton(
                     onClick = {
                         showExitDialog = false
                         onNavigateBack()
                     }
-                ) { Text("Discard") }
+                ) { Text(stringResource(R.string.discard_confirm)) }
             },
             dismissButton = {
                 androidx.compose.material3.TextButton(
                     onClick = { showExitDialog = false }
-                ) { Text("Keep editing") }
+                ) { Text(stringResource(R.string.discard_cancel)) }
             }
         )
     }
@@ -612,7 +612,7 @@ private fun PhotoPreviewWithImage(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                    text = "No image selected",
+                    text = stringResource(R.string.no_image_selected),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1184,7 +1184,7 @@ private fun CustomPresetInputs(viewModel: SharedPhotoViewModel) {
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Custom Dimensions",
+            text = stringResource(R.string.custom_dimensions),
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.onBackground
         )
@@ -1201,7 +1201,7 @@ private fun CustomPresetInputs(viewModel: SharedPhotoViewModel) {
                     viewModel.updateCustomWidth(it)
                     viewModel.applyCustomPreset()
                 },
-                label = { Text("Width (px)") },
+                label = { Text(stringResource(R.string.width_px)) },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
@@ -1216,7 +1216,7 @@ private fun CustomPresetInputs(viewModel: SharedPhotoViewModel) {
                     viewModel.updateCustomHeight(it)
                     viewModel.applyCustomPreset()
                 },
-                label = { Text("Height (px)") },
+                label = { Text(stringResource(R.string.height_px)) },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(

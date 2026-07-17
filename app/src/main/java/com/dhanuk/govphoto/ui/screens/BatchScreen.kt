@@ -184,7 +184,7 @@ androidx.compose.foundation.Image(
                                 )
                             }
                         }
-                        Divider(
+                        HorizontalDivider(
                             color = MaterialTheme.colorScheme.outlineVariant,
                             modifier = Modifier.padding(horizontal = 16.dp)
                         )

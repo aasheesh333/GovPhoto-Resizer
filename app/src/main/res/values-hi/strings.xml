@@ -289,5 +289,18 @@
     <string name="notif_perm_message">हम आपको बग फिक्स, नई रिलीज़ और परीक्षा अनुस्मारक जैसे महत्वपूर्ण अपडेट भेजेंगे। कोई स्पैम नहीं।</string>
     <string name="notif_perm_allow">अनुमति दें</string>
     <string name="notif_perm_later">अभी नहीं</string>
+
+    <!-- Localized UI strings (previously hardcoded) -->
+    <string name="done">पूर्ण</string>
+    <string name="cd_clear">साफ़ करें</string>
+    <string name="select_clear_photo">एक साफ़, सामने की ओर फेस वाली फोटो चुनें</string>
+    <string name="discard_title">बदलाव त्यागें?</string>
+    <string name="discard_message">आपके बदलाव खो जाएंगे। क्या आप वापस जाना चाहते हैं?</string>
+    <string name="discard_confirm">त्यागें</string>
+    <string name="discard_cancel">संपादन जारी रखें</string>
+    <string name="no_image_selected">कोई फोटो नहीं चुनी गई</string>
+    <string name="custom_dimensions">कस्टम आयाम</string>
+    <string name="width_px">चौड़ाई (px)</string>
+    <string name="height_px">ऊँचाई (px)</string>
 </resources>
 

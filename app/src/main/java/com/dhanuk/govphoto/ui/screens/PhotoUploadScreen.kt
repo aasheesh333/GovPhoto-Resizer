@@ -165,7 +165,7 @@ fun PhotoUploadScreen(
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = "Select a clear, front-facing photo",
+                text = stringResource(R.string.select_clear_photo),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
