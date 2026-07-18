@@ -137,6 +137,35 @@ class MainActivity : ComponentActivity() {
 
     private fun initializeMobileAds() {
         com.google.android.gms.ads.MobileAds.initialize(this)
+        // Single consolidated AdMob config dump so a "why is my banner not
+        // filling" investigation only needs `adb logcat | grep GovPhotoAd`.
+        // Banner / Interstitial / Reward units that are still Google's demo
+        // IDs (3940256099942544) while the app ID is a real one is the most
+        // common cause of "Ad Inspector only shows interstitial Fill".
+        val demoApp = "3940256099942544"
+        val isDemoApp = BuildConfig.ADMOB_APP_ID.startsWith(demoApp)
+        android.util.Log.i(
+            "GovPhotoAd",
+            "appId=${BuildConfig.ADMOB_APP_ID} demoApp=$isDemoApp | " +
+                "banner=${BuildConfig.ADMOB_BANNER_UNIT} | " +
+                "interstitial=${BuildConfig.ADMOB_INTERSTITIAL_UNIT} | " +
+                "reward=${BuildConfig.ADMOB_REWARDED_UNIT}",
+        )
+        listOf(
+            "banner" to BuildConfig.ADMOB_BANNER_UNIT,
+            "interstitial" to BuildConfig.ADMOB_INTERSTITIAL_UNIT,
+            "reward" to BuildConfig.ADMOB_REWARDED_UNIT,
+        ).forEach { (label, unit) ->
+            // Units under Google's demo app have the demoApp prefix.
+            if (!isDemoApp && unit.startsWith(demoApp)) {
+                android.util.Log.w(
+                    "GovPhotoAd",
+                    "$label unit ($unit) is a Google DEMO ID but appId is real — " +
+                        "this unit will NOT fill in production. Set the real unit " +
+                        "ID in ADMOB_${label.uppercase()}_UNIT.",
+                )
+            }
+        }
     }
 
     override fun onResume() {
