@@ -19,7 +19,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
-        buildConfigField("String", "PRIVACY_URL", "\"${project.findProperty("PRIVACY_URL") ?: "https://example.in/privacy.html"}\"")
+        buildConfigField("String", "PRIVACY_URL", "\"${project.findProperty("PRIVACY_URL") ?: "https://dhanuk.page.gd/govphoto-resizer/privacy.html"}\"")
         buildConfigField("String", "TERMS_URL", "\"${project.findProperty("TERMS_URL") ?: "https://example.in/terms.html"}\"")
         buildConfigField("String", "CONTACT_URL", "\"${project.findProperty("CONTACT_URL") ?: "https://example.in/contact.html"}\"")
         buildConfigField("String", "ADMOB_APP_ID", "\"${project.findProperty("ADMOB_APP_ID") ?: "ca-app-pub-3940256099942544~3347511713"}\"")
