@@ -8,6 +8,10 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -27,13 +31,29 @@ import javax.inject.Singleton
  *  - Exposes [promptForPermission] so the UI can call OneSignal's official
  *    system-permission prompt at a well-timed moment (e.g. after 1 min of
  *    foreground use, once per app lifetime).
+ *  - Exposes in-app [diagnosticInfo] so devices without adb can self-diagnose
+ *    why the OneSignal dashboard shows zero installs / no push token.
  */
 @Singleton
 class PushRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val store: PushCategoryStore,
 ) {
+    data class DiagnosticInfo(
+        val appId: String,
+        val appIdLength: Int,
+        val isTestId: Boolean,
+        val isValidUuid: Boolean,
+        val permissionState: String,
+        val optedIn: Boolean,
+        val tokenPreview: String,
+        val warning: String?,
+    )
+
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    private val _diagnosticInfo = MutableStateFlow(buildDiagnosticInfo())
+    val diagnosticInfo: StateFlow<DiagnosticInfo> = _diagnosticInfo.asStateFlow()
 
     /** OnInit: init with the configured App ID, then push the current per-
      *  category opt-in state as OneSignal tags. Failures are logged. */
@@ -49,7 +69,7 @@ class PushRepository @Inject constructor(
             // push token; a non-empty token 1.5s after init usually means
             // the registration succeeded.
             scope.launch {
-                kotlinx.coroutines.delay(1_500)
+                delay(1_500)
                 runCatching {
                     val sub = OneSignal.User.pushSubscription
                     Log.i(
@@ -58,12 +78,14 @@ class PushRepository @Inject constructor(
                             "token=${if (sub.token.isNullOrEmpty()) "<none>" else sub.token.take(8) + "..."}"
                     )
                 }.onFailure { Log.w(TAG, "pushSubscription read failed (SDK API drift?)", it) }
+                updateDiagnosticInfo()
             }
         } catch (t: Throwable) {
             // The SDK throws if appId is malformed / blank / non-UUID — surface
             // this in logcat so "notifications not arriving" is diagnosable.
             Log.e(TAG, "OneSignal.initWithContext threw — notifications will NOT work", t)
         }
+        updateDiagnosticInfo()
         refreshTags()
     }
 
@@ -101,7 +123,53 @@ class PushRepository @Inject constructor(
         scope.launch {
             runCatching { OneSignal.Notifications.requestPermission(fallbackToSettings) }
                 .onFailure { Log.w(TAG, "requestPermission failed", it) }
+            updateDiagnosticInfo()
         }
+    }
+
+    /** Refresh the snapshot shown in the in-app push diagnostics dialog. */
+    fun refreshDiagnosticInfo() { updateDiagnosticInfo() }
+
+    private fun updateDiagnosticInfo() {
+        _diagnosticInfo.value = buildDiagnosticInfo()
+    }
+
+    private fun buildDiagnosticInfo(): DiagnosticInfo {
+        val appId = BuildConfig.ONESIGNAL_APP_ID
+        val uuidRegex =
+            Regex("""^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$""")
+        val warning = when {
+            appId == TEST_ID ->
+                "OneSignal App ID is still the default 'test-onesignal-id'. " +
+                    "Set ONESIGNAL_APP_ID in CI secrets to see installs on the dashboard."
+            appId.length != 36 || !uuidRegex.matches(appId) ->
+                "OneSignal App ID ($appId) does not look like a 36-character UUID. " +
+                    "Verify the value in CI secrets / Dashboard > Keys & IDs."
+            else -> null
+        }
+
+        val permission = runCatching {
+            // 5.x API surface varies by minor version; try both common names.
+            OneSignal.Notifications::class.java
+                .methods
+                .firstOrNull { it.name in listOf("hasPermission", "permission") && it.parameterTypes.isEmpty() }
+                ?.invoke(OneSignal.Notifications)
+        }.getOrNull()?.toString() ?: "unknown"
+
+        val (optedIn, token) = runCatching {
+            OneSignal.User.pushSubscription.let { it.optedIn to it.token }
+        }.getOrDefault(false to null)
+
+        return DiagnosticInfo(
+            appId = if (appId.length > 12) "...${appId.takeLast(8)}" else appId,
+            appIdLength = appId.length,
+            isTestId = appId == TEST_ID,
+            isValidUuid = warning == null,
+            permissionState = permission,
+            optedIn = optedIn,
+            tokenPreview = if (token.isNullOrBlank()) "<none>" else "${token.take(8)}...",
+            warning = warning,
+        )
     }
 
     private companion object {

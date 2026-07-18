@@ -27,7 +27,10 @@ import com.dhanuk.govphoto.BuildConfig
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.data.datastore.AppLanguage
 import com.dhanuk.govphoto.data.datastore.DarkModePref
+import com.dhanuk.govphoto.ui.diagnostics.PushDiagnosticsDialog
+import com.dhanuk.govphoto.ui.diagnostics.PushEntryPoint
 import com.dhanuk.govphoto.ui.viewmodel.SettingsViewModel
+import dagger.hilt.android.EntryPointAccessors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,6 +42,7 @@ fun SettingsScreen(
     val settings by viewModel.state.collectAsState()
     val adInfo by viewModel.adDiagnosticInfo.collectAsState()
     var showAdDiagnostics by remember { mutableStateOf(false) }
+    var showPushDiagnostics by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val sharedPreferences = remember { context.getSharedPreferences("govphoto_settings", android.content.Context.MODE_PRIVATE) }
     var preventScreenshots by remember { mutableStateOf(sharedPreferences.getBoolean("prevent_screenshots", false)) }
@@ -339,6 +343,33 @@ fun SettingsScreen(
                     subtitle = "Inspect why banner / interstitial / rewarded ads may not load",
                     onClick = { showAdDiagnostics = true }
                 )
+
+                SettingsItem(
+                    icon = Icons.Default.Notifications,
+                    title = stringResource(R.string.push_diagnostics),
+                    subtitle = "Check OneSignal registration, permission, and push token status",
+                    onClick = { showPushDiagnostics = true }
+                )
+            }
+
+            if (showPushDiagnostics) {
+                val pushRepo = remember {
+                    runCatching {
+                        EntryPointAccessors.fromApplication(
+                            context.applicationContext,
+                            PushEntryPoint::class.java,
+                        ).pushRepository()
+                    }.getOrNull()
+                }
+                val pushInfo by pushRepo?.diagnosticInfo?.collectAsState()
+                    ?: remember { mutableStateOf(null) }
+                pushInfo?.let {
+                    PushDiagnosticsDialog(
+                        info = it,
+                        onDismiss = { showPushDiagnostics = false },
+                        onRefresh = { pushRepo?.refreshDiagnosticInfo() },
+                    )
+                }
             }
 
             if (showAdDiagnostics) {

@@ -326,5 +326,12 @@
     <string name="ad_diagnostics">विज्ञापन निदान</string>
     <string name="refresh">ताज़ा करें</string>
     <string name="close">बंद करें</string>
+
+    <!-- Push diagnostics in-app dialog (OneSignal zero installs) -->
+    <string name="push_diag_title">Push स्थिति</string>
+    <string name="push_diagnostics">Push निदान</string>
+    <string name="push_diag_invalid_app_id">OneSignal App ID गायब या गलत है। CI secrets / Dashboard > Keys &amp; IDs में ONESIGNAL_APP_ID सेट करें।</string>
+    <string name="push_diag_no_token">App ID सही लग रही है, लेकिन अभी push token रजिस्टर नहीं हुआ। नोटिफिकेशन permission दें, कुछ सेकंड इंतज़ार करें और refresh करें।</string>
+    <string name="push_diag_looks_ok">App ID सही है और push token preview उपलब्ध है। OneSignal dashboard में Audience > All Users चेक करें।</string>
 </resources>
 
