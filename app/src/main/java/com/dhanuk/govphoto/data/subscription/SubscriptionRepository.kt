@@ -82,10 +82,9 @@ class SubscriptionRepository @Inject constructor(
      */
     suspend fun setUserContact(email: String?, phone: String?) {
         if (!Purchases.isConfigured) return
-        val attrs = buildMap {
-            email?.takeIf { it.isNotBlank() }?.let { put("\$email" to it.trim()) }
-            phone?.takeIf { it.isNotBlank() }?.let { put("\$phoneNumber" to it.trim()) }
-        }
+        val attrs = mutableMapOf<String, String>()
+        email?.trim()?.takeIf { it.isNotEmpty() }?.let { attrs["\$email"] = it }
+        phone?.trim()?.takeIf { it.isNotEmpty() }?.let { attrs["\$phoneNumber"] = it }
         if (attrs.isNotEmpty()) {
             runCatching {
                 Purchases.sharedInstance.setAttributes(attrs)

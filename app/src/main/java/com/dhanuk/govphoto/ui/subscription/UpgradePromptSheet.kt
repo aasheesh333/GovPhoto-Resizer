@@ -37,6 +37,7 @@ import androidx.compose.material3.Button
  *
  * Call sites are responsible for limiting frequency (e.g. once per session).
  */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun UpgradePromptSheet(
     title: String,
@@ -114,7 +115,7 @@ fun UpgradePromptSheet(
     }
 }
 
-private data class UpgradeBenefit(
+internal data class UpgradeBenefit(
     val icon: ImageVector,
     val title: String,
     val subtitle: String,
