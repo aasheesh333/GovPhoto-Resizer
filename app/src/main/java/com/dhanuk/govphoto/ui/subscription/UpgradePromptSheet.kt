@@ -115,7 +115,7 @@ fun UpgradePromptSheet(
     }
 }
 
-internal data class UpgradeBenefit(
+data class UpgradeBenefit(
     val icon: ImageVector,
     val title: String,
     val subtitle: String,
