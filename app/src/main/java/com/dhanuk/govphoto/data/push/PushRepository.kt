@@ -43,6 +43,22 @@ class PushRepository @Inject constructor(
         try {
             OneSignal.initWithContext(context, appId)
             Log.i(TAG, "OneSignal.initWithContext returned")
+            // Post-init subscription log so users debugging "no devices on the
+            // dashboard" can see exactly what the OneSignal SDK thinks about
+            // this install. opt-in is needed for the SDK to register a
+            // push token; a non-empty token 1.5s after init usually means
+            // the registration succeeded.
+            scope.launch {
+                kotlinx.coroutines.delay(1_500)
+                runCatching {
+                    val sub = OneSignal.User.pushSubscription
+                    Log.i(
+                        TAG,
+                        "subscription: optedIn=${sub.optedIn} " +
+                            "token=${if (sub.token.isNullOrEmpty()) "<none>" else sub.token.take(8) + "..."}"
+                    )
+                }.onFailure { Log.w(TAG, "pushSubscription read failed (SDK API drift?)", it) }
+            }
         } catch (t: Throwable) {
             // The SDK throws if appId is malformed / blank / non-UUID — surface
             // this in logcat so "notifications not arriving" is diagnosable.

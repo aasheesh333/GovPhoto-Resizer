@@ -99,17 +99,33 @@ fun SaveSuccessScreen(
 
     val activity = context as? android.app.Activity
     LaunchedEffect(Unit) {
-        // mark save count + trigger interstitial (AdMob rate-limit enforced inside controller)
-        val controller = runCatching {
+        // Mark save count + show interstitial + show rewarded (each controller
+        // enforces its own 2-minute cooldown and per-session cap). Both fire
+        // through `tryShow` which no-ops when the gate / rate limit blocks.
+        val entry = runCatching {
             EntryPointAccessors.fromApplication(
                 context.applicationContext,
-                SaveSuccessInterstitialEntryPoint::class.java,
-            ).interstitialController()
+                SaveSuccessAdEntryPoint::class.java,
+            )
         }.getOrNull() ?: return@LaunchedEffect
-        controller.recordSaveReceived()
-        // Slight delay so the success screen paints before the interstitial
+        val interstitial = entry.interstitialController()
+        val rewarded = entry.rewardedAdController()
+        interstitial.recordSaveReceived()
+        rewarded.recordSaveReceived()
+        // Slight delay so the success screen paints before any full-screen ad
+        // tries to show.
         kotlinx.coroutines.delay(300)
-        activity?.let { controller.tryShow(it) }
+        activity?.let { act ->
+            interstitial.tryShow(act)
+            // Rewarded ad sits on top of the interstitial (will not actually
+            // stack because the OS only shows one full-screen ad at a time;
+            // the second tryShow is a no-op until the interstitial dismisses).
+            rewarded.tryShow(act) {
+                // User watched the rewarded ad to completion. Today we just
+                // log it — there's no in-app content gated on this reward yet.
+                android.util.Log.i("SaveSuccess", "rewarded ad earned")
+            }
+        }
     }
 
     val detailsText = stringResource(
@@ -295,6 +311,7 @@ fun SaveSuccessScreen(
 
 @dagger.hilt.EntryPoint
 @dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
-interface SaveSuccessInterstitialEntryPoint {
-    fun interstitialController(): InterstitialController
+interface SaveSuccessAdEntryPoint {
+    fun interstitialController(): com.dhanuk.govphoto.data.ads.InterstitialController
+    fun rewardedAdController(): com.dhanuk.govphoto.data.ads.RewardedAdController
 }
