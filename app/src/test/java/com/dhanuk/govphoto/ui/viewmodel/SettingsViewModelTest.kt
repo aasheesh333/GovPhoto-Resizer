@@ -55,6 +55,8 @@ class SettingsViewModelTest {
                 appId = "...",
                 bannerUnitId = "...",
                 bannerState = AdsManager.BannerState.Disabled,
+                consentStatus = "unknown",
+                privacyOptionsRequirementStatus = "unknown",
                 canRequestAds = false,
                 lastErrorCode = null,
                 lastErrorMessage = null,

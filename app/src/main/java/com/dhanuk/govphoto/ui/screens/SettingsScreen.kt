@@ -343,10 +343,22 @@ fun SettingsScreen(
             }
 
             if (showAdDiagnostics) {
+                val activity = context as? android.app.Activity
                 com.dhanuk.govphoto.ui.components.AdDiagnosticsDialog(
                     info = adInfo,
                     onDismiss = { showAdDiagnostics = false },
-                    onRefresh = { viewModel.refreshAdDiagnostics() }
+                    onRefresh = { viewModel.refreshAdDiagnostics() },
+                    onRequestConsent = {
+                        if (activity != null) {
+                            viewModel.adsManager.requestConsent(activity)
+                        } else {
+                            android.widget.Toast.makeText(
+                                context,
+                                "Consent requires an Activity context",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
                 )
             }
 

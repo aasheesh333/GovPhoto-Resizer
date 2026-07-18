@@ -55,15 +55,10 @@ class RewardedAdController @Inject constructor(
 
     enum class State { Idle, Loading, Loaded, Failed, Showing }
 
-    private fun canRequestAds(): Boolean = runCatching {
-        UserMessagingPlatform.getConsentInformation(context).canRequestAds()
-    }.getOrDefault(false)
-
     /** Preload the ad (no-op if disabled / already loaded). Idempotent. */
     fun preloadIfNeeded() {
         if (BuildConfig.DEBUG || BuildConfig.FORCE_NO_ADS) return
         if (adsRepository.isAdFree.value) return
-        if (!canRequestAds()) return
         if (loadedAd != null) return
         if (_state.value == State.Loading) return
         if (_state.value == State.Loaded) return
@@ -105,7 +100,7 @@ class RewardedAdController @Inject constructor(
         }
         scope.launch {
             delay(delayMs)
-            if (!BuildConfig.DEBUG && !BuildConfig.FORCE_NO_ADS && canRequestAds()) load()
+            if (!BuildConfig.DEBUG && !BuildConfig.FORCE_NO_ADS) load()
         }
     }
 

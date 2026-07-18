@@ -56,6 +56,8 @@ class AdsManager @Inject constructor(
         val appId: String,
         val bannerUnitId: String,
         val bannerState: BannerState,
+        val consentStatus: String,
+        val privacyOptionsRequirementStatus: String,
         val canRequestAds: Boolean,
         val lastErrorCode: Int?,
         val lastErrorMessage: String?,
@@ -113,6 +115,11 @@ class AdsManager @Inject constructor(
                     "should be real (release) or both demo (local testing)."
             else -> null
         }
+        val consentInfo = UserMessagingPlatform.getConsentInformation(context)
+        val consentStatus = runCatching { consentInfo.consentStatus.toString() }.getOrDefault("unknown")
+        val privacyStatus = runCatching {
+            consentInfo.privacyOptionsRequirementStatus.toString()
+        }.getOrDefault("unknown")
         return DiagnosticInfo(
             variant = if (BuildConfig.DEBUG) "debug" else "release",
             forceNoAds = BuildConfig.FORCE_NO_ADS,
@@ -120,6 +127,8 @@ class AdsManager @Inject constructor(
             appId = maskId(appId),
             bannerUnitId = maskId(bannerUnit),
             bannerState = _bannerState.value,
+            consentStatus = consentStatus,
+            privacyOptionsRequirementStatus = privacyStatus,
             canRequestAds = canRequestAds(),
             lastErrorCode = lastErrorCode,
             lastErrorMessage = lastErrorMessage,
@@ -197,8 +206,8 @@ class AdsManager @Inject constructor(
     /** Kick off the banner load if not already loaded/loading. Cheap when loaded. */
     @Synchronized
     fun ensureBannerLoaded() {
-        if (destroyed || shouldSkipAds() || !canRequestAds()) {
-            logd { "ensureBannerLoaded skip destroyed=$destroyed skipAds=${shouldSkipAds()} canRequest=${canRequestAds()}" }
+        if (destroyed || shouldSkipAds()) {
+            logd { "ensureBannerLoaded skip destroyed=$destroyed skipAds=${shouldSkipAds()}" }
             updateDiagnostic()
             return
         }
@@ -231,7 +240,7 @@ class AdsManager @Inject constructor(
         logi { "scheduleRetry attempt=$retryCount in ${delayMs}ms" }
         retryJob = scope.launch {
             delay(delayMs)
-            if (!destroyed && !shouldSkipAds() && canRequestAds()) loadBanner()
+            if (!destroyed && !shouldSkipAds()) loadBanner()
         }
     }
 
@@ -244,6 +253,29 @@ class AdsManager @Inject constructor(
 
     /** Refresh the cached diagnostic snapshot (called from the in-app status UI). */
     fun refreshDiagnosticInfo() { updateDiagnostic() }
+
+    /**
+     * Re-run the UMP consent-info update and show the consent form if required.
+     * Exposed on the Ad diagnostics dialog so a user without adb can re-prompt
+     * themselves when Consent OK is false.
+     */
+    fun requestConsent(activity: android.app.Activity) {
+        val consentInfo = UserMessagingPlatform.getConsentInformation(context)
+        val params = com.google.android.ump.ConsentRequestParameters.Builder()
+            .setTagForUnderAgeOfConsent(false)
+            .build()
+        consentInfo.requestConsentInfoUpdate(
+            activity,
+            params,
+            {
+                UserMessagingPlatform.loadAndShowConsentFormIfRequired(activity) { _ ->
+                    updateDiagnostic()
+                    ensureBannerLoaded()
+                }
+            },
+            { _ -> updateDiagnostic() }
+        )
+    }
 
     /** Detach the shared AdView from any prior parent so a new screen's AndroidView
      *  can re-host it. AdView allows only one parent at a time. */

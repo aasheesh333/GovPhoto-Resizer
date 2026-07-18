@@ -60,7 +60,12 @@ class MainActivity : ComponentActivity() {
             ).adsManager()
         }.getOrNull()
 
-        // UMP consent flow -> MobileAds.initialize() + AdsManager.onConsentReady()
+        // Initialize AdMob up-front so the banner can start loading as soon as
+        // a screen mounts. UMP runs afterwards; if the region/user choice ever
+        // blocks ads, the SDK will no-fill and the banner state flips to Failed.
+        initializeMobileAds()
+
+        // UMP consent flow -> kick the banner controller again once consent is known.
         val consentInfo = com.google.android.ump.UserMessagingPlatform.getConsentInformation(this)
         val params = com.google.android.ump.ConsentRequestParameters.Builder()
             .setTagForUnderAgeOfConsent(false)
@@ -71,16 +76,16 @@ class MainActivity : ComponentActivity() {
             object : com.google.android.ump.ConsentInformation.OnConsentInfoUpdateSuccessListener {
                 override fun onConsentInfoUpdateSuccess() {
                     com.google.android.ump.UserMessagingPlatform.loadAndShowConsentFormIfRequired(this@MainActivity) { _ ->
-                        initializeMobileAds()
+                        // AdMob is already initialized; re-kick the banner load
+                        // in case consent state changed from the form.
                         adsManager?.onConsentReady()
                     }
                 }
             },
             object : com.google.android.ump.ConsentInformation.OnConsentInfoUpdateFailureListener {
                 override fun onConsentInfoUpdateFailure(error: com.google.android.ump.FormError) {
-                    initializeMobileAds()
-                    // Try loading anyway — AdsManager.canRequestAds() will short-circuit
-                    // if consent is still unavailable.
+                    // AdMob is already initialized; still try to load ads. The SDK
+                    // will no-fill if the network/region/user choice disallows it.
                     adsManager?.onConsentReady()
                 }
             }
