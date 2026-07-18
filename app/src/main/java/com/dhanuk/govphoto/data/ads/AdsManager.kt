@@ -151,7 +151,18 @@ class AdsManager @Inject constructor(
 
     private fun createBannerAdView(): AdView =
         AdView(context).apply {
-            setAdSize(AdSize.BANNER)
+            // Use an anchored adaptive banner so the ad matches the full screen
+            // width and uses its own natural height, avoiding white side gaps.
+            val displayMetrics = context.resources.displayMetrics
+            val adWidth = (displayMetrics.widthPixels / displayMetrics.density).toInt()
+            val adSize = runCatching {
+                AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(context, adWidth)
+            }.getOrDefault(AdSize.BANNER)
+            setAdSize(adSize)
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            )
             adUnitId = BuildConfig.ADMOB_BANNER_UNIT
             // Transparent container so no white box shows behind/around the ad.
             setBackgroundColor(Color.TRANSPARENT)
