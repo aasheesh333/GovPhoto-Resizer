@@ -48,24 +48,39 @@ android {
 
     signingConfigs {
         create("release") {
+            // secrets.gradle.kts (applied above on the app project) sets these
+            // extra properties when CI decoded KEYSTORE_BASE64 into
+            // release-keystore.jks. Read them via project.findProperty (the
+            // app project scope) — not rootProject — so the lookup matches.
             val ksFile = project.findProperty("KEYSTORE_FILE") as String?
             if (ksFile != null && rootProject.file(ksFile).exists()) {
                 storeFile = rootProject.file(ksFile)
                 storePassword = project.findProperty("KEYSTORE_PASSWORD") as String
                 keyAlias = project.findProperty("KEY_ALIAS") as String
                 keyPassword = project.findProperty("KEY_PASSWORD") as String
+                logger.lifecycle("release signingConfig: keystore=$ksFile alias=$keyAlias")
+            } else {
+                logger.warn("release signingConfig: KEYSTORE_FILE missing — release will sign with debug keystore")
             }
         }
     }
 
   buildTypes {
     release {
-      // Release signing uses the keystore decoded from KEYSTORE_BASE64 in CI.
-      // When that's absent (local dev), fall back to debug signing.
-      signingConfig = (rootProject.findProperty("KEYSTORE_FILE") as String?)
-          ?.takeIf { rootProject.file(it).exists() }
-          ?.let { signingConfigs.getByName("release") }
-          ?: signingConfigs.getByName("debug")
+      // Use the configured release signingConfig whenever the keystore could
+      // be loaded (detected by storeFile != null); otherwise fall back to
+      // debug. The previous version read KEYSTORE_FILE via rootProject which
+      // never matched (app-project extra properties), so release has been
+      // signing with the debug keystore since day one.
+      signingConfig = if (signingConfigs.findByName("release")?.storeFile != null) {
+          signingConfigs.getByName("release")
+      } else {
+          signingConfigs.getByName("debug")
+      }
+      logger.lifecycle(
+          "release buildType: signingConfig=" +
+              (if (signingConfigs.findByName("release")?.storeFile != null) "release (CI keystore)" else "debug (fallback — no KEYSTORE_FILE)")
+      )
       isMinifyEnabled = true
       isShrinkResources = true
       buildConfigField("boolean", "FORCE_NO_ADS", "false")
