@@ -105,8 +105,6 @@
     <string name="view_privacy_policy">View privacy policy</string>
     <string name="prevent_screenshots">Prevent Screenshots</string>
     <string name="prevent_screenshots_desc">Block screenshots for sensitive document photos</string>
-    <string name="share_crash_log">Share Crash Log</string>
-    <string name="share_crash_log_desc">Send diagnostic info to support</string>
     <string name="support_us_section">Support us</string>
     <string name="share_app">Share app</string>
     <string name="share_app_subtitle">Tell a friend about GovPhoto</string>
@@ -323,13 +321,11 @@
 
     <!-- Ad diagnostics in-app dialog (adb logcat unavailable on user device) -->
     <string name="ad_status_title">Ad status</string>
-    <string name="ad_diagnostics">Ad diagnostics</string>
     <string name="refresh">Refresh</string>
     <string name="close">Close</string>
 
     <!-- Push diagnostics in-app dialog (OneSignal zero installs) -->
     <string name="push_diag_title">Push status</string>
-    <string name="push_diagnostics">Push diagnostics</string>
     <string name="push_diag_invalid_app_id">The OneSignal App ID is missing or invalid. Set ONESIGNAL_APP_ID in CI secrets / Dashboard > Keys &amp; IDs.</string>
     <string name="push_diag_no_token">App ID looks valid, but no push token is registered yet. Grant notification permission and wait a few seconds, then refresh.</string>
     <string name="push_diag_looks_ok">App ID is valid and a push token preview is available. Check OneSignal dashboard Audience > All Users.</string>

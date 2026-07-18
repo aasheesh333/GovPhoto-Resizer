@@ -28,6 +28,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.ui.components.GovButton
 import com.dhanuk.govphoto.ui.components.GovOutlinedButton
+import com.dhanuk.govphoto.ui.ads.GlobalBannerAd
 import com.dhanuk.govphoto.ui.components.SafeCircularSpinner
 import com.dhanuk.govphoto.ui.viewmodel.PaywallViewModel
 import com.revenuecat.purchases.Package
@@ -64,7 +65,8 @@ fun PaywallScreen(
                     }
                 }
             )
-        }
+        },
+        bottomBar = { GlobalBannerAd() }
     ) { padding ->
         Column(
             modifier = Modifier

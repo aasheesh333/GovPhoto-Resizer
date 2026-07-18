@@ -52,16 +52,21 @@ fun HomeScreen(
     
     Scaffold(
         bottomBar = {
-            BottomNavigationBar(
-                selectedItem = selectedNavItem,
-                onItemSelected = { index ->
-                    when (index) {
-                        0 -> selectedNavItem = 0
-                        1 -> onNavigateToHistory()
-                        2 -> onNavigateToSettings()
+            Column {
+                // Banner ad above the bottom navigation bar — fixed in the
+                // Scaffold bottomBar so it never scrolls with content.
+                GlobalBannerAd()
+                BottomNavigationBar(
+                    selectedItem = selectedNavItem,
+                    onItemSelected = { index ->
+                        when (index) {
+                            0 -> selectedNavItem = 0
+                            1 -> onNavigateToHistory()
+                            2 -> onNavigateToSettings()
+                        }
                     }
-                }
-            )
+                )
+            }
         }
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize()) {
@@ -74,14 +79,14 @@ fun HomeScreen(
             ) {
                 // Header Section
                 HomeHeader(settingsViewModel = settingsViewModel)
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 // Quick Upload Button
                 QuickUploadButton(
                     onClick = { onNavigateToUpload("quick_upload") }
                 )
-                
+
                 // Recent Presets Row (only shown when not empty)
                 if (recentPresets.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(20.dp))
@@ -90,21 +95,17 @@ fun HomeScreen(
                         onPresetClick = onNavigateToUpload
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.height(24.dp))
-                
+
                 // Document Type Section
                 DocumentTypeSection(
                     onViewAllClick = onNavigateToAllForms,
                     onPresetClick = onNavigateToUpload
                 )
-                
+
                 Spacer(modifier = Modifier.height(80.dp))
             }
-
-            // Shared banner slot — placed above the per-screen bottom nav so it
-            // is never hidden behind the navigation bar.
-            GlobalBannerAd()
         }
     }
 }

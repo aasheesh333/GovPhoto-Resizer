@@ -35,6 +35,7 @@ import coil.request.ImageRequest
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.data.ml.FaceAnalysisResult
 import com.dhanuk.govphoto.data.model.PhotoPreset
+import com.dhanuk.govphoto.ui.ads.GlobalBannerAd
 import com.dhanuk.govphoto.ui.theme.*
 import com.dhanuk.govphoto.ui.viewmodel.BackgroundColor
 import com.dhanuk.govphoto.ui.viewmodel.SharedPhotoViewModel
@@ -158,11 +159,14 @@ fun PreviewValidationScreen(
             )
         },
         bottomBar = {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surface,
-                shadowElevation = 8.dp
-            ) {
+            Column {
+                // Banner ad above the primary action buttons.
+                GlobalBannerAd()
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 8.dp
+                ) {
                 Column(
                     modifier = Modifier
                         .padding(16.dp)
@@ -262,6 +266,7 @@ Icon(
                         )
                     }
                 }
+            }
             }
         }
     ) { paddingValues ->

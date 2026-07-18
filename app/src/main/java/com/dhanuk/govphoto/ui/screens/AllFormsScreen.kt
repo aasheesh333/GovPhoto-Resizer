@@ -116,52 +116,57 @@ fun AllFormsScreen(
             }
         },
         bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = 0.dp
-            ) {
-                NavigationBarItem(
-                    selected = selectedNavItem == 0,
-                    onClick = { selectedNavItem = 0 },
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Default.GridView,
-                            contentDescription = stringResource(R.string.nav_forms)
+            Column {
+                // Banner ad above the bottom navigation bar — fixed in the
+                // Scaffold bottomBar so it never scrolls with content.
+                GlobalBannerAd()
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 0.dp
+                ) {
+                    NavigationBarItem(
+                        selected = selectedNavItem == 0,
+                        onClick = { selectedNavItem = 0 },
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Default.GridView,
+                                contentDescription = stringResource(R.string.nav_forms)
+                            )
+                        },
+                        label = { Text(stringResource(R.string.nav_forms)) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer
                         )
-                    },
-                    label = { Text(stringResource(R.string.nav_forms)) },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = MaterialTheme.colorScheme.primary,
-                        selectedTextColor = MaterialTheme.colorScheme.primary,
-                        indicatorColor = MaterialTheme.colorScheme.primaryContainer
                     )
-                )
-                NavigationBarItem(
-                    selected = selectedNavItem == 1,
-                    onClick = {
-                        onNavigateToHistory()
-                    },
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Outlined.History,
-                            contentDescription = stringResource(R.string.nav_history)
-                        )
-                    },
-                    label = { Text(stringResource(R.string.nav_history)) }
-                )
-                NavigationBarItem(
-                    selected = selectedNavItem == 2,
-                    onClick = {
-                        onNavigateToSettings()
-                    },
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Outlined.Settings,
-                            contentDescription = stringResource(R.string.nav_settings)
-                        )
-                    },
-                    label = { Text(stringResource(R.string.nav_settings)) }
-                )
+                    NavigationBarItem(
+                        selected = selectedNavItem == 1,
+                        onClick = {
+                            onNavigateToHistory()
+                        },
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Outlined.History,
+                                contentDescription = stringResource(R.string.nav_history)
+                            )
+                        },
+                        label = { Text(stringResource(R.string.nav_history)) }
+                    )
+                    NavigationBarItem(
+                        selected = selectedNavItem == 2,
+                        onClick = {
+                            onNavigateToSettings()
+                        },
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Outlined.Settings,
+                                contentDescription = stringResource(R.string.nav_settings)
+                            )
+                        },
+                        label = { Text(stringResource(R.string.nav_settings)) }
+                    )
+                }
             }
         }
     ) { paddingValues ->
@@ -181,7 +186,7 @@ fun AllFormsScreen(
                             count = presets.size
                         )
                     }
-                    
+
                     // Presets in this category
                     items(
                         items = presets,
@@ -198,9 +203,6 @@ fun AllFormsScreen(
                     }
                 }
             }
-
-            // Shared banner slot above the bottom navigation bar.
-            GlobalBannerAd()
         }
     }
 }

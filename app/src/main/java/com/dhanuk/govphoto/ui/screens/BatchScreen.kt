@@ -43,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.data.model.PhotoPreset
+import com.dhanuk.govphoto.ui.ads.GlobalBannerAd
 import com.dhanuk.govphoto.ui.components.GovButton
 import com.dhanuk.govphoto.ui.viewmodel.SharedPhotoViewModel
 
@@ -83,7 +84,8 @@ fun BatchScreen(
                     }
                 }
             )
-        }
+        },
+        bottomBar = { GlobalBannerAd() }
     ) { paddingValues ->
         if (sourceBitmap == null) {
             Column(

@@ -51,6 +51,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.ui.ads.AdEntryPoint
+import com.dhanuk.govphoto.ui.ads.GlobalBannerAd
 import com.dhanuk.govphoto.ui.components.GovButton
 import com.dhanuk.govphoto.ui.components.GovOutlinedButton
 import com.dhanuk.govphoto.ui.viewmodel.SharedPhotoViewModel
@@ -175,7 +176,8 @@ fun SaveSuccessScreen(
                     }
                 }
             )
-        }
+        },
+        bottomBar = { GlobalBannerAd() }
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize()) {
             Column(

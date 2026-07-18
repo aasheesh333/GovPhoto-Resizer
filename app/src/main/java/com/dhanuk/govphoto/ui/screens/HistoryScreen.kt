@@ -63,7 +63,8 @@ fun HistoryScreen(
                     navigationIconContentColor = Color.White
                 )
             )
-        }
+        },
+        bottomBar = { GlobalBannerAd() }
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize()) {
             if (history.isEmpty()) {
@@ -90,9 +91,6 @@ fun HistoryScreen(
                     }
                 }
             }
-
-            // Shared banner slot above the bottom navigation bar.
-            GlobalBannerAd()
         }
     }
 }

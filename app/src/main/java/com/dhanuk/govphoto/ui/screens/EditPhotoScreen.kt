@@ -44,6 +44,7 @@ import com.dhanuk.govphoto.data.ml.FaceAnalysisResult
 import com.dhanuk.govphoto.data.ml.ImageFilter
 import com.dhanuk.govphoto.data.model.PhotoPreset
 import com.dhanuk.govphoto.data.model.PresetType
+import com.dhanuk.govphoto.ui.ads.GlobalBannerAd
 import com.dhanuk.govphoto.ui.theme.*
 import com.dhanuk.govphoto.ui.viewmodel.BackgroundColor
 import com.dhanuk.govphoto.ui.viewmodel.BackgroundOption
@@ -333,11 +334,14 @@ fun EditPhotoScreen(
             )
         },
         bottomBar = {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surface,
-                shadowElevation = 8.dp
-            ) {
+            Column {
+                // Banner ad above the primary action button.
+                GlobalBannerAd()
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 8.dp
+                ) {
                 Button(
                     onClick = {
                         // Continue = bake visible cover-window region into _bakedBitmap.
@@ -374,6 +378,7 @@ Icon(
                         modifier = Modifier.size(20.dp)
                     )
                 }
+            }
             }
         }
     ) { paddingValues ->
