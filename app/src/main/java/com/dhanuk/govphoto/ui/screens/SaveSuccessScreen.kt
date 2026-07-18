@@ -62,6 +62,7 @@ import dagger.hilt.android.EntryPointAccessors
 fun SaveSuccessScreen(
     sharedViewModel: SharedPhotoViewModel,
     onNavigateHome: () -> Unit,
+    onNavigateToPaywall: () -> Unit = {},
 ) {
     val context = LocalContext.current
 
@@ -97,6 +98,7 @@ fun SaveSuccessScreen(
     val formatName = selectedPreset?.format?.uppercase() ?: "JPG"
 
     val activity = context as? android.app.Activity
+    var showUpgradePrompt by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         // Save triggers ONLY a rewarded ad. The rewarded controller enforces the
         // 2-minute cooldown, so if the user saves many photos quickly only one
@@ -115,11 +117,25 @@ fun SaveSuccessScreen(
         kotlinx.coroutines.delay(300)
         activity?.let { act ->
             rewarded.tryShow(act) {
-                // User watched the rewarded ad to completion. Today we just
-                // log it — there's no in-app content gated on this reward yet.
+                // User watched the rewarded ad to completion — best moment to
+                // ask whether they'd like to remove all ads via Pro.
                 android.util.Log.i("SaveSuccess", "rewarded ad earned")
+                showUpgradePrompt = true
             }
         }
+    }
+
+    if (showUpgradePrompt) {
+        com.dhanuk.govphoto.ui.subscription.UpgradePromptSheet(
+            title = "Enjoying GovPhoto?",
+            subtitle = "Go Pro to remove every ad and unlock 30-min support",
+            primaryCta = "See Pro plans",
+            onOpenPaywall = {
+                showUpgradePrompt = false
+                onNavigateToPaywall()
+            },
+            onDismiss = { showUpgradePrompt = false },
+        )
     }
 
     val detailsText = stringResource(

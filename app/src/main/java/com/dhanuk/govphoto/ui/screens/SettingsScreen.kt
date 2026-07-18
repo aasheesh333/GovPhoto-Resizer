@@ -76,6 +76,13 @@ fun SettingsScreen(
                     .background(MaterialTheme.colorScheme.background)
                     .verticalScroll(rememberScrollState())
             ) {
+            // Pro Plan CTA — always at the top of settings so users can find it
+            // whenever they want to upgrade.
+            SettingsProCard(
+                onClick = onNavigateToPaywall,
+            )
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
             // Appearance Section
             SettingsSection(title = stringResource(R.string.appearance)) {
                 // Theme selector
@@ -492,6 +499,59 @@ Icon(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun SettingsProCard(
+    onClick: () -> Unit,
+) {
+    androidx.compose.material3.Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clickable { onClick() },
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        androidx.compose.foundation.layout.Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            androidx.compose.foundation.layout.Row(
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                androidx.compose.material3.Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(modifier = Modifier.padding(start = 8.dp))
+                androidx.compose.material3.Text(
+                    text = stringResource(R.string.pro_card_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                androidx.compose.material3.Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+            Spacer(modifier = Modifier.padding(top = 6.dp))
+            androidx.compose.material3.Text(
+                text = stringResource(R.string.pro_card_subtitle),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Spacer(modifier = Modifier.padding(top = 12.dp))
+            androidx.compose.material3.Text(
+                text = stringResource(R.string.pro_card_features),
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
     }
 }

@@ -65,4 +65,13 @@ class PaywallViewModel @Inject constructor(
                 _state.value = _state.value.copy(restoring = false, error = e.message ?: "Restore failed")
             }
     }
+
+    /**
+     * Forward the user-supplied contact details to RevenueCat as attributes so the
+     * developer can identify the buyer in the RevenueCat dashboard without
+     * implementing a full login system (Method-3 from the engagement plan).
+     */
+    fun saveContact(email: String?, phone: String?) = viewModelScope.launch {
+        subscriptionRepository.setUserContact(email, phone)
+    }
 }

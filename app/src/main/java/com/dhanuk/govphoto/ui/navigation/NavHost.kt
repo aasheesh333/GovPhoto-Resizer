@@ -136,7 +136,8 @@ fun GovPhotoNavHost(
                         navController.navigate(Screen.Home.route) {
                             popUpTo(Screen.Home.route) { inclusive = true }
                         }
-                    }
+                    },
+                    onNavigateToPaywall = { navController.navigate(Screen.Paywall.route) }
                 )
             }
         }

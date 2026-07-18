@@ -73,4 +73,23 @@ class SubscriptionRepository @Inject constructor(
             applyCustomerInfo(info)
         }
     }
+
+    /**
+     * Attach contact details (email, phone) to the current RevenueCat app user so
+     * the developer can identify the buyer from the RevenueCat dashboard.
+     * Safe no-op when RevenueCat isn't configured yet (e.g. fresh install before
+     * `bind()` completes).
+     */
+    suspend fun setUserContact(email: String?, phone: String?) {
+        if (!Purchases.isConfigured) return
+        val attrs = buildMap {
+            email?.takeIf { it.isNotBlank() }?.let { put("\$email" to it.trim()) }
+            phone?.takeIf { it.isNotBlank() }?.let { put("\$phoneNumber" to it.trim()) }
+        }
+        if (attrs.isNotEmpty()) {
+            runCatching {
+                Purchases.sharedInstance.setAttributes(attrs)
+            }.onFailure { android.util.Log.w(REWARD_REPOS_SCOPE_TAG, "setAttributes failed: ${it.message}") }
+        }
+    }
 }
