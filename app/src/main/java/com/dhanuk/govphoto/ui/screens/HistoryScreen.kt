@@ -26,7 +26,6 @@ import coil.request.ImageRequest
 import kotlinx.coroutines.delay
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.data.local.entity.PhotoHistoryEntity
-import com.dhanuk.govphoto.ui.ads.BannerAd
 import com.dhanuk.govphoto.ui.viewmodel.HistoryViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -90,11 +89,6 @@ fun HistoryScreen(
                     }
                 }
             }
-            BannerAd(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-            )
         }
     }
 }

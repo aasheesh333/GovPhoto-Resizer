@@ -116,6 +116,7 @@ class RewardedAdController @Inject constructor(
     fun tryShow(activity: Activity, onRewardEarned: () -> Unit): Boolean {
         if (BuildConfig.DEBUG || BuildConfig.FORCE_NO_ADS) return false
         if (adsRepository.isAdFree.value) return false
+        if (FullScreenAdLock.isShowing.value) return false
         val ad = loadedAd ?: run {
             Log.d(tag, "tryShow: no loaded ad, will preload and skip this time")
             preloadIfNeeded()
@@ -125,25 +126,27 @@ class RewardedAdController @Inject constructor(
             Log.d(tag, "tryShow: rate-limited (saveCount=${rateLimiter.saveCount} shownInSession=${rateLimiter.shownInSession})")
             return false
         }
+        if (!FullScreenAdLock.acquire()) return false
         _state.value = State.Showing
         ad.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdDismissedFullScreenContent() {
                 Log.i(tag, "rewarded ad dismissed")
                 loadedAd = null
                 rateLimiter.markShown()
+                FullScreenAdLock.release()
                 _state.value = State.Idle
                 preloadIfNeeded()
             }
             override fun onAdFailedToShowFullScreenContent(error: com.google.android.gms.ads.AdError) {
                 Log.w(tag, "rewarded ad failed to show: ${error.message}")
                 loadedAd = null
+                FullScreenAdLock.release()
                 _state.value = State.Failed
                 scheduleRetry()
             }
         }
         ad.show(activity, OnUserEarnedRewardListener { rewardItem ->
             Log.i(tag, "user earned reward: type=${rewardItem.type} amount=${rewardItem.amount}")
-            rateLimiter.markShown() // ensure cooldown anchored at show time too
             onRewardEarned()
         })
         return true

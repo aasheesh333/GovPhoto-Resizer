@@ -24,7 +24,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.data.model.PhotoPreset
 import com.dhanuk.govphoto.data.model.PresetCategory
-import com.dhanuk.govphoto.ui.ads.BannerAd
 import com.dhanuk.govphoto.ui.theme.*
 import com.dhanuk.govphoto.ui.viewmodel.AllFormsViewModel
 
@@ -198,11 +197,6 @@ fun AllFormsScreen(
                     }
                 }
             }
-            BannerAd(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-            )
         }
     }
 }

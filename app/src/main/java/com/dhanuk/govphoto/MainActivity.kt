@@ -7,7 +7,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
@@ -15,16 +17,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
 import com.dhanuk.govphoto.BuildConfig
 import com.dhanuk.govphoto.data.datastore.DarkModePref
 import com.dhanuk.govphoto.ui.navigation.GovPhotoNavHost
+import com.dhanuk.govphoto.ui.ads.AdEntryPoint
+import com.dhanuk.govphoto.ui.ads.GlobalBannerAd
 import com.dhanuk.govphoto.ui.components.NotificationPermissionGate
 import com.dhanuk.govphoto.ui.theme.GovPhotoTheme
 import com.dhanuk.govphoto.ui.theme.LocalAppLanguage
 import com.dhanuk.govphoto.ui.theme.LocalHighContrast
 import com.dhanuk.govphoto.ui.theme.LocalLargeButtons
 import com.dhanuk.govphoto.ui.viewmodel.SettingsViewModel
+import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 /**
@@ -53,17 +62,21 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val adsManager = runCatching {
-            dagger.hilt.android.EntryPointAccessors.fromApplication(
+        val adEntryPoint = runCatching {
+            EntryPointAccessors.fromApplication(
                 applicationContext,
-                AdsManagerEntryPoint::class.java,
-            ).adsManager()
+                AdEntryPoint::class.java,
+            )
         }.getOrNull()
 
         // Initialize AdMob up-front so the banner can start loading as soon as
         // a screen mounts. UMP runs afterwards; if the region/user choice ever
         // blocks ads, the SDK will no-fill and the banner state flips to Failed.
         initializeMobileAds()
+
+        // Preload the interstitial early so the 3-minute app-usage timer has an
+        // ad ready when it fires.
+        adEntryPoint?.interstitialController()?.preloadIfNeeded()
 
         // UMP consent flow -> kick the banner controller again once consent is known.
         val consentInfo = com.google.android.ump.UserMessagingPlatform.getConsentInformation(this)
@@ -78,7 +91,7 @@ class MainActivity : ComponentActivity() {
                     com.google.android.ump.UserMessagingPlatform.loadAndShowConsentFormIfRequired(this@MainActivity) { _ ->
                         // AdMob is already initialized; re-kick the banner load
                         // in case consent state changed from the form.
-                        adsManager?.onConsentReady()
+                        adEntryPoint?.adsManager()?.onConsentReady()
                     }
                 }
             },
@@ -86,7 +99,7 @@ class MainActivity : ComponentActivity() {
                 override fun onConsentInfoUpdateFailure(error: com.google.android.ump.FormError) {
                     // AdMob is already initialized; still try to load ads. The SDK
                     // will no-fill if the network/region/user choice disallows it.
-                    adsManager?.onConsentReady()
+                    adEntryPoint?.adsManager()?.onConsentReady()
                 }
             }
         )
@@ -131,16 +144,26 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        NotificationPermissionGate(settingsViewModel = settingsViewModel) {
-                            GovPhotoNavHost()
+                        Scaffold(
+                            modifier = Modifier.fillMaxSize(),
+                            containerColor = MaterialTheme.colorScheme.background,
+                            bottomBar = { GlobalBannerAd() }
+                        ) { innerPadding ->
+                            NotificationPermissionGate(settingsViewModel = settingsViewModel) {
+                                GovPhotoNavHost(modifier = Modifier.padding(innerPadding))
+                            }
                         }
                     }
                 }
             }
         }
+
+        // Show interstitial ads while the user is actively using the app,
+        // independent of the Save button (which only triggers rewarded ads).
+        scheduleAppUsageInterstitial(adEntryPoint?.interstitialController())
     }
 
-    private fun initializeMobileAds() {
+    private fun initializeMobileAds(){
         com.google.android.gms.ads.MobileAds.initialize(this)
         // Single consolidated AdMob config dump so a "why is my banner not
         // filling" investigation only needs `adb logcat | grep GovPhotoAd`.
@@ -176,9 +199,9 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         runCatching {
-            dagger.hilt.android.EntryPointAccessors.fromApplication(
+            EntryPointAccessors.fromApplication(
                 applicationContext,
-                AdsManagerEntryPoint::class.java,
+                AdEntryPoint::class.java,
             ).adsManager().resume()
         }
     }
@@ -186,9 +209,9 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         runCatching {
-            dagger.hilt.android.EntryPointAccessors.fromApplication(
+            EntryPointAccessors.fromApplication(
                 applicationContext,
-                AdsManagerEntryPoint::class.java,
+                AdEntryPoint::class.java,
             ).adsManager().pause()
         }
     }
@@ -203,10 +226,29 @@ class MainActivity : ComponentActivity() {
         super.onTrimMemory(level)
         if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
             runCatching {
-                dagger.hilt.android.EntryPointAccessors.fromApplication(
+                EntryPointAccessors.fromApplication(
                     applicationContext,
-                    AdsManagerEntryPoint::class.java,
+                    AdEntryPoint::class.java,
                 ).adsManager().pause()
+            }
+        }
+    }
+
+    /**
+     * Loop while MainActivity is alive: wait an initial 2-minute grace period,
+     * then attempt an interstitial every 3 minutes of foreground time. The
+     * InterstitialController guards against actual display unless an ad is
+     * loaded and no other full-screen ad is currently showing.
+     */
+    private fun scheduleAppUsageInterstitial(controller: com.dhanuk.govphoto.data.ads.InterstitialController?) {
+        if (controller == null) return
+        lifecycleScope.launch {
+            delay(APP_USAGE_INITIAL_DELAY_MS)
+            while (true) {
+                if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                    controller.tryShowAppUsage(this@MainActivity)
+                }
+                delay(APP_USAGE_INTERVAL_MS)
             }
         }
     }
@@ -226,10 +268,9 @@ class MainActivity : ComponentActivity() {
         config.setLocale(locale)
         return base.createConfigurationContext(config) ?: base
     }
-}
 
-@dagger.hilt.EntryPoint
-@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
-private interface AdsManagerEntryPoint {
-    fun adsManager(): com.dhanuk.govphoto.data.ads.AdsManager
+    companion object {
+        private const val APP_USAGE_INITIAL_DELAY_MS = 120_000L
+        private const val APP_USAGE_INTERVAL_MS = 180_000L
+    }
 }

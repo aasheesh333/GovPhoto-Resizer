@@ -27,7 +27,6 @@ import com.dhanuk.govphoto.BuildConfig
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.data.datastore.AppLanguage
 import com.dhanuk.govphoto.data.datastore.DarkModePref
-import com.dhanuk.govphoto.ui.ads.BannerAd
 import com.dhanuk.govphoto.ui.viewmodel.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -364,11 +363,6 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
             }
-            BannerAd(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-            )
         }
     }
 }

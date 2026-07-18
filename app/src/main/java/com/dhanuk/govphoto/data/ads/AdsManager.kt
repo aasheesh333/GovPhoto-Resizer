@@ -25,22 +25,21 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Central ads coordinator. Owns a SINGLE banner [AdView] for the whole app so the
- * banner is loaded ONCE and reused across screens — navigating between screens no
- * longer fires a fresh ad request each time (the previous per-screen BannerAd
- * created a new AdView + loadAd on every screen entry).
+ * Central ads coordinator. Owns a SINGLE banner [AdView] for the whole app.
  *
  * Responsibilities:
- *  - Lazy-create + load the banner once, gated on UMP [canRequestAds] and
- *    [AdsRepository.isAdFree].
- *  - Retry failed loads with increasing backoff (5s, 15s, 45s), then stop.
- *  - Expose [bannerState] so the UI can collapse to 0dp until an ad is loaded
- *    (no empty white box) and expand to 50dp only when Loaded.
+ *  - Lazy-create + load the banner once.
+ *  - Keep the banner in MainActivity's root, never per-screen, so navigation
+ *    between screens does NOT reload it.
+ *  - Auto-retry failures with long, throttling-safe intervals (30s, 60s, 120s).
+ *  - Silently auto-rotate the banner every [AUTO_REFRESH_MS]. Silent refreshes
+ *    keep the previous ad visible if the new request fails, so the user never
+ *    sees an empty white box during a refresh.
+ *  - Expose [bannerState] so the UI collapses to 0dp until an ad is loaded
+ *    and expands to 50dp only when Loaded (no white gap).
  *  - App-level lifecycle (resume/pause/destroy) wired from MainActivity.
- *  - Verbose lifecycle logs via the "AdsManager" tag — when the banner
- *    "isn't loading", `adb logcat | grep AdsManager` is the single answer.
  *
- * Interstitials remain in [InterstitialController] (rate-limited per save).
+ * Interstitials remain in [InterstitialController] (rate-limited per app usage).
  */
 @Singleton
 class AdsManager @Inject constructor(
@@ -74,8 +73,10 @@ class AdsManager @Inject constructor(
 
     private var bannerAdView: AdView? = null
     private var retryJob: Job? = null
+    private var autoRefreshJob: Job? = null
     private var retryCount = 0
     private var destroyed = false
+    private var lastLoadWasSilent = false
     private var lastErrorCode: Int? = null
     private var lastErrorMessage: String? = null
     private var lastErrorDomain: String? = null
@@ -161,19 +162,28 @@ class AdsManager @Inject constructor(
                     lastErrorCode = null
                     lastErrorMessage = null
                     lastErrorDomain = null
+                    lastLoadWasSilent = false
                     retryJob?.cancel()
                     _bannerState.value = BannerState.Loaded
                     updateDiagnostic()
+                    scheduleAutoRefresh()
                 }
 
                 override fun onAdFailedToLoad(error: LoadAdError) {
                     lastErrorCode = error.code
                     lastErrorDomain = error.domain ?: ""
                     lastErrorMessage = error.message ?: ""
-                    logw { "onAdFailedToLoad: code=$lastErrorCode domain=$lastErrorDomain message=$lastErrorMessage (NO_FILL=3 usually means the banner unit ID does not belong to this AdMob app account)" }
-                    _bannerState.value = BannerState.Failed
-                    updateDiagnostic()
-                    scheduleRetry()
+                    if (lastLoadWasSilent) {
+                        logw { "silent refresh failed: code=$lastErrorCode domain=$lastErrorDomain message=$lastErrorMessage; keeping previous banner" }
+                        lastLoadWasSilent = false
+                        // Failed silent refresh doesn't collapse the UI.
+                        scheduleAutoRefresh(delayMs = AUTO_REFRESH_ON_FAILURE_MS)
+                    } else {
+                        logw { "onAdFailedToLoad: code=$lastErrorCode domain=$lastErrorDomain message=$lastErrorMessage (NO_FILL=3 usually means the banner unit ID does not belong to this AdMob app account)" }
+                        _bannerState.value = BannerState.Failed
+                        updateDiagnostic()
+                        scheduleRetry()
+                    }
                 }
             }
         }
@@ -221,26 +231,45 @@ class AdsManager @Inject constructor(
         loadBanner()
     }
 
-    private fun loadBanner() {
+    private fun loadBanner(silent: Boolean = false) {
         retryJob?.cancel()
-        _bannerState.value = BannerState.Loading
-        logi { "loadBanner: requesting banner" }
+        if (silent) {
+            lastLoadWasSilent = true
+            logi { "silent refresh banner" }
+        } else {
+            lastLoadWasSilent = false
+            _bannerState.value = BannerState.Loading
+            logi { "loadBanner: requesting banner" }
+            updateDiagnostic()
+        }
         bannerAdView?.loadAd(AdRequest.Builder().build())
-        updateDiagnostic()
     }
 
     private fun scheduleRetry() {
-        if (destroyed || retryCount >= MAX_RETRIES) return
+        if (destroyed) return
         retryCount++
         val delayMs = when (retryCount) {
-            1 -> 5_000L
-            2 -> 15_000L
-            else -> 45_000L
+            1 -> 30_000L
+            2 -> 60_000L
+            else -> 120_000L
         }
         logi { "scheduleRetry attempt=$retryCount in ${delayMs}ms" }
         retryJob = scope.launch {
             delay(delayMs)
-            if (!destroyed && !shouldSkipAds()) loadBanner()
+            if (!destroyed && !shouldSkipAds()) loadBanner(silent = false)
+        }
+    }
+
+    /**
+     * Silently refresh the banner every [AUTO_REFRESH_MS] when it is Loaded.
+     * A silent refresh keeps showing the previous ad if the new request fails,
+     * so the user never sees a white box during a refresh.
+     */
+    private fun scheduleAutoRefresh(delayMs: Long = AUTO_REFRESH_MS) {
+        autoRefreshJob?.cancel()
+        autoRefreshJob = scope.launch {
+            delay(delayMs)
+            if (!destroyed && !shouldSkipAds()) loadBanner(silent = true)
         }
     }
 
@@ -290,6 +319,7 @@ class AdsManager @Inject constructor(
     fun destroy() {
         destroyed = true
         retryJob?.cancel()
+        autoRefreshJob?.cancel()
         bannerAdView?.destroy()
         bannerAdView = null
         _bannerState.value = BannerState.Disabled
@@ -304,6 +334,7 @@ class AdsManager @Inject constructor(
     private inline fun loge(msg: () -> String) { android.util.Log.e(tag, msg()) }
 
     companion object {
-        private const val MAX_RETRIES = 3
+        private const val AUTO_REFRESH_MS = 60_000L
+        private const val AUTO_REFRESH_ON_FAILURE_MS = 120_000L
     }
 }

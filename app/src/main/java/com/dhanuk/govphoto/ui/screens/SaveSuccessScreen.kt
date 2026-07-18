@@ -51,8 +51,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.dhanuk.govphoto.R
-import com.dhanuk.govphoto.data.ads.InterstitialController
-import com.dhanuk.govphoto.ui.ads.BannerAd
+import com.dhanuk.govphoto.ui.ads.AdEntryPoint
 import com.dhanuk.govphoto.ui.components.GovButton
 import com.dhanuk.govphoto.ui.components.GovOutlinedButton
 import com.dhanuk.govphoto.ui.viewmodel.SharedPhotoViewModel
@@ -99,27 +98,22 @@ fun SaveSuccessScreen(
 
     val activity = context as? android.app.Activity
     LaunchedEffect(Unit) {
-        // Mark save count + show interstitial + show rewarded (each controller
-        // enforces its own 2-minute cooldown and per-session cap). Both fire
-        // through `tryShow` which no-ops when the gate / rate limit blocks.
+        // Save triggers ONLY a rewarded ad. The rewarded controller enforces the
+        // 2-minute cooldown, so if the user saves many photos quickly only one
+        // rewarded ad is shown. Interstitials are handled separately by app
+        // usage time in MainActivity.
         val entry = runCatching {
             EntryPointAccessors.fromApplication(
                 context.applicationContext,
-                SaveSuccessAdEntryPoint::class.java,
+                AdEntryPoint::class.java,
             )
         }.getOrNull() ?: return@LaunchedEffect
-        val interstitial = entry.interstitialController()
         val rewarded = entry.rewardedAdController()
-        interstitial.recordSaveReceived()
         rewarded.recordSaveReceived()
-        // Slight delay so the success screen paints before any full-screen ad
+        // Slight delay so the success screen paints before the full-screen ad
         // tries to show.
         kotlinx.coroutines.delay(300)
         activity?.let { act ->
-            interstitial.tryShow(act)
-            // Rewarded ad sits on top of the interstitial (will not actually
-            // stack because the OS only shows one full-screen ad at a time;
-            // the second tryShow is a no-op until the interstitial dismisses).
             rewarded.tryShow(act) {
                 // User watched the rewarded ad to completion. Today we just
                 // log it — there's no in-app content gated on this reward yet.
@@ -299,19 +293,7 @@ fun SaveSuccessScreen(
                     enabled = processedImageUri != null
                 )
             }
-            BannerAd(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-            )
         }
     }
 }
-}
 
-@dagger.hilt.EntryPoint
-@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
-interface SaveSuccessAdEntryPoint {
-    fun interstitialController(): com.dhanuk.govphoto.data.ads.InterstitialController
-    fun rewardedAdController(): com.dhanuk.govphoto.data.ads.RewardedAdController
-}
