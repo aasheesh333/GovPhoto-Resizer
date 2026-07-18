@@ -68,12 +68,12 @@ class AdsManager @Inject constructor(
     init {
         // One-line constructor snapshot so a 'banner not loading' investigation
         // starts with the truth about which variant / unit is wired.
-        android.util.Log.i(
-            tag,
-            "init: variant=${if (BuildConfig.DEBUG) "debug" else "release"} " +
-                "forceNoAds=${BuildConfig.FORCE_NO_ADS} isAdFree=${adsRepository.isAdFree.value} " +
-                "bannerUnit=${BuildConfig.ADMOB_BANNER_UNIT} canRequestAds=${canRequestAds()}"
-        )
+        val summary = "init: variant=${if (BuildConfig.DEBUG) "debug" else "release"} " +
+            "forceNoAds=${BuildConfig.FORCE_NO_ADS} " +
+            "isAdFree=${adsRepository.isAdFree.value} " +
+            "bannerUnit=${BuildConfig.ADMOB_BANNER_UNIT} " +
+            "canRequestAds=${canRequestAds()}"
+        android.util.Log.i(tag, summary)
     }
 
     private fun createBannerAdView(): AdView =
@@ -91,13 +91,12 @@ class AdsManager @Inject constructor(
                 }
 
                 override fun onAdFailedToLoad(error: LoadAdError) {
-                    android.util.Log.w(
-                        tag,
-                        "onAdFailedToLoad: code=${error.code} domain=${error.domain} " +
-                            "message=${error.message} (NO_FILL=3 means unit doesn't " +
-                            "serve ads for this app account; check the unit ID belongs " +
-                            "to the same AdMob account as ${BuildConfig.ADMOB_APP_ID})"
-                    )
+                    val msg = "onAdFailedToLoad: code=${error.code} " +
+                        "domain=${error.domain} message=${error.message} " +
+                        "(NO_FILL=3 means the unit does not serve ads for this app " +
+                        "account; check the banner unit ID belongs to the same AdMob " +
+                        "account as ${BuildConfig.ADMOB_APP_ID})"
+                    android.util.Log.w(tag, msg)
                     _bannerState.value = BannerState.Failed
                     scheduleRetry()
                 }
