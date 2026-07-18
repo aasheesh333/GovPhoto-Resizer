@@ -37,6 +37,8 @@ import javax.inject.Singleton
  *  - Expose [bannerState] so the UI can collapse to 0dp until an ad is loaded
  *    (no empty white box) and expand to 50dp only when Loaded.
  *  - App-level lifecycle (resume/pause/destroy) wired from MainActivity.
+ *  - Verbose lifecycle logs via the "AdsManager" tag — when the banner
+ *    "isn't loading", `adb logcat | grep AdsManager` is the single answer.
  *
  * Interstitials remain in [InterstitialController] (rate-limited per save).
  */
@@ -46,6 +48,8 @@ class AdsManager @Inject constructor(
     private val adsRepository: AdsRepository,
 ) {
     enum class BannerState { Disabled, Loading, Loaded, Failed }
+
+    private val tag = "AdsManager"
 
     private val _bannerState = MutableStateFlow(BannerState.Disabled)
     val bannerState: StateFlow<BannerState> = _bannerState.asStateFlow()
@@ -57,9 +61,20 @@ class AdsManager @Inject constructor(
 
     private val scope = CoroutineScope(
         Dispatchers.Main.immediate + SupervisorJob() + CoroutineExceptionHandler { _, t ->
-            android.util.Log.e("AdsManager", "scope error", t)
+            android.util.Log.e(tag, "scope error", t)
         }
     )
+
+    init {
+        // One-line constructor snapshot so a 'banner not loading' investigation
+        // starts with the truth about which variant / unit is wired.
+        android.util.Log.i(
+            tag,
+            "init: variant=${if (BuildConfig.DEBUG) "debug" else "release"} " +
+                "forceNoAds=${BuildConfig.FORCE_NO_ADS} isAdFree=${adsRepository.isAdFree.value} " +
+                "bannerUnit=${BuildConfig.ADMOB_BANNER_UNIT} canRequestAds=${canRequestAds()}"
+        )
+    }
 
     private fun createBannerAdView(): AdView =
         AdView(context).apply {
@@ -69,20 +84,37 @@ class AdsManager @Inject constructor(
             setBackgroundColor(Color.TRANSPARENT)
             adListener = object : AdListener() {
                 override fun onAdLoaded() {
+                    android.util.Log.i(tag, "onAdLoaded: unit=${BuildConfig.ADMOB_BANNER_UNIT}")
                     retryCount = 0
                     retryJob?.cancel()
                     _bannerState.value = BannerState.Loaded
                 }
 
                 override fun onAdFailedToLoad(error: LoadAdError) {
+                    android.util.Log.w(
+                        tag,
+                        "onAdFailedToLoad: code=${error.code} domain=${error.domain} " +
+                            "message=${error.message} (NO_FILL=3 means unit doesn't " +
+                            "serve ads for this app account; check the unit ID belongs " +
+                            "to the same AdMob account as ${BuildConfig.ADMOB_APP_ID})"
+                    )
                     _bannerState.value = BannerState.Failed
                     scheduleRetry()
                 }
             }
         }
 
-    private fun shouldSkipAds(): Boolean =
-        BuildConfig.DEBUG || BuildConfig.FORCE_NO_ADS || adsRepository.isAdFree.value
+    private fun shouldSkipAds(): Boolean {
+        val skip = BuildConfig.DEBUG || BuildConfig.FORCE_NO_ADS || adsRepository.isAdFree.value
+        if (skip) {
+            android.util.Log.d(
+                tag,
+                "shouldSkipAds=true (debug=${BuildConfig.DEBUG} " +
+                    "forceNoAds=${BuildConfig.FORCE_NO_ADS} isAdFree=${adsRepository.isAdFree.value})"
+            )
+        }
+        return skip
+    }
 
     private fun canRequestAds(): Boolean = runCatching {
         UserMessagingPlatform.getConsentInformation(context).canRequestAds()
@@ -104,8 +136,18 @@ class AdsManager @Inject constructor(
     /** Kick off the banner load if not already loaded/loading. Cheap when loaded. */
     @Synchronized
     fun ensureBannerLoaded() {
-        if (destroyed || shouldSkipAds() || !canRequestAds()) return
-        if (bannerAdView == null) bannerAdView = createBannerAdView()
+        if (destroyed || shouldSkipAds() || !canRequestAds()) {
+            android.util.Log.d(
+                tag,
+                "ensureBannerLoaded: skip " +
+                    "(destroyed=$destroyed skipAds=${shouldSkipAds()} canRequest=${canRequestAds()})"
+            )
+            return
+        }
+        if (bannerAdView == null) {
+            bannerAdView = createBannerAdView()
+            android.util.Log.i(tag, "created shared banner AdView parent=${bannerAdView?.parent}")
+        }
         if (_bannerState.value == BannerState.Loaded) return
         if (_bannerState.value == BannerState.Loading) return
         loadBanner()
@@ -114,6 +156,7 @@ class AdsManager @Inject constructor(
     private fun loadBanner() {
         retryJob?.cancel()
         _bannerState.value = BannerState.Loading
+        android.util.Log.i(tag, "loadBanner: requesting unit=${BuildConfig.ADMOB_BANNER_UNIT}")
         bannerAdView?.loadAd(AdRequest.Builder().build())
     }
 
@@ -125,6 +168,7 @@ class AdsManager @Inject constructor(
             2 -> 15_000L
             else -> 45_000L
         }
+        android.util.Log.i(tag, "scheduleRetry attempt=$retryCount in ${delayMs}ms")
         retryJob = scope.launch {
             delay(delayMs)
             if (!destroyed && !shouldSkipAds() && canRequestAds()) loadBanner()
@@ -133,7 +177,10 @@ class AdsManager @Inject constructor(
 
     /** Called from MainActivity once UMP consent completes so the banner can
      *  start loading without waiting for a screen to mount BannerAd. */
-    fun onConsentReady() { ensureBannerLoaded() }
+    fun onConsentReady() {
+        android.util.Log.i(tag, "onConsentReady")
+        ensureBannerLoaded()
+    }
 
     /** Detach the shared AdView from any prior parent so a new screen's AndroidView
      *  can re-host it. AdView allows only one parent at a time. */
