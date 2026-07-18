@@ -27,6 +27,7 @@ import com.dhanuk.govphoto.BuildConfig
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.data.datastore.AppLanguage
 import com.dhanuk.govphoto.data.datastore.DarkModePref
+import com.dhanuk.govphoto.ui.ads.GlobalBannerAd
 import com.dhanuk.govphoto.ui.diagnostics.PushDiagnosticsDialog
 import com.dhanuk.govphoto.ui.diagnostics.PushEntryPoint
 import com.dhanuk.govphoto.ui.viewmodel.SettingsViewModel
@@ -391,6 +392,9 @@ fun SettingsScreen(
                     }
                 )
             }
+
+            // Shared banner slot at the bottom of settings.
+            GlobalBannerAd()
 
             Spacer(modifier = Modifier.height(32.dp))
             }

@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.data.datastore.AppLanguage
+import com.dhanuk.govphoto.ui.ads.GlobalBannerAd
 import com.dhanuk.govphoto.ui.theme.*
 import com.dhanuk.govphoto.ui.viewmodel.HomeViewModel
 import com.dhanuk.govphoto.ui.viewmodel.RecentPresetUiItem
@@ -100,6 +101,10 @@ fun HomeScreen(
                 
                 Spacer(modifier = Modifier.height(80.dp))
             }
+
+            // Shared banner slot — placed above the per-screen bottom nav so it
+            // is never hidden behind the navigation bar.
+            GlobalBannerAd()
         }
     }
 }

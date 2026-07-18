@@ -7,9 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
@@ -23,7 +21,6 @@ import com.dhanuk.govphoto.BuildConfig
 import com.dhanuk.govphoto.data.datastore.DarkModePref
 import com.dhanuk.govphoto.ui.navigation.GovPhotoNavHost
 import com.dhanuk.govphoto.ui.ads.AdEntryPoint
-import com.dhanuk.govphoto.ui.ads.GlobalBannerAd
 import com.dhanuk.govphoto.ui.components.NotificationPermissionGate
 import com.dhanuk.govphoto.ui.theme.GovPhotoTheme
 import com.dhanuk.govphoto.ui.theme.LocalAppLanguage
@@ -144,14 +141,8 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        Scaffold(
-                            modifier = Modifier.fillMaxSize(),
-                            containerColor = MaterialTheme.colorScheme.background,
-                            bottomBar = { GlobalBannerAd() }
-                        ) { innerPadding ->
-                            NotificationPermissionGate(settingsViewModel = settingsViewModel) {
-                                GovPhotoNavHost(modifier = Modifier.padding(innerPadding))
-                            }
+                        NotificationPermissionGate(settingsViewModel = settingsViewModel) {
+                            GovPhotoNavHost()
                         }
                     }
                 }
