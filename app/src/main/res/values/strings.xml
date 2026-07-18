@@ -320,5 +320,11 @@
     <string name="paywall_tier_weekly">Weekly</string>
     <string name="paywall_tier_monthly">Monthly</string>
     <string name="paywall_tier_annual">Annual</string>
+
+    <!-- Ad diagnostics in-app dialog (adb logcat unavailable on user device) -->
+    <string name="ad_status_title">Ad status</string>
+    <string name="ad_diagnostics">Ad diagnostics</string>
+    <string name="refresh">Refresh</string>
+    <string name="close">Close</string>
 </resources>
 

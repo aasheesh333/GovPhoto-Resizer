@@ -320,5 +320,11 @@
     <string name="paywall_tier_weekly">साप्ताहिक</string>
     <string name="paywall_tier_monthly">मासिक</string>
     <string name="paywall_tier_annual">वार्षिक</string>
+
+    <!-- Ad diagnostics in-app dialog (adb logcat unavailable on user device) -->
+    <string name="ad_status_title">विज्ञापन स्थिति</string>
+    <string name="ad_diagnostics">विज्ञापन निदान</string>
+    <string name="refresh">ताज़ा करें</string>
+    <string name="close">बंद करें</string>
 </resources>
 

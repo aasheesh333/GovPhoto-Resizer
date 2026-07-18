@@ -38,6 +38,8 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val settings by viewModel.state.collectAsState()
+    val adInfo by viewModel.adDiagnosticInfo.collectAsState()
+    var showAdDiagnostics by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val sharedPreferences = remember { context.getSharedPreferences("govphoto_settings", android.content.Context.MODE_PRIVATE) }
     var preventScreenshots by remember { mutableStateOf(sharedPreferences.getBoolean("prevent_screenshots", false)) }
@@ -330,6 +332,21 @@ fun SettingsScreen(
                             android.widget.Toast.makeText(context, "Could not share crash log", android.widget.Toast.LENGTH_SHORT).show()
                         }
                     }
+                )
+
+                SettingsItem(
+                    icon = Icons.Default.Build,
+                    title = stringResource(R.string.ad_diagnostics),
+                    subtitle = "Inspect why banner / interstitial / rewarded ads may not load",
+                    onClick = { showAdDiagnostics = true }
+                )
+            }
+
+            if (showAdDiagnostics) {
+                com.dhanuk.govphoto.ui.components.AdDiagnosticsDialog(
+                    info = adInfo,
+                    onDismiss = { showAdDiagnostics = false },
+                    onRefresh = { viewModel.refreshAdDiagnostics() }
                 )
             }
 

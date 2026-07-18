@@ -49,6 +49,22 @@ class AdsManager @Inject constructor(
 ) {
     enum class BannerState { Disabled, Loading, Loaded, Failed }
 
+    data class DiagnosticInfo(
+        val variant: String,
+        val forceNoAds: Boolean,
+        val isAdFree: Boolean,
+        val appId: String,
+        val bannerUnitId: String,
+        val bannerState: BannerState,
+        val canRequestAds: Boolean,
+        val lastErrorCode: Int?,
+        val lastErrorMessage: String?,
+        val lastErrorDomain: String?,
+        val retryCount: Int,
+        val destroyed: Boolean,
+        val warning: String?,
+    )
+
     private val tag = "AdsManager"
 
     private val _bannerState = MutableStateFlow(BannerState.Disabled)
@@ -58,6 +74,12 @@ class AdsManager @Inject constructor(
     private var retryJob: Job? = null
     private var retryCount = 0
     private var destroyed = false
+    private var lastErrorCode: Int? = null
+    private var lastErrorMessage: String? = null
+    private var lastErrorDomain: String? = null
+
+    private val _diagnosticInfo = MutableStateFlow(buildDiagnosticInfo())
+    val diagnosticInfo: StateFlow<DiagnosticInfo> = _diagnosticInfo.asStateFlow()
 
     private val scope = CoroutineScope(
         Dispatchers.Main.immediate + SupervisorJob() + CoroutineExceptionHandler { _, t ->
@@ -73,6 +95,48 @@ class AdsManager @Inject constructor(
         val adFree = adsRepository.isAdFree.value
         val consent = canRequestAds()
         logi { "init: variant=$variant forceNoAds=$noAds isAdFree=$adFree consent=$consent" }
+        updateDiagnostic()
+    }
+
+    private fun buildDiagnosticInfo(): DiagnosticInfo {
+        val demoPrefix = "ca-app-pub-3940256099942544"
+        val appId = BuildConfig.ADMOB_APP_ID
+        val bannerUnit = BuildConfig.ADMOB_BANNER_UNIT
+        val appIsDemo = appId.startsWith(demoPrefix)
+        val bannerIsDemo = bannerUnit.startsWith(demoPrefix)
+        val warning = when {
+            !appIsDemo && bannerIsDemo ->
+                "Real app ID is used but banner unit ID is Google's demo ID. " +
+                    "Set the real ADMOB_BANNER_UNIT secret."
+            appIsDemo && !bannerIsDemo ->
+                "Demo app ID is used but banner unit ID is real. Either both " +
+                    "should be real (release) or both demo (local testing)."
+            else -> null
+        }
+        return DiagnosticInfo(
+            variant = if (BuildConfig.DEBUG) "debug" else "release",
+            forceNoAds = BuildConfig.FORCE_NO_ADS,
+            isAdFree = adsRepository.isAdFree.value,
+            appId = maskId(appId),
+            bannerUnitId = maskId(bannerUnit),
+            bannerState = _bannerState.value,
+            canRequestAds = canRequestAds(),
+            lastErrorCode = lastErrorCode,
+            lastErrorMessage = lastErrorMessage,
+            lastErrorDomain = lastErrorDomain,
+            retryCount = retryCount,
+            destroyed = destroyed,
+            warning = warning,
+        )
+    }
+
+    private fun maskId(id: String): String {
+        val tail = id.substringAfterLast("/", "").takeLast(6)
+        return if (tail.isNotEmpty()) "...$tail" else id.take(12) + "..."
+    }
+
+    private fun updateDiagnostic() {
+        _diagnosticInfo.value = buildDiagnosticInfo()
     }
 
     private fun createBannerAdView(): AdView =
@@ -85,16 +149,21 @@ class AdsManager @Inject constructor(
                 override fun onAdLoaded() {
                     logi { "onAdLoaded" }
                     retryCount = 0
+                    lastErrorCode = null
+                    lastErrorMessage = null
+                    lastErrorDomain = null
                     retryJob?.cancel()
                     _bannerState.value = BannerState.Loaded
+                    updateDiagnostic()
                 }
 
                 override fun onAdFailedToLoad(error: LoadAdError) {
-                    val code = error.code
-                    val domain = error.domain ?: ""
-                    val msg = error.message ?: ""
-                    logw { "onAdFailedToLoad: code=$code domain=$domain message=$msg (NO_FILL=3 usually means the banner unit ID does not belong to this AdMob app account)" }
+                    lastErrorCode = error.code
+                    lastErrorDomain = error.domain ?: ""
+                    lastErrorMessage = error.message ?: ""
+                    logw { "onAdFailedToLoad: code=$lastErrorCode domain=$lastErrorDomain message=$lastErrorMessage (NO_FILL=3 usually means the banner unit ID does not belong to this AdMob app account)" }
                     _bannerState.value = BannerState.Failed
+                    updateDiagnostic()
                     scheduleRetry()
                 }
             }
@@ -130,12 +199,14 @@ class AdsManager @Inject constructor(
     fun ensureBannerLoaded() {
         if (destroyed || shouldSkipAds() || !canRequestAds()) {
             logd { "ensureBannerLoaded skip destroyed=$destroyed skipAds=${shouldSkipAds()} canRequest=${canRequestAds()}" }
+            updateDiagnostic()
             return
         }
         if (bannerAdView == null) {
             bannerAdView = createBannerAdView()
             logi { "created shared banner AdView" }
         }
+        updateDiagnostic()
         if (_bannerState.value == BannerState.Loaded) return
         if (_bannerState.value == BannerState.Loading) return
         loadBanner()
@@ -146,6 +217,7 @@ class AdsManager @Inject constructor(
         _bannerState.value = BannerState.Loading
         logi { "loadBanner: requesting banner" }
         bannerAdView?.loadAd(AdRequest.Builder().build())
+        updateDiagnostic()
     }
 
     private fun scheduleRetry() {
@@ -170,6 +242,9 @@ class AdsManager @Inject constructor(
         ensureBannerLoaded()
     }
 
+    /** Refresh the cached diagnostic snapshot (called from the in-app status UI). */
+    fun refreshDiagnosticInfo() { updateDiagnostic() }
+
     /** Detach the shared AdView from any prior parent so a new screen's AndroidView
      *  can re-host it. AdView allows only one parent at a time. */
     fun reparent(adView: AdView) {
@@ -186,6 +261,7 @@ class AdsManager @Inject constructor(
         bannerAdView?.destroy()
         bannerAdView = null
         _bannerState.value = BannerState.Disabled
+        updateDiagnostic()
     }
 
     // Helpers that avoid the android.util.Log overload-resolution issues seen

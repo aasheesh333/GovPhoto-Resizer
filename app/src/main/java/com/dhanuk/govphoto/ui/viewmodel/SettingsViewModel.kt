@@ -15,10 +15,15 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val repo: SettingsRepository
+    private val repo: SettingsRepository,
+    val adsManager: com.dhanuk.govphoto.data.ads.AdsManager,
 ) : ViewModel() {
     val state: StateFlow<SettingsState> = repo.state.stateIn(
         viewModelScope, SharingStarted.Eagerly, SettingsState()
+    )
+
+    val adDiagnosticInfo = adsManager.diagnosticInfo.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), adsManager.diagnosticInfo.value
     )
 
     fun setLanguage(lang: AppLanguage) = viewModelScope.launch { repo.setLanguage(lang) }
@@ -44,4 +49,5 @@ class SettingsViewModel @Inject constructor(
     fun setCachedIsPro(cached: Boolean) = viewModelScope.launch { repo.setCachedIsPro(cached) }
     fun setAdFreeUntilMs(untilMs: Long) = viewModelScope.launch { repo.setAdFreeUntilMs(untilMs) }
     fun recordSave() = viewModelScope.launch { repo.bumpSaveCount() }
+    fun refreshAdDiagnostics() = adsManager.refreshDiagnosticInfo()
 }
