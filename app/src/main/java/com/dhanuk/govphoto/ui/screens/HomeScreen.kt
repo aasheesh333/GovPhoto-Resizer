@@ -625,7 +625,7 @@ private fun ProBannerHost(
         runCatching {
             dagger.hilt.android.EntryPointAccessors.fromApplication(
                 context.applicationContext,
-                com.dhanuk.govphoto.GovPhotoApp.GovPhotoAppEntryPoint::class.java,
+                com.dhanuk.govphoto.GovPhotoAppEntryPoint::class.java,
             )
         }.getOrNull()
     } ?: return

@@ -3,7 +3,7 @@
     <string name="app_name">GovPhoto Resizer</string>
     <string name="app_tagline">Resize photos for all government forms</string>
     <string name="security_note">No photo stored without permission</string>
-    
+
     <!-- Home Screen -->
     <string name="quick_upload">Quick Upload</string>
     <string name="auto_detect_requirements">Auto-detect requirements</string>
@@ -322,13 +322,17 @@
     <string name="home_pro_banner_dismiss">Dismiss Pro banner</string>
 
     <!-- Settings sign-in / account section -->
-    <string name="signin_section">Account</string>
-    <string name="signin_google">Sign in with Google</string>
-    <string name="signin_google_subtitle">Keep your Pro plan when you switch devices</string>
-    <string name="signin_signed_in_as">Signed in as %1$s</string>
-    <string name="signin_sign_out">Sign out</string>
-    <string name="signin_restore_purchases">Restore purchases</string>
-    <string name="signin_failed">Sign-in failed: %1$s</string>
+    <string name="restore_section">Account</string>
+    <string name="restore_title">Stay Pro on any device</string>
+    <string name="restore_subtitle">Sign in with your email to keep your Pro plan when switching devices</string>
+    <string name="restore_email_label">Your recovery email</string>
+    <string name="restore_invalid_email">Enter a valid email address</string>
+    <string name="restore_button">Restore purchases</string>
+    <string name="restore_signed_in_as">Signed in as</string>
+    <string name="restore_success">Pro plan restored</string>
+    <string name="restore_failed">Restore failed: %1$s</string>
+    <string name="restore_signed_out">Signed out</string>
+    <string name="restore_sign_out">Sign out</string>
 
     <!-- Settings top Pro plan CTA card -->
     <string name="pro_card_title">Go Pro</string>

@@ -322,13 +322,17 @@
     <string name="home_pro_banner_dismiss">Pro बैनर बंद करें</string>
 
     <!-- Settings sign-in / account section -->
-    <string name="signin_section">खाता</string>
-    <string name="signin_google">Google से साइन इन करें</string>
-    <string name="signin_google_subtitle">दूसरे डिवाइस पर Pro प्लान बनाए रखें</string>
-    <string name="signin_signed_in_as">%1$s के रूप में साइन इन</string>
-    <string name="signin_sign_out">साइन आउट</string>
-    <string name="signin_restore_purchases">खरीदारी बहाल करें</string>
-    <string name="signin_failed">साइन इन विफल: %1$s</string>
+    <string name="restore_section">खाता</string>
+    <string name="restore_title">किसी भी डिवाइस पर Pro बनें रहें</string>
+    <string name="restore_subtitle">डिवाइस बदलने पर भी Pro प्लान रखने के लिए अपने ईमेल से साइन इन करें</string>
+    <string name="restore_email_label">आपका रिकवरी ईमेल</string>
+    <string name="restore_invalid_email">सही ईमेल पता डालें</string>
+    <string name="restore_button">खरीदारी बहाल करें</string>
+    <string name="restore_signed_in_as">के रूप में साइन इन</string>
+    <string name="restore_success">Pro प्लान बहाल हो गया</string>
+    <string name="restore_failed">बहाली विफल: %1$s</string>
+    <string name="restore_signed_out">साइन आउट हो गया</string>
+    <string name="restore_sign_out">साइन आउट</string>
 
     <!-- Settings top Pro plan CTA card -->
     <string name="pro_card_title">Pro लें</string>

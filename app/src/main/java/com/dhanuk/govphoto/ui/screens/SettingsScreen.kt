@@ -84,8 +84,10 @@ fun SettingsScreen(
             )
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-            // Account / Sign-in — Google Sign-In restores Pro on another device.
-            com.dhanuk.govphoto.ui.settings.SignInSection()
+            // Account / Restore — RevenueCat-only email sign-in for cross-device
+            // Pro restoration. Users enter the same recovery email on a new
+            // device to pull across their Pro entitlement.
+            com.dhanuk.govphoto.ui.settings.RestorePurchasesSection()
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // Appearance Section
