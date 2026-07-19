@@ -36,14 +36,26 @@ class PaywallViewModel @Inject constructor(
         runCatching { subscriptionRepository.loadOfferings() }
             .onSuccess { offerings ->
                 val off = offerings.current ?: offerings.all.values.firstOrNull()
-                _state.value = PaywallUiState(
-                    loading = false,
-                    offering = off,
-                    subscribed = subscriptionRepository.isPro.value,
-                )
+                if (offerings.all.isEmpty()) {
+                    _state.value = _state.value.copy(
+                        loading = false,
+                        error = "No offerings found. Check RevenueCat dashboard → Offerings. API key may be wrong."
+                    )
+                } else {
+                    _state.value = PaywallUiState(
+                        loading = false,
+                        offering = off,
+                        subscribed = subscriptionRepository.isPro.value,
+                    )
+                }
             }
             .onFailure { e ->
-                _state.value = _state.value.copy(loading = false, error = e.message ?: "Failed to load plans")
+                val msg = when (e) {
+                    is com.revenuecat.purchases.PurchasesException ->
+                        "RC Error ${e.error.code}: ${e.error.message}\n${e.error.underlyingErrorMessage ?: ""}"
+                    else -> e.message ?: "Failed to load plans"
+                }
+                _state.value = _state.value.copy(loading = false, error = msg)
             }
     }
 
@@ -51,7 +63,14 @@ class PaywallViewModel @Inject constructor(
         _state.value = _state.value.copy(error = null)
         subscriptionRepository.purchase(activity, pkg)
             .onSuccess { onSuccess() }
-            .onFailure { e -> _state.value = _state.value.copy(error = e.message ?: "Purchase failed") }
+            .onFailure { e ->
+                val msg = when (e) {
+                    is com.revenuecat.purchases.PurchasesException ->
+                        "Purchase RC${e.error.code}: ${e.error.message}\n${e.error.underlyingErrorMessage ?: ""}"
+                    else -> e.message ?: "Purchase failed"
+                }
+                _state.value = _state.value.copy(error = msg)
+            }
     }
 
     fun restore(activity: android.app.Activity, onSuccess: () -> Unit) = viewModelScope.launch {
