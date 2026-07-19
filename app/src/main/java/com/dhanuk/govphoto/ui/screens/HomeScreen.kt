@@ -643,14 +643,7 @@ private fun ProBannerHost(
         engagement.stampInstallIfNeeded()
     }
 
-    val now = System.currentTimeMillis()
-    val oneDayMs = 24L * 60L * 60L * 1000L
-    val sevenDaysMs = 7L * oneDayMs
-
-    val showBanner = !isPro &&
-        engagementState.installMs > 0L &&
-        now - engagementState.installMs >= oneDayMs &&
-        (engagementState.bannerDismissedMs == 0L || now - engagementState.bannerDismissedMs >= sevenDaysMs)
+    val showBanner = !isPro && engagementState.installMs > 0L
 
     if (showBanner) {
         com.dhanuk.govphoto.ui.subscription.HomeProBanner(

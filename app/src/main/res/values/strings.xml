@@ -322,17 +322,11 @@
     <string name="home_pro_banner_dismiss">Dismiss Pro banner</string>
 
     <!-- Settings sign-in / account section -->
-    <string name="restore_section">Account</string>
-    <string name="restore_title">Stay Pro on any device</string>
-    <string name="restore_subtitle">Sign in with your email to keep your Pro plan when switching devices</string>
-    <string name="restore_email_label">Your recovery email</string>
-    <string name="restore_invalid_email">Enter a valid email address</string>
+    <string name="restore_section">Restore</string>
+    <string name="restore_title">Already purchased?</string>
+    <string name="restore_subtitle">If you\'ve already bought Pro on this Google account, tap below to restore it.</string>
     <string name="restore_button">Restore purchases</string>
-    <string name="restore_signed_in_as">Signed in as</string>
     <string name="restore_success">Pro plan restored</string>
-    <string name="restore_failed">Restore failed: %1$s</string>
-    <string name="restore_signed_out">Signed out</string>
-    <string name="restore_sign_out">Sign out</string>
 
     <!-- Settings top Pro plan CTA card -->
     <string name="pro_card_title">Go Pro</string>
