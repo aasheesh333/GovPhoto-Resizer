@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dhanuk.govphoto.GovPhotoApp
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.data.datastore.AppLanguage
 import com.dhanuk.govphoto.ui.ads.GlobalBannerAd
@@ -44,6 +45,7 @@ fun HomeScreen(
     onNavigateToUpload: (String) -> Unit,
     onNavigateToHistory: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToPaywall: () -> Unit = {},
     settingsViewModel: SettingsViewModel = hiltViewModel(),
     homeViewModel: HomeViewModel = hiltViewModel()
 ) {
@@ -79,6 +81,11 @@ fun HomeScreen(
             ) {
                 // Header Section
                 HomeHeader(settingsViewModel = settingsViewModel)
+
+                // Pro engagement banner (suppressed for Pro users and after dismiss).
+                ProBannerHost(
+                    onOpenPaywall = onNavigateToPaywall,
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -599,6 +606,59 @@ private fun BrowseAllFormsButton(onClick: () -> Unit) {
                 )
             )
         }
+    }
+}
+
+/**
+ * Reads engagement state + Pro status via Hilt EntryPoint and shows the
+ * compact HomeProBanner only when:
+ *  - user is NOT Pro
+ *  - at least 1 day has passed since first install (avoid jarring new users)
+ *  - user hasn't dismissed the banner in the last 7 days
+ */
+@Composable
+private fun ProBannerHost(
+    onOpenPaywall: () -> Unit,
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val entry = remember {
+        runCatching {
+            dagger.hilt.android.EntryPointAccessors.fromApplication(
+                context.applicationContext,
+                com.dhanuk.govphoto.GovPhotoApp.GovPhotoAppEntryPoint::class.java,
+            )
+        }.getOrNull()
+    } ?: return
+
+    val subRepo = entry.subscriptionRepository()
+    val engagement = entry.engagementStore()
+
+    val isPro by subRepo.isPro.collectAsState()
+    val engagementState by engagement.state.collectAsState(initial = com.dhanuk.govphoto.data.subscription.EngagementStore.State())
+
+    // Once-only stamp of install timestamp.
+    LaunchedEffect(Unit) {
+        engagement.stampInstallIfNeeded()
+    }
+
+    val now = System.currentTimeMillis()
+    val oneDayMs = 24L * 60L * 60L * 1000L
+    val sevenDaysMs = 7L * oneDayMs
+
+    val showBanner = !isPro &&
+        engagementState.installMs > 0L &&
+        now - engagementState.installMs >= oneDayMs &&
+        (engagementState.bannerDismissedMs == 0L || now - engagementState.bannerDismissedMs >= sevenDaysMs)
+
+    if (showBanner) {
+        com.dhanuk.govphoto.ui.subscription.HomeProBanner(
+            onOpenPaywall = onOpenPaywall,
+            onDismiss = {
+                kotlinx.coroutines.MainScope().launch {
+                    engagement.markBannerDismissed()
+                }
+            },
+        )
     }
 }
 

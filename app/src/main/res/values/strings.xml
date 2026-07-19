@@ -315,6 +315,12 @@
     <string name="paywall_tier_monthly">Monthly</string>
     <string name="paywall_tier_annual">Annual</string>
 
+    <!-- HomeScreen Pro banner (compact card below header) -->
+    <string name="home_pro_banner_title">Go Pro</string>
+    <string name="home_pro_banner_subtitle">Ad-free + 30-min support</string>
+    <string name="home_pro_banner_cta">See plans</string>
+    <string name="home_pro_banner_dismiss">Dismiss Pro banner</string>
+
     <!-- Settings top Pro plan CTA card -->
     <string name="pro_card_title">Go Pro</string>
     <string name="pro_card_subtitle">Remove all ads and unlock priority support</string>

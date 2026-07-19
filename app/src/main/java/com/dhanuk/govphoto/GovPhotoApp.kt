@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 @InstallIn(SingletonComponent::class)
 interface GovPhotoAppEntryPoint {
     fun subscriptionRepository(): SubscriptionRepository
+    fun engagementStore(): com.dhanuk.govphoto.data.subscription.EngagementStore
     fun pushRepository(): com.dhanuk.govphoto.data.push.PushRepository
     fun interstitialController(): com.dhanuk.govphoto.data.ads.InterstitialController
 }

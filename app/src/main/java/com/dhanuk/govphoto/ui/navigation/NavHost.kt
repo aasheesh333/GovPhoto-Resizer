@@ -63,7 +63,8 @@ fun GovPhotoNavHost(
                     navController.navigate(Screen.PhotoUpload.createRoute(presetId))
                 },
                 onNavigateToHistory = { navController.navigate(Screen.History.route) },
-                onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                onNavigateToPaywall = { navController.navigate(Screen.Paywall.route) }
             )
         }
 

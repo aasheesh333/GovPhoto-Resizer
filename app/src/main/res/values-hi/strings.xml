@@ -315,6 +315,12 @@
     <string name="paywall_tier_monthly">मासिक</string>
     <string name="paywall_tier_annual">वार्षिक</string>
 
+    <!-- HomeScreen Pro banner (compact card below header) -->
+    <string name="home_pro_banner_title">Pro लें</string>
+    <string name="home_pro_banner_subtitle">बिना विज्ञापन + 30 मिनट सपोर्ट</string>
+    <string name="home_pro_banner_cta">प्लान देखें</string>
+    <string name="home_pro_banner_dismiss">Pro बैनर बंद करें</string>
+
     <!-- Settings top Pro plan CTA card -->
     <string name="pro_card_title">Pro लें</string>
     <string name="pro_card_subtitle">सभी ads हटाएं और प्राथमिकता सपोर्ट पाएं</string>
