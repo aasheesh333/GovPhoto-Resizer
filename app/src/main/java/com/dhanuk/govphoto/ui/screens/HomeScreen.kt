@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dhanuk.govphoto.GovPhotoApp
+import kotlinx.coroutines.launch
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.data.datastore.AppLanguage
 import com.dhanuk.govphoto.ui.ads.GlobalBannerAd
@@ -635,6 +636,7 @@ private fun ProBannerHost(
 
     val isPro by subRepo.isPro.collectAsState()
     val engagementState by engagement.state.collectAsState(initial = com.dhanuk.govphoto.data.subscription.EngagementStore.State())
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     // Once-only stamp of install timestamp.
     LaunchedEffect(Unit) {
@@ -654,7 +656,7 @@ private fun ProBannerHost(
         com.dhanuk.govphoto.ui.subscription.HomeProBanner(
             onOpenPaywall = onOpenPaywall,
             onDismiss = {
-                kotlinx.coroutines.MainScope().launch {
+                scope.launch {
                     engagement.markBannerDismissed()
                 }
             },
