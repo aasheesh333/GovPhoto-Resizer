@@ -84,6 +84,10 @@ fun SettingsScreen(
             )
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
+            // Account / Sign-in — Google Sign-In restores Pro on another device.
+            com.dhanuk.govphoto.ui.settings.SignInSection()
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
             // Appearance Section
             SettingsSection(title = stringResource(R.string.appearance)) {
                 // Theme selector

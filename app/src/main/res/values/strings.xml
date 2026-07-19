@@ -321,6 +321,15 @@
     <string name="home_pro_banner_cta">See plans</string>
     <string name="home_pro_banner_dismiss">Dismiss Pro banner</string>
 
+    <!-- Settings sign-in / account section -->
+    <string name="signin_section">Account</string>
+    <string name="signin_google">Sign in with Google</string>
+    <string name="signin_google_subtitle">Keep your Pro plan when you switch devices</string>
+    <string name="signin_signed_in_as">Signed in as %1$s</string>
+    <string name="signin_sign_out">Sign out</string>
+    <string name="signin_restore_purchases">Restore purchases</string>
+    <string name="signin_failed">Sign-in failed: %1$s</string>
+
     <!-- Settings top Pro plan CTA card -->
     <string name="pro_card_title">Go Pro</string>
     <string name="pro_card_subtitle">Remove all ads and unlock priority support</string>
