@@ -187,7 +187,7 @@ dependencies {
     implementation("com.google.android.ump:user-messaging-platform:2.2.0")
 
     // RevenueCat
-    implementation("com.revenuecat.purchases:purchases:8.10.7")
+    implementation("com.revenuecat.purchases:purchases:8.24.0")
 
     // OneSignal
     implementation("com.onesignal:OneSignal:5.1.5")
