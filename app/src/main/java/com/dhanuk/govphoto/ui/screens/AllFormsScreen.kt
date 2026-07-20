@@ -119,7 +119,7 @@ fun AllFormsScreen(
             Column {
                 // Banner ad above the bottom navigation bar — fixed in the
                 // Scaffold bottomBar so it never scrolls with content.
-                GlobalBannerAd()
+                GlobalBannerAd(applyNavBarPadding = false)
                 NavigationBar(
                     containerColor = MaterialTheme.colorScheme.surface,
                     tonalElevation = 0.dp

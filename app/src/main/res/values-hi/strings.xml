@@ -332,6 +332,8 @@
     <string name="pro_card_title">Pro लें</string>
     <string name="pro_card_subtitle">सभी ads हटाएं और प्राथमिकता सपोर्ट पाएं</string>
     <string name="pro_card_features">✓ बिना विज्ञापन अनुभव\n✓ 30 मिनट में ईमेल सपोर्ट\n✓ नई सुविधाओं तक पहले पहुंच</string>
+    <string name="pro_card_title_subscribed">Pro सब्सक्राइब्ड</string>
+    <string name="pro_card_subtitle_subscribed">आप ad-free Pro अनुभव का आनंद ले रहे हैं।</string>
 
     <!-- Ad diagnostics in-app dialog (adb logcat unavailable on user device) -->
     <string name="ad_status_title">विज्ञापन स्थिति</string>

@@ -161,7 +161,7 @@ fun PreviewValidationScreen(
         bottomBar = {
             Column {
                 // Banner ad above the primary action buttons.
-                GlobalBannerAd()
+                GlobalBannerAd(applyNavBarPadding = false)
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.surface,

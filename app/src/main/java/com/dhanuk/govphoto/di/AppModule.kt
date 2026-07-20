@@ -17,6 +17,8 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -52,6 +54,7 @@ object AppModule {
     ): AdStateProvider =
         object : AdStateProvider {
             override val isPro: Boolean get() = subscriptionRepository.isPro.value
+            override val isProFlow: StateFlow<Boolean> = subscriptionRepository.isPro
             override val adFreeUntilMs: Long get() {
                 return ctx.getSharedPreferences("govphoto_ad_free", android.content.Context.MODE_PRIVATE)
                     .getLong("ad_free_until_ms", 0L)

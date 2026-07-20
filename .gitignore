@@ -74,5 +74,9 @@ app/src/main/assets/_od_failures.txt
 # Superpowers skill scratch (browser setup capture files with sensitive platform/keystore values)
 .superpowers/
 
+# Local-only bug screenshots / schema files (must not be committed)
+bugs/
+app/schemas/
+
 # Mac
 .DS_Store

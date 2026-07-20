@@ -14,35 +14,46 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import com.dhanuk.govphoto.GovPhotoAppEntryPoint
 import com.dhanuk.govphoto.data.ads.AdsManager
 import dagger.hilt.android.EntryPointAccessors
 
 /**
- * Application-wide banner ad slot. This single composable is placed once in
- * MainActivity's Scaffold bottomBar; it is the only place the shared AdView
- * is hosted, so the banner never reloads just because the screen changes.
+ * Application-wide banner ad slot. Placed in each screen's [Scaffold.bottomBar] so
+ * it never scrolls with content.
  *
  * Behaviour:
+ *  - Hidden for Pro users (watches SubscriptionRepository.isPro).
  *  - Not composed until an ad actually loads (no white gap when no ad).
  *  - Uses an adaptive banner so the ad width matches the screen exactly and
  *    its height is the ad's natural height, avoiding any empty border.
  *  - Uses the same shared AdView from AdsManager across the whole session.
  *  - Auto-refresh and failed-reload are handled by AdsManager on a timer.
+ *
+ * @param applyNavBarPadding Set to false when this banner is already above a
+ *        bottom navigation bar or action surface that applies its own navigation
+ *        bar insets, otherwise two layers of nav-bar padding create a double gap.
  */
 @Composable
-fun GlobalBannerAd(modifier: Modifier = Modifier) {
+fun GlobalBannerAd(
+    modifier: Modifier = Modifier,
+    applyNavBarPadding: Boolean = true,
+) {
     val context = LocalContext.current
-    val adsManager = remember {
+    val entryPoint = remember {
         runCatching {
             EntryPointAccessors.fromApplication(
                 context.applicationContext,
-                AdEntryPoint::class.java,
-            ).adsManager()
+                GovPhotoAppEntryPoint::class.java,
+            )
         }.getOrNull()
-    } ?: return
+    }
+    val adsManager = entryPoint?.adsManager() ?: return
+    val subscriptionRepository = entryPoint.subscriptionRepository()
 
-    val state by adsManager.bannerState.collectAsState()
-    if (state != AdsManager.BannerState.Loaded) return
+    val bannerState by adsManager.bannerState.collectAsState()
+    val isPro by subscriptionRepository.isPro.collectAsState()
+    if (isPro || bannerState != AdsManager.BannerState.Loaded) return
 
     val adView = adsManager.getBannerAdView() ?: return
 
@@ -50,7 +61,13 @@ fun GlobalBannerAd(modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .wrapContentHeight()
-            .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
+            .then(
+                if (applyNavBarPadding) {
+                    Modifier.padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
+                } else {
+                    Modifier
+                }
+            )
     ) {
         AndroidView(
             modifier = Modifier.fillMaxWidth(),

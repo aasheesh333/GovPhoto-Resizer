@@ -2,9 +2,13 @@ package com.dhanuk.govphoto.data.ads
 
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -17,6 +21,9 @@ import javax.inject.Singleton
 interface AdStateProvider {
     /** False when subscriptions have not been wired yet. */
     val isPro: Boolean
+    /** Reactive stream of the Pro state so AdsRepository updates immediately
+     *  after a purchase/restore without waiting for an explicit refresh(). */
+    val isProFlow: StateFlow<Boolean>
     /** ms epoch; 0 if no reward active. */
     val adFreeUntilMs: Long
     /** True if BuildConfig.DEBUG (forces no-ads in debug screenshots/review). */
@@ -31,8 +38,13 @@ class AdsRepository @Inject constructor(
     private val _isAdFree = MutableStateFlow(false)
     val isAdFree: StateFlow<Boolean> = _isAdFree.asStateFlow()
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     init {
         refresh()
+        scope.launch {
+            adStateProvider.isProFlow.collect { refresh() }
+        }
     }
 
     /** Re-read external state. Called by SubscriptionRepository after a purchase

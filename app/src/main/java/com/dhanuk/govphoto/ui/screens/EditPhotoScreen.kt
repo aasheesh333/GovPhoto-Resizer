@@ -336,7 +336,7 @@ fun EditPhotoScreen(
         bottomBar = {
             Column {
                 // Banner ad above the primary action button.
-                GlobalBannerAd()
+                GlobalBannerAd(applyNavBarPadding = false)
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.surface,

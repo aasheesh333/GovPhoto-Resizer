@@ -58,7 +58,7 @@ fun HomeScreen(
             Column {
                 // Banner ad above the bottom navigation bar — fixed in the
                 // Scaffold bottomBar so it never scrolls with content.
-                GlobalBannerAd()
+                GlobalBannerAd(applyNavBarPadding = false)
                 BottomNavigationBar(
                     selectedItem = selectedNavItem,
                     onItemSelected = { index ->

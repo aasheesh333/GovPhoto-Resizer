@@ -25,11 +25,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dhanuk.govphoto.BuildConfig
+import com.dhanuk.govphoto.GovPhotoAppEntryPoint
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.data.datastore.AppLanguage
 import com.dhanuk.govphoto.data.datastore.DarkModePref
 import com.dhanuk.govphoto.ui.ads.GlobalBannerAd
 import com.dhanuk.govphoto.ui.viewmodel.SettingsViewModel
+import dagger.hilt.android.EntryPointAccessors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,6 +42,13 @@ fun SettingsScreen(
 ) {
     val settings by viewModel.state.collectAsState()
     val context = LocalContext.current
+    val subRepo = remember {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            GovPhotoAppEntryPoint::class.java
+        ).subscriptionRepository()
+    }
+    val isPro by subRepo.isPro.collectAsState()
     val sharedPreferences = remember { context.getSharedPreferences("govphoto_settings", android.content.Context.MODE_PRIVATE) }
     var preventScreenshots by remember { mutableStateOf(sharedPreferences.getBoolean("prevent_screenshots", false)) }
 
@@ -77,17 +86,12 @@ fun SettingsScreen(
                     .background(MaterialTheme.colorScheme.background)
                     .verticalScroll(rememberScrollState())
             ) {
-            // Pro Plan CTA — always at the top of settings so users can find it
-            // whenever they want to upgrade.
+            // Pro Plan CTA — shows "Go Pro" when not subscribed and
+            // "Pro Subscribed" when the user already has Pro.
             SettingsProCard(
+                isPro = isPro,
                 onClick = onNavigateToPaywall,
             )
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-            // Account / Restore — RevenueCat-only email sign-in for cross-device
-            // Pro restoration. Users enter the same recovery email on a new
-            // device to pull across their Pro entitlement.
-            com.dhanuk.govphoto.ui.settings.RestorePurchasesSection()
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // Appearance Section
@@ -485,16 +489,28 @@ Icon(
 
 @Composable
 private fun SettingsProCard(
+    isPro: Boolean,
     onClick: () -> Unit,
 ) {
+    val cardColor = if (isPro) {
+        MaterialTheme.colorScheme.tertiaryContainer
+    } else {
+        MaterialTheme.colorScheme.primaryContainer
+    }
+    val contentColor = if (isPro) {
+        MaterialTheme.colorScheme.onTertiaryContainer
+    } else {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    }
+
     androidx.compose.material3.Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clickable { onClick() },
+            .then(if (isPro) Modifier else Modifier.clickable { onClick() }),
         colors = androidx.compose.material3.CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            containerColor = cardColor,
+            contentColor = contentColor,
         ),
         shape = RoundedCornerShape(16.dp),
     ) {
@@ -505,33 +521,41 @@ private fun SettingsProCard(
                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
             ) {
                 androidx.compose.material3.Icon(
-                    imageVector = Icons.Default.Star,
+                    imageVector = if (isPro) Icons.Default.CheckCircle else Icons.Default.Star,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = if (isPro) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
                 )
                 Spacer(modifier = Modifier.padding(start = 8.dp))
                 androidx.compose.material3.Text(
-                    text = stringResource(R.string.pro_card_title),
+                    text = stringResource(
+                        if (isPro) R.string.pro_card_title_subscribed else R.string.pro_card_title
+                    ),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
                 Spacer(modifier = Modifier.weight(1f))
-                androidx.compose.material3.Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
+                if (!isPro) {
+                    androidx.compose.material3.Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = contentColor,
+                    )
+                }
             }
             Spacer(modifier = Modifier.padding(top = 6.dp))
             androidx.compose.material3.Text(
-                text = stringResource(R.string.pro_card_subtitle),
+                text = stringResource(
+                    if (isPro) R.string.pro_card_subtitle_subscribed else R.string.pro_card_subtitle
+                ),
                 style = MaterialTheme.typography.bodySmall,
             )
             Spacer(modifier = Modifier.padding(top = 12.dp))
-            androidx.compose.material3.Text(
-                text = stringResource(R.string.pro_card_features),
-                style = MaterialTheme.typography.bodySmall,
-            )
+            if (!isPro) {
+                androidx.compose.material3.Text(
+                    text = stringResource(R.string.pro_card_features),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
         }
     }
 }
