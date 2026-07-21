@@ -88,7 +88,7 @@ fun HomeScreen(
                     onOpenPaywall = onNavigateToPaywall,
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // Quick Upload Button
                 QuickUploadButton(
@@ -112,7 +112,7 @@ fun HomeScreen(
                     onPresetClick = onNavigateToUpload
                 )
 
-                Spacer(modifier = Modifier.height(80.dp))
+                Spacer(modifier = Modifier.height(48.dp))
             }
         }
     }

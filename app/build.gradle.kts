@@ -20,8 +20,8 @@ android {
         versionCode = 1
         versionName = "1.0.0"
         buildConfigField("String", "PRIVACY_URL", "\"${project.findProperty("PRIVACY_URL") ?: "https://dhanuk.page.gd/govphoto-resizer/privacy.html"}\"")
-        buildConfigField("String", "TERMS_URL", "\"${project.findProperty("TERMS_URL") ?: "https://example.in/terms.html"}\"")
-        buildConfigField("String", "CONTACT_URL", "\"${project.findProperty("CONTACT_URL") ?: "https://example.in/contact.html"}\"")
+        buildConfigField("String", "TERMS_URL", "\"${project.findProperty("TERMS_URL") ?: "https://dhanuk.page.gd/govphoto-resizer/terms.html"}\"")
+        buildConfigField("String", "CONTACT_URL", "\"${project.findProperty("CONTACT_URL") ?: "https://dhanuk.page.gd/govphoto-resizer/contact.html"}\"")
         buildConfigField("String", "ADMOB_APP_ID", "\"${project.findProperty("ADMOB_APP_ID") ?: "ca-app-pub-3940256099942544~3347511713"}\"")
         buildConfigField("String", "ADMOB_BANNER_UNIT", "\"${project.findProperty("ADMOB_BANNER_UNIT") ?: "ca-app-pub-3940256099942544/6300978111"}\"")
         buildConfigField("String", "ADMOB_INTERSTITIAL_UNIT", "\"${project.findProperty("ADMOB_INTERSTITIAL_UNIT") ?: "ca-app-pub-3940256099942544/1033173712"}\"")
@@ -189,8 +189,9 @@ dependencies {
     // RevenueCat
     implementation("com.revenuecat.purchases:purchases:8.24.0")
 
-    // OneSignal
-    implementation("com.onesignal:OneSignal:5.1.5")
+    // OneSignal — keep within the v5.1.x stable line; latest patch fixes several
+    // FCM token-registration and permission-handling issues.
+    implementation("com.onesignal:OneSignal:5.1.38")
 
     // Splash Screen API
     implementation("androidx.core:core-splashscreen:1.0.1")

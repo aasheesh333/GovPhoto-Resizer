@@ -42,13 +42,17 @@ fun SettingsScreen(
 ) {
     val settings by viewModel.state.collectAsState()
     val context = LocalContext.current
-    val subRepo = remember {
-        EntryPointAccessors.fromApplication(
-            context.applicationContext,
-            GovPhotoAppEntryPoint::class.java
-        ).subscriptionRepository()
+    val appEntryPoint = remember {
+        runCatching {
+            EntryPointAccessors.fromApplication(
+                context.applicationContext,
+                GovPhotoAppEntryPoint::class.java
+            )
+        }.getOrNull()
     }
-    val isPro by subRepo.isPro.collectAsState()
+    val subRepo = appEntryPoint?.subscriptionRepository()
+    val pushRepo = appEntryPoint?.pushRepository()
+    val isPro by subRepo?.isPro?.collectAsState() ?: remember { mutableStateOf(false) }
     val sharedPreferences = remember { context.getSharedPreferences("govphoto_settings", android.content.Context.MODE_PRIVATE) }
     var preventScreenshots by remember { mutableStateOf(sharedPreferences.getBoolean("prevent_screenshots", false)) }
 
@@ -131,7 +135,7 @@ fun SettingsScreen(
                             putExtra(
                                 Intent.EXTRA_TEXT,
                                 "Check out GovPhoto Resizer — resize photos & signatures for any Indian exam form. " +
-                                "Play Store link coming soon; in the meantime: https://play.google.com/store/apps/details?id=${context.packageName.removeSuffix(".debug")}"
+                                "Play Store link: https://play.google.com/store/apps/details?id=${context.packageName.removeSuffix(".debug")}"
                             )
                         }
                         try {
@@ -139,6 +143,19 @@ fun SettingsScreen(
                         } catch (e: Exception) {
                             Toast.makeText(context, context.getString(R.string.share_app_subtitle), Toast.LENGTH_SHORT).show()
                         }
+                    }
+                )
+
+                // Push notifications — lets users re-request permission from
+                // Settings if they dismissed the auto-prompt. OneSignal dashboard
+                // sends will only work once permission is granted and a real
+                // ONESIGNAL_APP_ID is configured in CI secrets.
+                SettingsItem(
+                    icon = Icons.Default.Notifications,
+                    title = stringResource(R.string.notifications),
+                    subtitle = stringResource(R.string.notifications_subtitle),
+                    onClick = {
+                        pushRepo?.promptForPermission(fallbackToSettings = true)
                     }
                 )
 

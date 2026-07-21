@@ -283,6 +283,8 @@
     <string name="notif_perm_message">हम आपको बग फिक्स, नई रिलीज़ और परीक्षा अनुस्मारक जैसे महत्वपूर्ण अपडेट भेजेंगे। कोई स्पैम नहीं।</string>
     <string name="notif_perm_allow">अनुमति दें</string>
     <string name="notif_perm_later">अभी नहीं</string>
+    <string name="notifications">नोटिफिकेशन</string>
+    <string name="notifications_subtitle">एग्जाम अपडेट और रिमाइंडर के लिए टैप करें</string>
 
     <!-- Localized UI strings (previously hardcoded) -->
     <string name="done">पूर्ण</string>
