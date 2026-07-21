@@ -40,19 +40,24 @@ fun GlobalBannerAd(
     applyNavBarPadding: Boolean = true,
 ) {
     val context = LocalContext.current
-    val entryPoint = remember {
+    val adsManager = remember {
+        runCatching {
+            EntryPointAccessors.fromApplication(context.applicationContext, AdEntryPoint::class.java)
+                .adsManager()
+        }.getOrNull()
+    } ?: return
+
+    val subscriptionRepository = remember {
         runCatching {
             EntryPointAccessors.fromApplication(
                 context.applicationContext,
                 GovPhotoAppEntryPoint::class.java,
-            )
+            ).subscriptionRepository()
         }.getOrNull()
     }
-    val adsManager = entryPoint?.adsManager() ?: return
-    val subscriptionRepository = entryPoint.subscriptionRepository()
 
     val bannerState by adsManager.bannerState.collectAsState()
-    val isPro by subscriptionRepository.isPro.collectAsState()
+    val isPro by subscriptionRepository?.isPro?.collectAsState() ?: remember { androidx.compose.runtime.mutableStateOf(false) }
     if (isPro || bannerState != AdsManager.BannerState.Loaded) return
 
     val adView = adsManager.getBannerAdView() ?: return
