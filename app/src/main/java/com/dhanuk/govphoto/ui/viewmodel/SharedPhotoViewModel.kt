@@ -16,6 +16,7 @@ import com.dhanuk.govphoto.data.ml.FaceAnalysisResult
 import com.dhanuk.govphoto.data.ml.FaceAnalyzer
 import com.dhanuk.govphoto.data.ml.ImageFilter
 import com.dhanuk.govphoto.data.ml.ImageFilterProcessor
+import com.dhanuk.govphoto.data.ml.SegmentationMask
 import com.dhanuk.govphoto.data.model.PhotoPreset
 import com.dhanuk.govphoto.data.repository.HistoryRepository
 import com.dhanuk.govphoto.data.repository.PresetRepository
@@ -166,6 +167,17 @@ class SharedPhotoViewModel @Inject constructor(
 
     private val _removalState = MutableStateFlow<RemovalState>(RemovalState.Idle)
     val removalState: StateFlow<RemovalState> = _removalState.asStateFlow()
+
+    /**
+     * Cached segmentation mask + the source bitmap it was computed from. Once a
+     * background has been removed, switching to a different background COLOUR
+     * re-composites this cached mask over the new colour WITHOUT re-running ML
+     * Kit segmentation (the slow, repeated re-remove users were seeing). The
+     * cache is invalidated whenever the base image changes (rotation, new photo,
+     * reset, undo/redo, skip-removal) so a stale mask is never reused.
+     */
+    private var cachedSegmentMask: SegmentationMask? = null
+    private var cachedSegmentSource: Bitmap? = null
 
     private var faceAnalysisJob: Job? = null
     private var decodeJob: Job? = null
@@ -498,6 +510,9 @@ private fun decodeUriToOriginalBitmap(uri: Uri) {
      * (0/90/180/270). The current filter is re-applied on top.
      */
     private fun applyRotationToDisplayed(pristine: Bitmap, rot: Int) {
+        // Rotation changes the base image orientation; the cached segmentation
+        // mask no longer matches, so drop it (next removal re-segments).
+        invalidateSegmentCache()
         if (rot % 360 == 0) {
             setBaseBitmap(pristine)
             return
@@ -729,19 +744,42 @@ fun removeBackground() {
     bgRemovalJob?.cancel()
 
     bgRemovalJob = viewModelScope.launch(Dispatchers.Default + coroutineExceptionHandler) {
-      // Snapshot a private copy so ML Kit never holds a shared bitmap ref.
-      val localCopy = try {
-        bitmap.copy(Bitmap.Config.ARGB_8888, false) ?: bitmap
-      } catch (oom: OutOfMemoryError) {
-        _isRemovingBackground.value = false
-        _removalState.value = RemovalState.Error("Out of memory")
-        return@launch
-      }
+      var privateCopy: Bitmap? = null
       try {
-        val result = backgroundRemover.remove(localCopy, _backgroundColor.value)
+        val result: Bitmap
+        // Cache hit = a previous removal already segmented this source. Switching
+        // background COLOUR re-composites the cached mask over the new colour
+        // without re-running ML Kit (fix for repeated re-remove on colour taps).
+        val cachedMask = cachedSegmentMask
+        val cachedSrc = cachedSegmentSource
+        if (cachedMask != null && cachedSrc != null && !cachedSrc.isRecycled &&
+            cachedSrc.width == bitmap.width && cachedSrc.height == bitmap.height
+        ) {
+          // FAST PATH: re-composite cached mask over the new colour. No ML run.
+          result = backgroundRemover.composeOver(cachedSrc, cachedMask, _backgroundColor.value)
+        } else {
+          // SLOW PATH: segment once, cache the mask + a private source copy.
+          privateCopy = try {
+            bitmap.copy(Bitmap.Config.ARGB_8888, false)
+          } catch (oom: OutOfMemoryError) {
+            null
+          }
+          if (privateCopy != null) {
+            val segMask = backgroundRemover.segment(privateCopy)
+            invalidateSegmentCache()
+            cachedSegmentMask = segMask
+            cachedSegmentSource = privateCopy
+            result = backgroundRemover.composeOver(privateCopy, segMask, _backgroundColor.value)
+          } else {
+            // Could not allocate a private copy: segment the shared bitmap but
+            // do NOT cache it (we must never recycle a shared ref later).
+            val segMask = backgroundRemover.segment(bitmap)
+            result = backgroundRemover.composeOver(bitmap, segMask, _backgroundColor.value)
+          }
+        }
         photoMutex.withLock {
           if (!isActive) {
-            if (result !== localCopy && !result.isRecycled) result.recycle()
+            if (!result.isRecycled) result.recycle()
             return@withLock
           }
           _removalState.value = RemovalState.Done
@@ -759,16 +797,33 @@ fun removeBackground() {
         _removalState.value = RemovalState.Error("Out of memory")
       } finally {
         _isRemovingBackground.value = false
-        if (localCopy !== bitmap && localCopy !== _displayedBitmap.value && !localCopy.isRecycled) {
-          try { localCopy.recycle() } catch (_: Throwable) {}
+        // If a private copy was made but never cached (segment threw), reclaim it.
+        val pc = privateCopy
+        if (pc != null && cachedSegmentSource !== pc && !pc.isRecycled) {
+            try { pc.recycle() } catch (_: Throwable) {}
         }
+        // cachedSegmentSource is intentionally retained for fast colour swaps;
+        // it is recycled via invalidateSegmentCache() on rotation/reset/etc.
       }
     }
 }
 
+    /** Drop the cached segmentation mask + recycle the private source copy. Call
+     *  whenever the base image changes (rotation, new photo, reset, undo/redo,
+     *  skip-removal) so a stale mask is never re-composited. */
+    private fun invalidateSegmentCache() {
+        cachedSegmentMask = null
+        val src = cachedSegmentSource
+        cachedSegmentSource = null
+        if (src != null && !src.isRecycled) {
+            try { src.recycle() } catch (_: Throwable) {}
+        }
+    }
+
     /** Skip background removal: keep original/source bitmap and mark state idle. */
     fun skipBackgroundRemoval() {
         bgRemovalJob?.cancel()
+        invalidateSegmentCache()
         // Restore displayed to the rotation-correct pristine baseline (no bg removal applied)
         val pristine = _pristineOriginalBitmap.value ?: _originalBitmap.value
         if (pristine != null && !pristine.isRecycled) {
@@ -1125,6 +1180,7 @@ fun removeBackground() {
     }
 
 private fun recycleBitmaps() {
+    invalidateSegmentCache()
     _originalBitmap.value?.let { if (!it.isRecycled) it.recycle() }
     _originalBitmap.value = null
     _displayedBitmap.value?.let { if (!it.isRecycled && it != _originalBitmap.value) it.recycle() }

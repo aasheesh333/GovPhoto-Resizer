@@ -24,7 +24,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.data.model.PhotoPreset
 import com.dhanuk.govphoto.data.model.PresetCategory
-import com.dhanuk.govphoto.ui.ads.BannerAd
+import com.dhanuk.govphoto.ui.ads.GlobalBannerAd
 import com.dhanuk.govphoto.ui.theme.*
 import com.dhanuk.govphoto.ui.viewmodel.AllFormsViewModel
 
@@ -86,7 +86,7 @@ fun AllFormsScreen(
                         IconButton(onClick = onNavigateBack) {
                             Icon(
                                 imageVector = Icons.Default.ArrowBack,
-                                contentDescription = "Back",
+                                contentDescription = stringResource(R.string.cd_back_button),
                                 tint = MaterialTheme.colorScheme.onBackground
                             )
                         }
@@ -98,13 +98,6 @@ fun AllFormsScreen(
                             color = MaterialTheme.colorScheme.onBackground,
                             maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                        )
-                    }
-                    IconButton(onClick = { /* Notifications */ }) {
-                        Icon(
-                            imageVector = Icons.Outlined.Notifications,
-                            contentDescription = stringResource(R.string.cd_notification),
-                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -119,56 +112,61 @@ fun AllFormsScreen(
                         .padding(bottom = 16.dp)
                 )
                 
-                Divider(color = MaterialTheme.colorScheme.outlineVariant)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
         },
         bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = 0.dp
-            ) {
-                NavigationBarItem(
-                    selected = selectedNavItem == 0,
-                    onClick = { selectedNavItem = 0 },
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Default.GridView,
-                            contentDescription = stringResource(R.string.nav_forms)
+            Column {
+                // Banner ad above the bottom navigation bar — fixed in the
+                // Scaffold bottomBar so it never scrolls with content.
+                GlobalBannerAd(applyNavBarPadding = false)
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 0.dp
+                ) {
+                    NavigationBarItem(
+                        selected = selectedNavItem == 0,
+                        onClick = { selectedNavItem = 0 },
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Default.GridView,
+                                contentDescription = stringResource(R.string.nav_forms)
+                            )
+                        },
+                        label = { Text(stringResource(R.string.nav_forms)) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer
                         )
-                    },
-                    label = { Text(stringResource(R.string.nav_forms)) },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = MaterialTheme.colorScheme.primary,
-                        selectedTextColor = MaterialTheme.colorScheme.primary,
-                        indicatorColor = MaterialTheme.colorScheme.primaryContainer
                     )
-                )
-                NavigationBarItem(
-                    selected = selectedNavItem == 1,
-                    onClick = {
-                        onNavigateToHistory()
-                    },
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Outlined.History,
-                            contentDescription = stringResource(R.string.nav_history)
-                        )
-                    },
-                    label = { Text(stringResource(R.string.nav_history)) }
-                )
-                NavigationBarItem(
-                    selected = selectedNavItem == 2,
-                    onClick = {
-                        onNavigateToSettings()
-                    },
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Outlined.Settings,
-                            contentDescription = stringResource(R.string.nav_settings)
-                        )
-                    },
-                    label = { Text(stringResource(R.string.nav_settings)) }
-                )
+                    NavigationBarItem(
+                        selected = selectedNavItem == 1,
+                        onClick = {
+                            onNavigateToHistory()
+                        },
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Outlined.History,
+                                contentDescription = stringResource(R.string.nav_history)
+                            )
+                        },
+                        label = { Text(stringResource(R.string.nav_history)) }
+                    )
+                    NavigationBarItem(
+                        selected = selectedNavItem == 2,
+                        onClick = {
+                            onNavigateToSettings()
+                        },
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Outlined.Settings,
+                                contentDescription = stringResource(R.string.nav_settings)
+                            )
+                        },
+                        label = { Text(stringResource(R.string.nav_settings)) }
+                    )
+                }
             }
         }
     ) { paddingValues ->
@@ -188,7 +186,7 @@ fun AllFormsScreen(
                             count = presets.size
                         )
                     }
-                    
+
                     // Presets in this category
                     items(
                         items = presets,
@@ -205,11 +203,6 @@ fun AllFormsScreen(
                     }
                 }
             }
-            BannerAd(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-            )
         }
     }
 }
@@ -245,7 +238,7 @@ private fun SearchBar(
                 IconButton(onClick = { onQueryChange("") }) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Clear",
+                        contentDescription = stringResource(R.string.cd_clear),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -353,7 +346,7 @@ private fun FormListItem(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        Divider(
+        HorizontalDivider(
             modifier = Modifier.padding(start = 80.dp),
             color = MaterialTheme.colorScheme.outlineVariant
         )

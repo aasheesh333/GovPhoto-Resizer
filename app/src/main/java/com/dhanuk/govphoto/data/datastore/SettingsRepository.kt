@@ -35,6 +35,7 @@ data class SettingsState(
     val releaseNotificationsEnabled: Boolean = true,
     val examDeadlineNotificationsEnabled: Boolean = false,
     val supportNotificationsEnabled: Boolean = true,
+    val notificationPermissionAsked: Boolean = false,
 )
 
 @Singleton
@@ -55,6 +56,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val NOTIFY_RELEASE           = booleanPreferencesKey("notify_release")
         val NOTIFY_EXAM_DEADLINES    = booleanPreferencesKey("notify_exam_deadlines")
         val NOTIFY_SUPPORT_REPLIES   = booleanPreferencesKey("notify_support_replies")
+        val NOTIF_PERMISSION_ASKED   = booleanPreferencesKey("notif_permission_asked")
     }
 
     // Synchronous SharedPreferences shim for the locale cache so that
@@ -82,12 +84,23 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             releaseNotificationsEnabled = prefs[Keys.NOTIFY_RELEASE] ?: true,
             examDeadlineNotificationsEnabled = prefs[Keys.NOTIFY_EXAM_DEADLINES] ?: false,
             supportNotificationsEnabled = prefs[Keys.NOTIFY_SUPPORT_REPLIES] ?: true,
+            notificationPermissionAsked = prefs[Keys.NOTIF_PERMISSION_ASKED] ?: false,
         )
     }
 
     suspend fun setLanguage(lang: AppLanguage) {
         context.dataStore.edit { it[Keys.LANGUAGE] = lang.tag }
         sharedPrefs.edit().putString("language", lang.tag).apply()
+    }
+
+    /**
+     * Writes the locale cache synchronously so that a subsequent Activity.recreate()
+     * sees the new language in attachBaseContext() without racing the async DataStore
+     * write in [setLanguage]. Call this on the main thread right before recreate();
+     * [setLanguage] remains the source of truth for the persisted DataStore value.
+     */
+    fun setLanguageSync(lang: AppLanguage) {
+        sharedPrefs.edit().putString("language", lang.tag).commit()
     }
 
     suspend fun setDynamicColor(enabled: Boolean) {
@@ -125,6 +138,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             PushCategory.SUPPORT_REPLIES -> Keys.NOTIFY_SUPPORT_REPLIES
         }
         context.dataStore.edit { it[key] = enabled }
+    }
+
+    suspend fun setNotificationPermissionAsked(asked: Boolean) {
+        context.dataStore.edit { it[Keys.NOTIF_PERMISSION_ASKED] = asked }
     }
 
     // Ad-free reward

@@ -18,8 +18,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.data.model.PhotoPreset
+import com.dhanuk.govphoto.ui.ads.GlobalBannerAd
 import com.dhanuk.govphoto.ui.components.GovButton
 import com.dhanuk.govphoto.ui.viewmodel.SharedPhotoViewModel
 
@@ -83,7 +84,8 @@ fun BatchScreen(
                     }
                 }
             )
-        }
+        },
+        bottomBar = { GlobalBannerAd() }
     ) { paddingValues ->
         if (sourceBitmap == null) {
             Column(
@@ -184,7 +186,7 @@ androidx.compose.foundation.Image(
                                 )
                             }
                         }
-                        Divider(
+                        HorizontalDivider(
                             color = MaterialTheme.colorScheme.outlineVariant,
                             modifier = Modifier.padding(horizontal = 16.dp)
                         )

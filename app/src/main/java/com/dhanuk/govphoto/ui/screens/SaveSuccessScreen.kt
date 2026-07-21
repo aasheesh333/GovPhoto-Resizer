@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -51,8 +50,8 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.dhanuk.govphoto.R
-import com.dhanuk.govphoto.data.ads.InterstitialController
-import com.dhanuk.govphoto.ui.ads.BannerAd
+import com.dhanuk.govphoto.ui.ads.AdEntryPoint
+import com.dhanuk.govphoto.ui.ads.GlobalBannerAd
 import com.dhanuk.govphoto.ui.components.GovButton
 import com.dhanuk.govphoto.ui.components.GovOutlinedButton
 import com.dhanuk.govphoto.ui.viewmodel.SharedPhotoViewModel
@@ -63,6 +62,7 @@ import dagger.hilt.android.EntryPointAccessors
 fun SaveSuccessScreen(
     sharedViewModel: SharedPhotoViewModel,
     onNavigateHome: () -> Unit,
+    onNavigateToPaywall: () -> Unit = {},
 ) {
     val context = LocalContext.current
 
@@ -98,18 +98,44 @@ fun SaveSuccessScreen(
     val formatName = selectedPreset?.format?.uppercase() ?: "JPG"
 
     val activity = context as? android.app.Activity
+    var showUpgradePrompt by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        // mark save count + trigger interstitial (AdMob rate-limit enforced inside controller)
-        val controller = runCatching {
+        // Save triggers ONLY a rewarded ad. The rewarded controller enforces the
+        // 2-minute cooldown, so if the user saves many photos quickly only one
+        // rewarded ad is shown. Interstitials are handled separately by app
+        // usage time in MainActivity.
+        val entry = runCatching {
             EntryPointAccessors.fromApplication(
                 context.applicationContext,
-                SaveSuccessInterstitialEntryPoint::class.java,
-            ).interstitialController()
+                AdEntryPoint::class.java,
+            )
         }.getOrNull() ?: return@LaunchedEffect
-        controller.recordSaveReceived()
-        // Slight delay so the success screen paints before the interstitial
+        val rewarded = entry.rewardedAdController()
+        rewarded.recordSaveReceived()
+        // Slight delay so the success screen paints before the full-screen ad
+        // tries to show.
         kotlinx.coroutines.delay(300)
-        activity?.let { controller.tryShow(it) }
+        activity?.let { act ->
+            rewarded.tryShow(act) {
+                // User watched the rewarded ad to completion — best moment to
+                // ask whether they'd like to remove all ads via Pro.
+                android.util.Log.i("SaveSuccess", "rewarded ad earned")
+                showUpgradePrompt = true
+            }
+        }
+    }
+
+    if (showUpgradePrompt) {
+        com.dhanuk.govphoto.ui.subscription.UpgradePromptSheet(
+            title = "Enjoying GovPhoto?",
+            subtitle = "Go Pro to remove every ad and unlock 30-min support",
+            primaryCta = "See Pro plans",
+            onOpenPaywall = {
+                showUpgradePrompt = false
+                onNavigateToPaywall()
+            },
+            onDismiss = { showUpgradePrompt = false },
+        )
     }
 
     val detailsText = stringResource(
@@ -166,7 +192,8 @@ fun SaveSuccessScreen(
                     }
                 }
             )
-        }
+        },
+        bottomBar = { GlobalBannerAd() }
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize()) {
             Column(
@@ -269,7 +296,7 @@ fun SaveSuccessScreen(
                 )
 
                 GovOutlinedButton(
-                    text = "Done",
+                    text = stringResource(R.string.done),
                     onClick = onNavigateHome,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -283,18 +310,8 @@ fun SaveSuccessScreen(
                     enabled = processedImageUri != null
                 )
             }
-            BannerAd(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-            )
         }
     }
 }
-}
 
-@dagger.hilt.EntryPoint
-@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
-interface SaveSuccessInterstitialEntryPoint {
-    fun interstitialController(): InterstitialController
 }

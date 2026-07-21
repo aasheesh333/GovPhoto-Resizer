@@ -20,17 +20,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.fillMaxWidth
+import com.dhanuk.govphoto.GovPhotoApp
+import kotlinx.coroutines.launch
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.data.datastore.AppLanguage
-import com.dhanuk.govphoto.ui.ads.BannerAd
+import com.dhanuk.govphoto.ui.ads.GlobalBannerAd
 import com.dhanuk.govphoto.ui.theme.*
 import com.dhanuk.govphoto.ui.viewmodel.HomeViewModel
 import com.dhanuk.govphoto.ui.viewmodel.RecentPresetUiItem
@@ -45,6 +46,7 @@ fun HomeScreen(
     onNavigateToUpload: (String) -> Unit,
     onNavigateToHistory: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToPaywall: () -> Unit = {},
     settingsViewModel: SettingsViewModel = hiltViewModel(),
     homeViewModel: HomeViewModel = hiltViewModel()
 ) {
@@ -53,16 +55,21 @@ fun HomeScreen(
     
     Scaffold(
         bottomBar = {
-            BottomNavigationBar(
-                selectedItem = selectedNavItem,
-                onItemSelected = { index ->
-                    when (index) {
-                        0 -> selectedNavItem = 0
-                        1 -> onNavigateToHistory()
-                        2 -> onNavigateToSettings()
+            Column {
+                // Banner ad above the bottom navigation bar — fixed in the
+                // Scaffold bottomBar so it never scrolls with content.
+                GlobalBannerAd(applyNavBarPadding = false)
+                BottomNavigationBar(
+                    selectedItem = selectedNavItem,
+                    onItemSelected = { index ->
+                        when (index) {
+                            0 -> selectedNavItem = 0
+                            1 -> onNavigateToHistory()
+                            2 -> onNavigateToSettings()
+                        }
                     }
-                }
-            )
+                )
+            }
         }
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize()) {
@@ -75,14 +82,19 @@ fun HomeScreen(
             ) {
                 // Header Section
                 HomeHeader(settingsViewModel = settingsViewModel)
-                
+
+                // Pro engagement banner (suppressed for Pro users and after dismiss).
+                ProBannerHost(
+                    onOpenPaywall = onNavigateToPaywall,
+                )
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 // Quick Upload Button
                 QuickUploadButton(
                     onClick = { onNavigateToUpload("quick_upload") }
                 )
-                
+
                 // Recent Presets Row (only shown when not empty)
                 if (recentPresets.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(20.dp))
@@ -91,22 +103,17 @@ fun HomeScreen(
                         onPresetClick = onNavigateToUpload
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.height(24.dp))
-                
+
                 // Document Type Section
                 DocumentTypeSection(
                     onViewAllClick = onNavigateToAllForms,
                     onPresetClick = onNavigateToUpload
                 )
-                
+
                 Spacer(modifier = Modifier.height(80.dp))
             }
-            BannerAd(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-            )
         }
     }
 }
@@ -164,14 +171,14 @@ private fun HomeHeader(settingsViewModel: SettingsViewModel) {
             
             // Title and Subtitle
             Text(
-                text = stringResource(R.string.app_tagline).substringBefore(" for"),
+                text = stringResource(R.string.app_tagline_short),
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold
                 ),
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "Compliant with all government standards",
+                text = stringResource(R.string.compliant_subtitle),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -182,10 +189,16 @@ private fun HomeHeader(settingsViewModel: SettingsViewModel) {
 @Composable
 private fun LanguageToggle(settingsViewModel: SettingsViewModel) {
     val settings by settingsViewModel.state.collectAsState()
+    val context = LocalContext.current
     val isHindi = settings.language == AppLanguage.HINDI
     OutlinedButton(
         onClick = {
-            settingsViewModel.setLanguage(if (isHindi) AppLanguage.ENGLISH else AppLanguage.HINDI)
+            // Apply synchronously to the locale cache so the subsequent recreate()
+            // picks up the new language in attachBaseContext(); without recreate the
+            // toggle never visibly switched language from the home screen.
+            val newLang = if (isHindi) AppLanguage.ENGLISH else AppLanguage.HINDI
+            settingsViewModel.applyLanguage(newLang)
+            (context as? android.app.Activity)?.recreate()
         },
         shape = RoundedCornerShape(24.dp),
         border = ButtonDefaults.outlinedButtonBorder.copy(
@@ -475,8 +488,8 @@ private fun DocumentTypeSection(
             // Custom Size Card
             DocumentTypeCard(
                 icon = Icons.Default.Edit,
-                title = "Custom Size",
-                subtitle = "Manual Width & Height",
+                title = stringResource(R.string.custom_size),
+                subtitle = stringResource(R.string.custom_size_subtitle),
                 onClick = { onPresetClick(com.dhanuk.govphoto.data.model.PhotoPreset.MANUAL_PRESET_ID) }
             )
             
@@ -544,6 +557,7 @@ private fun DocumentTypeCard(
             }
             Button(
                 onClick = onClick,
+                modifier = Modifier.minGovButtonHeight(),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
@@ -551,7 +565,7 @@ private fun DocumentTypeCard(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
             ) {
                 Text(
-                    text = "Select",
+                    text = stringResource(R.string.select),
                     style = MaterialTheme.typography.labelLarge.copy(
                         fontWeight = FontWeight.Bold
                     )
@@ -569,6 +583,8 @@ private fun BrowseAllFormsButton(onClick: () -> Unit) {
     ) {
         Button(
             onClick = onClick,
+            modifier = Modifier
+                .minGovButtonHeight(),
             shape = RoundedCornerShape(24.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary
@@ -591,6 +607,53 @@ private fun BrowseAllFormsButton(onClick: () -> Unit) {
                 )
             )
         }
+    }
+}
+
+/**
+ * Reads engagement state + Pro status via Hilt EntryPoint and shows the
+ * compact HomeProBanner only when:
+ *  - user is NOT Pro
+ *  - at least 1 day has passed since first install (avoid jarring new users)
+ *  - user hasn't dismissed the banner in the last 7 days
+ */
+@Composable
+private fun ProBannerHost(
+    onOpenPaywall: () -> Unit,
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val entry = remember {
+        runCatching {
+            dagger.hilt.android.EntryPointAccessors.fromApplication(
+                context.applicationContext,
+                com.dhanuk.govphoto.GovPhotoAppEntryPoint::class.java,
+            )
+        }.getOrNull()
+    } ?: return
+
+    val subRepo = entry.subscriptionRepository()
+    val engagement = entry.engagementStore()
+
+    val isPro by subRepo.isPro.collectAsState()
+    val engagementState by engagement.state.collectAsState(initial = com.dhanuk.govphoto.data.subscription.EngagementStore.State())
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+
+    // Once-only stamp of install timestamp.
+    LaunchedEffect(Unit) {
+        engagement.stampInstallIfNeeded()
+    }
+
+    val showBanner = !isPro && engagementState.installMs > 0L
+
+    if (showBanner) {
+        com.dhanuk.govphoto.ui.subscription.HomeProBanner(
+            onOpenPaywall = onOpenPaywall,
+            onDismiss = {
+                scope.launch {
+                    engagement.markBannerDismissed()
+                }
+            },
+        )
     }
 }
 

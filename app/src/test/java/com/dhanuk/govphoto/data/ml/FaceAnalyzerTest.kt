@@ -36,21 +36,35 @@ class FaceAnalyzerTest {
     fun withinOval_fullyInside_true() {
         val oval = RectF(100f, 100f, 300f, 350f)
         val face = RectF(140f, 140f, 260f, 300f)
-        assertTrue(FaceAnalyzer.withinOval(face, oval, margin = 0.05f))
+        assertTrue(FaceAnalyzer.withinOval(face, oval))
     }
 
     @Test
-    fun withinOval_protrudesRight_false() {
+    fun withinOval_smallProtrusion_centerInside_true() {
         val oval = RectF(100f, 100f, 300f, 350f)
-        val face = RectF(140f, 140f, 310f, 300f)
-        assertFalse(FaceAnalyzer.withinOval(face, oval, margin = 0.05f))
+        val face = RectF(140f, 140f, 310f, 300f) // slightly wider on the right
+        assertTrue(FaceAnalyzer.withinOval(face, oval))
     }
 
     @Test
-    fun withinOval_exactlyOnInnerEdge_true() {
-        val oval = RectF(0f, 0f, 100f, 100f)
-        val face = RectF(5f, 5f, 95f, 95f)
-        assertTrue(FaceAnalyzer.withinOval(face, oval, 0.05f))
+    fun withinOval_centerInsideButOverlapTooLow_false() {
+        val oval = RectF(0f, 0f, 200f, 200f)
+        val face = RectF(50f, 150f, 150f, 280f) // center inside; only top half overlaps
+        assertFalse(FaceAnalyzer.withinOval(face, oval))
+    }
+
+    @Test
+    fun withinOval_centerOutside_false() {
+        val oval = RectF(0f, 0f, 200f, 200f)
+        val face = RectF(150f, 150f, 250f, 250f) // center outside the oval
+        assertFalse(FaceAnalyzer.withinOval(face, oval))
+    }
+
+    @Test
+    fun withinOval_halfFaceOutside_false() {
+        val oval = RectF(100f, 100f, 300f, 350f)
+        val face = RectF(250f, 100f, 380f, 350f) // mostly outside the oval
+        assertFalse(FaceAnalyzer.withinOval(face, oval))
     }
 
     @Test

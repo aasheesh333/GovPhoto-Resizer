@@ -59,6 +59,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dhanuk.govphoto.R
+import com.dhanuk.govphoto.ui.ads.GlobalBannerAd
 
 private data class FaqItem(
     val question: String,
@@ -149,7 +150,8 @@ fun HelpScreen(
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
-        }
+        },
+        bottomBar = { GlobalBannerAd() }
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
@@ -180,7 +182,7 @@ fun HelpScreen(
                             IconButton(onClick = { searchQuery = "" }) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
-                                    contentDescription = "Clear search"
+                                    contentDescription = stringResource(R.string.cd_clear_search)
                                 )
                             }
                         }

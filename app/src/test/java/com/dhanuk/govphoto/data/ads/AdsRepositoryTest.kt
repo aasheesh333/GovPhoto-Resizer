@@ -6,6 +6,7 @@ import org.robolectric.RuntimeEnvironment
 import org.junit.runner.RunWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlinx.coroutines.flow.MutableStateFlow
 
 @RunWith(RobolectricTestRunner::class)
 class AdsRepositoryTest {
@@ -13,6 +14,7 @@ class AdsRepositoryTest {
     private fun provider(isPro: Boolean, adFreeUntilMs: Long, forceNoAds: Boolean) =
         object : AdStateProvider {
             override val isPro = isPro
+            override val isProFlow = MutableStateFlow(isPro)
             override val adFreeUntilMs = adFreeUntilMs
             override val forceNoAds = forceNoAds
         }

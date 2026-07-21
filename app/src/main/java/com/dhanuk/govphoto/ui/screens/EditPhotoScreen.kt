@@ -44,6 +44,7 @@ import com.dhanuk.govphoto.data.ml.FaceAnalysisResult
 import com.dhanuk.govphoto.data.ml.ImageFilter
 import com.dhanuk.govphoto.data.model.PhotoPreset
 import com.dhanuk.govphoto.data.model.PresetType
+import com.dhanuk.govphoto.ui.ads.GlobalBannerAd
 import com.dhanuk.govphoto.ui.theme.*
 import com.dhanuk.govphoto.ui.viewmodel.BackgroundColor
 import com.dhanuk.govphoto.ui.viewmodel.BackgroundOption
@@ -121,20 +122,20 @@ fun EditPhotoScreen(
     if (showExitDialog) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showExitDialog = false },
-            title = { Text("Discard edits?") },
-            text = { Text("Your changes will be lost. Are you sure you want to go back?") },
+            title = { Text(stringResource(R.string.discard_title)) },
+            text = { Text(stringResource(R.string.discard_message)) },
             confirmButton = {
                 androidx.compose.material3.TextButton(
                     onClick = {
                         showExitDialog = false
                         onNavigateBack()
                     }
-                ) { Text("Discard") }
+                ) { Text(stringResource(R.string.discard_confirm)) }
             },
             dismissButton = {
                 androidx.compose.material3.TextButton(
                     onClick = { showExitDialog = false }
-                ) { Text("Keep editing") }
+                ) { Text(stringResource(R.string.discard_cancel)) }
             }
         )
     }
@@ -333,11 +334,14 @@ fun EditPhotoScreen(
             )
         },
         bottomBar = {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surface,
-                shadowElevation = 8.dp
-            ) {
+            Column {
+                // Banner ad above the primary action button.
+                GlobalBannerAd(applyNavBarPadding = false)
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 8.dp
+                ) {
                 Button(
                     onClick = {
                         // Continue = bake visible cover-window region into _bakedBitmap.
@@ -374,6 +378,7 @@ Icon(
                         modifier = Modifier.size(20.dp)
                     )
                 }
+            }
             }
         }
     ) { paddingValues ->
@@ -560,7 +565,7 @@ private fun PhotoPreviewWithImage(
         if (bitmap != null && !bitmap.isRecycled) {
             androidx.compose.foundation.Image(
                 bitmap = bitmap.asImageBitmap(),
-                contentDescription = "Selected photo",
+                contentDescription = stringResource(R.string.cd_selected_photo),
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer(
@@ -582,7 +587,7 @@ private fun PhotoPreviewWithImage(
                     .data(imageUri)
                     .crossfade(true)
                     .build(),
-                contentDescription = "Selected photo",
+                contentDescription = stringResource(R.string.cd_selected_photo),
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer(
@@ -612,7 +617,7 @@ private fun PhotoPreviewWithImage(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                    text = "No image selected",
+                    text = stringResource(R.string.no_image_selected),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -733,7 +738,7 @@ private fun PhotoPreviewWithImage(
             ) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
-                    contentDescription = "Reset edits",
+                    contentDescription = stringResource(R.string.cd_reset_edits),
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -749,7 +754,7 @@ private fun PhotoPreviewWithImage(
             ) {
                 Icon(
                     imageVector = Icons.Default.RotateRight,
-                    contentDescription = "Rotate 90 degrees",
+                    contentDescription = stringResource(R.string.cd_rotate_90),
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -765,7 +770,7 @@ private fun PhotoPreviewWithImage(
             ) {
                 Icon(
                     imageVector = Icons.Default.ZoomOut,
-                    contentDescription = "Zoom out",
+                    contentDescription = stringResource(R.string.cd_zoom_out),
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -794,7 +799,7 @@ private fun PhotoPreviewWithImage(
             ) {
                 Icon(
                     imageVector = Icons.Default.ZoomIn,
-                    contentDescription = "Zoom in",
+                    contentDescription = stringResource(R.string.cd_zoom_in),
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -1184,7 +1189,7 @@ private fun CustomPresetInputs(viewModel: SharedPhotoViewModel) {
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Custom Dimensions",
+            text = stringResource(R.string.custom_dimensions),
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.onBackground
         )
@@ -1201,7 +1206,7 @@ private fun CustomPresetInputs(viewModel: SharedPhotoViewModel) {
                     viewModel.updateCustomWidth(it)
                     viewModel.applyCustomPreset()
                 },
-                label = { Text("Width (px)") },
+                label = { Text(stringResource(R.string.width_px)) },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
@@ -1216,7 +1221,7 @@ private fun CustomPresetInputs(viewModel: SharedPhotoViewModel) {
                     viewModel.updateCustomHeight(it)
                     viewModel.applyCustomPreset()
                 },
-                label = { Text("Height (px)") },
+                label = { Text(stringResource(R.string.height_px)) },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
@@ -1230,7 +1235,7 @@ private fun CustomPresetInputs(viewModel: SharedPhotoViewModel) {
         // Format Selection
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "Format:",
+                text = stringResource(R.string.format_label),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )

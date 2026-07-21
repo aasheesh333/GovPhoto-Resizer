@@ -1,6 +1,7 @@
 package com.dhanuk.govphoto.ui.viewmodel
 
 import com.dhanuk.govphoto.data.datastore.AppLanguage
+import com.dhanuk.govphoto.data.ads.AdsManager
 import com.dhanuk.govphoto.data.datastore.DarkModePref
 import com.dhanuk.govphoto.data.datastore.SettingsRepository
 import com.dhanuk.govphoto.data.datastore.SettingsState
@@ -11,6 +12,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -33,6 +35,7 @@ import org.junit.Test
 class SettingsViewModelTest {
 
     private lateinit var repo: SettingsRepository
+    private lateinit var adsManager: AdsManager
     private lateinit var backing: MutableStateFlow<SettingsState>
 
     @Before
@@ -42,7 +45,27 @@ class SettingsViewModelTest {
 
         backing = MutableStateFlow(SettingsState())
         repo = mockk(relaxed = true)
+        adsManager = mockk(relaxed = true)
         every { repo.state } returns backing
+        every { adsManager.diagnosticInfo } returns MutableStateFlow(
+            AdsManager.DiagnosticInfo(
+                variant = "debug",
+                forceNoAds = false,
+                isAdFree = false,
+                appId = "...",
+                bannerUnitId = "...",
+                bannerState = AdsManager.BannerState.Disabled,
+                consentStatus = "unknown",
+                privacyOptionsRequirementStatus = "unknown",
+                canRequestAds = false,
+                lastErrorCode = null,
+                lastErrorMessage = null,
+                lastErrorDomain = null,
+                retryCount = 0,
+                destroyed = false,
+                warning = null,
+            )
+        ) as StateFlow<AdsManager.DiagnosticInfo>
         coEvery { repo.setLanguage(any()) } answers {
             val lang = firstArg<AppLanguage>()
             backing.update { it.copy(language = lang) }
@@ -75,14 +98,14 @@ class SettingsViewModelTest {
 
     @Test
     fun initial_state_value_is_default_SettingsState() {
-        val vm = SettingsViewModel(repo)
+        val vm = SettingsViewModel(repo, adsManager)
         // stateIn initial value is the supplied SettingsState() regardless of upstream
         assertEquals(SettingsState(), vm.state.value)
     }
 
     @Test
     fun setLanguage_invokes_repo_setLanguage() = runTest {
-        val vm = SettingsViewModel(repo)
+        val vm = SettingsViewModel(repo, adsManager)
         vm.setLanguage(AppLanguage.HINDI)
         advanceUntilIdle()
 
@@ -92,7 +115,7 @@ class SettingsViewModelTest {
 
     @Test
     fun state_reflects_upstream_changes() = runTest {
-        val vm = SettingsViewModel(repo)
+        val vm = SettingsViewModel(repo, adsManager)
 
         vm.setLanguage(AppLanguage.HINDI)
         vm.setLargeButtons(true)
@@ -107,7 +130,7 @@ class SettingsViewModelTest {
 
     @Test
     fun setLargeButtons_invokes_repo_setter() = runTest {
-        val vm = SettingsViewModel(repo)
+        val vm = SettingsViewModel(repo, adsManager)
         vm.setLargeButtons(true)
         advanceUntilIdle()
 
@@ -117,7 +140,7 @@ class SettingsViewModelTest {
 
     @Test
     fun setHighContrast_invokes_repo_setter() = runTest {
-        val vm = SettingsViewModel(repo)
+        val vm = SettingsViewModel(repo, adsManager)
         vm.setHighContrast(true)
         advanceUntilIdle()
 
@@ -127,7 +150,7 @@ class SettingsViewModelTest {
     @Test
     fun setLastPresetId_null_clears_value() = runTest {
         backing.value = backing.value.copy(lastPresetId = "passport")
-        val vm = SettingsViewModel(repo)
+        val vm = SettingsViewModel(repo, adsManager)
 
         vm.setLastPresetId(null)
         advanceUntilIdle()

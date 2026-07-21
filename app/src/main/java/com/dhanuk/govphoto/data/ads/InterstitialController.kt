@@ -1,5 +1,6 @@
 package com.dhanuk.govphoto.data.ads
 
+import android.app.Activity
 import android.content.Context
 import com.dhanuk.govphoto.BuildConfig
 import com.google.android.gms.ads.FullScreenContentCallback
@@ -33,7 +34,15 @@ class RateLimiter(
 }
 
 /**
- * Single entrypoint for showing interstitials. Called from SaveSuccessScreen after a save succeeds.
+ * Single entrypoint for showing interstitials.
+ *
+ * Two independent paths:
+ *  - [tryShow] / [recordSaveReceived]: legacy save-triggered path, kept gated per
+ *    the 2-minute cooldown and 5/session cap.
+ *  - [tryShowAppUsage]: periodic path driven by MainActivity foreground time
+ *    (first ad shown after [APP_USAGE_INITIAL_DELAY_MS], then every
+ *    [APP_USAGE_INTERVAL_MS]).
+ *
  * Failures are silent (per Google's RTB-safe policy guidance).
  */
 @Singleton
@@ -41,18 +50,17 @@ class InterstitialController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val adsRepository: AdsRepository,
 ) {
-    private val rateLimiter = RateLimiter()
+    private val saveRateLimiter = RateLimiter()
+    private val appUsageRateLimiter = RateLimiter()
     private var loadedAd: InterstitialAd? = null
+    private val createdAtMs = System.currentTimeMillis()
 
-    /** Increment saveCount once after a successful save so the controller can gate. */
-    fun recordSaveReceived(ms: Long = System.currentTimeMillis()) {
-        rateLimiter.saveCount += 1
-        rateLimiter.now = { ms }
-        maybePreload()
-    }
+    /** Preload the ad (no-op if disabled / already loaded / already loading). */
+    fun preloadIfNeeded() = maybePreload()
 
     private fun maybePreload() {
         if (BuildConfig.DEBUG || BuildConfig.FORCE_NO_ADS) return
+        if (adsRepository.isAdFree.value) return
         if (loadedAd != null) return
         val req = com.google.android.gms.ads.AdRequest.Builder().build()
         InterstitialAd.load(
@@ -66,15 +74,70 @@ class InterstitialController @Inject constructor(
         )
     }
 
-    fun tryShow(activity: android.app.Activity): Boolean {
+    /** Increment saveCount once after a successful save so the save-rate-limiter gates. */
+    fun recordSaveReceived(ms: Long = System.currentTimeMillis()) {
+        saveRateLimiter.saveCount += 1
+        saveRateLimiter.now = { ms }
+        maybePreload()
+    }
+
+    /**
+     * Show an interstitial after a save, guarded by a 2-minute cooldown and a
+     * per-session cap of 5.
+     */
+    fun tryShow(activity: Activity): Boolean {
         if (BuildConfig.DEBUG || BuildConfig.FORCE_NO_ADS) return false
         if (adsRepository.isAdFree.value) return false
-        val ad = loadedAd ?: return false.also { maybePreload(); }
-        if (!rateLimiter.canShow(minIntervalMs = 60_000L, perSessionCap = 3, minSaveCount = 2)) return false
+        if (FullScreenAdLock.isShowing.value) return false
+        val ad = loadedAd ?: return false.also { maybePreload() }
+        if (!saveRateLimiter.canShow(minIntervalMs = 120_000L, perSessionCap = 5, minSaveCount = 1)) return false
+
+        if (!FullScreenAdLock.acquire()) return false
         ad.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdDismissedFullScreenContent() {
                 loadedAd = null
-                rateLimiter.markShown()
+                saveRateLimiter.markShown()
+                FullScreenAdLock.release()
+                maybePreload()
+            }
+            override fun onAdFailedToShowFullScreenContent(error: com.google.android.gms.ads.AdError) {
+                loadedAd = null
+                FullScreenAdLock.release()
+                maybePreload()
+            }
+        }
+        ad.show(activity)
+        return true
+    }
+
+    /**
+     * Periodic interstitial shown while the user is actively using the app.
+     * First show is delayed [APP_USAGE_INITIAL_DELAY_MS]; after that the cadence
+     * is [APP_USAGE_INTERVAL_MS] while the app stays in the foreground.
+     */
+    fun tryShowAppUsage(activity: Activity): Boolean {
+        if (BuildConfig.DEBUG || BuildConfig.FORCE_NO_ADS) return false
+        if (adsRepository.isAdFree.value) return false
+        if (FullScreenAdLock.isShowing.value) return false
+
+        val now = System.currentTimeMillis()
+        if (now - createdAtMs < APP_USAGE_INITIAL_DELAY_MS) return false
+        if (appUsageRateLimiter.lastShowMs > 0 && now - appUsageRateLimiter.lastShowMs < APP_USAGE_INTERVAL_MS) return false
+
+        // Try to refresh the pool if we don't have an ad ready.
+        val ad = loadedAd ?: run { maybePreload(); return false }
+
+        if (!FullScreenAdLock.acquire()) return false
+        ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+            override fun onAdDismissedFullScreenContent() {
+                loadedAd = null
+                appUsageRateLimiter.markShown()
+                FullScreenAdLock.release()
+                maybePreload()
+            }
+            override fun onAdFailedToShowFullScreenContent(error: com.google.android.gms.ads.AdError) {
+                loadedAd = null
+                FullScreenAdLock.release()
                 maybePreload()
             }
         }
@@ -84,4 +147,9 @@ class InterstitialController @Inject constructor(
 
     private var retryCount = 0
     private fun loadRetry() { if (retryCount++ > 3) return; maybePreload() }
+
+    private companion object {
+        private const val APP_USAGE_INITIAL_DELAY_MS = 120_000L
+        private const val APP_USAGE_INTERVAL_MS = 180_000L
+    }
 }

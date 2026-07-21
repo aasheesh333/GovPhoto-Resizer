@@ -26,7 +26,7 @@ import coil.request.ImageRequest
 import kotlinx.coroutines.delay
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.data.local.entity.PhotoHistoryEntity
-import com.dhanuk.govphoto.ui.ads.BannerAd
+import com.dhanuk.govphoto.ui.ads.GlobalBannerAd
 import com.dhanuk.govphoto.ui.viewmodel.HistoryViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,7 +63,8 @@ fun HistoryScreen(
                     navigationIconContentColor = Color.White
                 )
             )
-        }
+        },
+        bottomBar = { GlobalBannerAd() }
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize()) {
             if (history.isEmpty()) {
@@ -90,11 +91,6 @@ fun HistoryScreen(
                     }
                 }
             }
-            BannerAd(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-            )
         }
     }
 }
@@ -142,9 +138,9 @@ private fun HistoryRow(
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val dismissState = rememberDismissState(
+    val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            if (value != DismissValue.Default) {
+            if (value != SwipeToDismissBoxValue.Settled) {
                 onDelete()
                 true
             } else {
@@ -153,9 +149,9 @@ private fun HistoryRow(
         }
     )
 
-    SwipeToDismiss(
+    SwipeToDismissBox(
         state = dismissState,
-        background = {
+        backgroundContent = {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -164,21 +160,21 @@ private fun HistoryRow(
                     .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
-Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = stringResource(R.string.cd_delete_history),
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.cd_delete_history),
                     tint = MaterialTheme.colorScheme.onErrorContainer
                 )
             }
         },
-        dismissContent = {
-            HistoryRowContent(item = item, onClick = onClick)
-        },
-        directions = setOf(DismissDirection.EndToStart),
+        enableDismissFromStartToEnd = false,
+        enableDismissFromEndToStart = true,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp)
-    )
+    ) {
+        HistoryRowContent(item = item, onClick = onClick)
+    }
 }
 
 @Composable

@@ -10,6 +10,11 @@
     <string name="select_document_type">दस्तावेज़ का प्रकार चुनें</string>
     <string name="view_all">सभी देखें</string>
     <string name="browse_all_forms">सभी फॉर्म ब्राउज़ करें</string>
+    <string name="app_tagline_short">फोटो रीसाइज़ करें</string>
+    <string name="compliant_subtitle">सभी सरकारी मानकों के अनुरूप</string>
+    <string name="custom_size">कस्टम आकार</string>
+    <string name="custom_size_subtitle">मैन्युअल चौड़ाई और ऊँचाई</string>
+    <string name="select">चुनें</string>
     
     <!-- Navigation -->
     <string name="nav_home">होम</string>
@@ -98,6 +103,8 @@
     <string name="large_buttons_desc">आसान टैपिंग के लिए बटन आकार बढ़ाएं</string>
     <string name="high_contrast_desc">उच्च कंट्रास्ट से दृश्यता बढ़ाएं</string>
     <string name="view_privacy_policy">गोपनीयता नीति देखें</string>
+    <string name="prevent_screenshots">स्क्रीनशॉट रोकें</string>
+    <string name="prevent_screenshots_desc">संवेदनशील दस्तावेज़ फोटो के स्क्रीनशॉट ब्लॉक करें</string>
     <string name="support_us_section">हमें सपोर्ट करें</string>
     <string name="share_app">ऐप शेयर करें</string>
     <string name="share_app_subtitle">अपने दोस्तों को GovPhoto के बारे में बताएं</string>
@@ -251,6 +258,7 @@
     <string name="paywall_done">पूर्ण</string>
     <string name="paywall_already_pro">आपके पास GovPhoto Pro है। धन्यवाद।</string>
     <string name="paywall_legal">ऑटो-नवीनीकरण होगा। Play Store में कभी भी रद्द करें। सदस्यता लेने पर आप नियम और गोपनीयता नीति से सहमत होते हैं।</string>
+    <string name="paywall_billing_not_ready">बिलिंग सेटअप जारी है। बाद में पुनः प्रयास करें।</string>
     <string name="cd_best_value">सर्वोत्तम ऑफ़र बैज</string>
 
     <!-- Monetization / Settings new sections (Hindi) -->
@@ -264,13 +272,78 @@
     <string name="notify_exam_deadlines_desc">परीक्षा फ़ॉर्म विंडो बंद होने पर अलर्ट</string>
     <string name="notify_support_replies">सहायता उत्तर</string>
     <string name="notify_support_replies_desc">हमारी टीम के उत्तर पर सूचना</string>
-    <string name="privacy_choices">गोपनीयता विकल्प</string>
-    <string name="privacy_choices_subtitle">विज्ञापन सम्मति वरीयताएं प्रबंधित करें</string>
-    <string name="privacy_choices_not_available">गोपनीयता विकल्प अभी उपलब्ध नहीं हैं।</string>
     <string name="rewarded_ad_free_button">विज्ञापन देखें — 24 घंटे के लिए विज्ञापन-मुक्त</string>
     <string name="rewarded_ad_free_subtitle">छोटा वीडियो देखें और 24 घंटे के लिए विज्ञापन हटाएं</string>
     <string name="rewarded_ad_loaded_toast">विज्ञापन लोड हो गया। शुरू करने के लिए टैप करें।</string>
     <string name="rewarded_ad_granted_toast">24 घंटे विज्ञापन-मुक्त सेवा सक्रिय। सहयोग के लिए धन्यवाद।</string>
     <string name="rewarded_ad_failed_toast">विज्ञापन लोड विफल। कृपया बाद में पुनः प्रयास करें।</string>
+
+    <!-- Notification permission (OneSignal) -->
+    <string name="notif_perm_title">अपडेट रखें?</string>
+    <string name="notif_perm_message">हम आपको बग फिक्स, नई रिलीज़ और परीक्षा अनुस्मारक जैसे महत्वपूर्ण अपडेट भेजेंगे। कोई स्पैम नहीं।</string>
+    <string name="notif_perm_allow">अनुमति दें</string>
+    <string name="notif_perm_later">अभी नहीं</string>
+
+    <!-- Localized UI strings (previously hardcoded) -->
+    <string name="done">पूर्ण</string>
+    <string name="cd_clear">साफ़ करें</string>
+    <string name="select_clear_photo">एक साफ़, सामने की ओर फेस वाली फोटो चुनें</string>
+    <string name="discard_title">बदलाव त्यागें?</string>
+    <string name="discard_message">आपके बदलाव खो जाएंगे। क्या आप वापस जाना चाहते हैं?</string>
+    <string name="discard_confirm">त्यागें</string>
+    <string name="discard_cancel">संपादन जारी रखें</string>
+    <string name="no_image_selected">कोई फोटो नहीं चुनी गई</string>
+    <string name="custom_dimensions">कस्टम आयाम</string>
+    <string name="width_px">चौड़ाई (px)</string>
+    <string name="height_px">ऊँचाई (px)</string>
+
+    <!-- Accessibility / labels (TalkBack reads these in the user's locale) -->
+    <string name="cd_selected_photo">चुनी गई फोटो</string>
+    <string name="cd_reset_edits">बदलाव रीसेट करें</string>
+    <string name="cd_rotate_90">90 डिग्री घुमाएं</string>
+    <string name="cd_zoom_out">ज़ूम आउट</string>
+    <string name="cd_zoom_in">ज़ूम इन</string>
+    <string name="cd_share">साझा करें</string>
+    <string name="cd_processed_photo">प्रसंस्कृत फोटो</string>
+    <string name="cd_processable_photo">संसाधित फोटो</string>
+    <string name="cd_original_photo">मूल फोटो</string>
+    <string name="cd_clear_search">खोज साफ़ करें</string>
+    <string name="format_label">प्रारूप:</string>
+
+    <!-- Paywall tier titles -->
+    <string name="paywall_tier_weekly">साप्ताहिक</string>
+    <string name="paywall_tier_monthly">मासिक</string>
+    <string name="paywall_tier_annual">वार्षिक</string>
+
+    <!-- HomeScreen Pro banner (compact card below header) -->
+    <string name="home_pro_banner_title">Pro लें</string>
+    <string name="home_pro_banner_subtitle">बिना विज्ञापन + 30 मिनट सपोर्ट</string>
+    <string name="home_pro_banner_cta">प्लान देखें</string>
+    <string name="home_pro_banner_dismiss">Pro बैनर बंद करें</string>
+
+    <!-- Settings sign-in / account section -->
+    <string name="restore_section">बहाल करें</string>
+    <string name="restore_title">पहले से खरीदा है?</string>
+    <string name="restore_subtitle">अगर आपने इस Google account पर Pro पहले ही खरीदा है, तो उसे बहाल करने के लिए नीचे tap करें।</string>
+    <string name="restore_button">खरीदारी बहाल करें</string>
+    <string name="restore_success">Pro प्लान बहाल हो गया</string>
+
+    <!-- Settings top Pro plan CTA card -->
+    <string name="pro_card_title">Pro लें</string>
+    <string name="pro_card_subtitle">सभी ads हटाएं और प्राथमिकता सपोर्ट पाएं</string>
+    <string name="pro_card_features">✓ बिना विज्ञापन अनुभव\n✓ 30 मिनट में ईमेल सपोर्ट\n✓ नई सुविधाओं तक पहले पहुंच</string>
+    <string name="pro_card_title_subscribed">Pro सब्सक्राइब्ड</string>
+    <string name="pro_card_subtitle_subscribed">आप ad-free Pro अनुभव का आनंद ले रहे हैं।</string>
+
+    <!-- Ad diagnostics in-app dialog (adb logcat unavailable on user device) -->
+    <string name="ad_status_title">विज्ञापन स्थिति</string>
+    <string name="refresh">ताज़ा करें</string>
+    <string name="close">बंद करें</string>
+
+    <!-- Push diagnostics in-app dialog (OneSignal zero installs) -->
+    <string name="push_diag_title">Push स्थिति</string>
+    <string name="push_diag_invalid_app_id">OneSignal App ID गायब या गलत है। CI secrets / Dashboard > Keys &amp; IDs में ONESIGNAL_APP_ID सेट करें।</string>
+    <string name="push_diag_no_token">App ID सही लग रही है, लेकिन अभी push token रजिस्टर नहीं हुआ। नोटिफिकेशन permission दें, कुछ सेकंड इंतज़ार करें और refresh करें।</string>
+    <string name="push_diag_looks_ok">App ID सही है और push token preview उपलब्ध है। OneSignal dashboard में Audience > All Users चेक करें।</string>
 </resources>
 

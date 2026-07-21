@@ -1,41 +1,179 @@
 package com.dhanuk.govphoto.data.push
 
 import android.content.Context
+import android.util.Log
 import com.dhanuk.govphoto.BuildConfig
 import com.onesignal.OneSignal
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * OneSignal push notification coordinator.
+ *
+ * Common reasons notifications don't arrive on the OneSignal dashboard:
+ *  - Wrong / placeholder ONESIGNAL_APP_ID (init silently fails).
+ *  - POST_NOTIFICATIONS runtime permission not granted on Android 13+
+ *    (the OS never delivers push, no token is registered).
+ *  - OneSignal.init never called, or threw before completing.
+ *
+ * This repository:
+ *  - Catches and logs init exceptions with the app id redacted so
+ *    "notifications not arriving" is diagnosable from logcat / Crashlytics.
+ *  - Exposes [promptForPermission] so the UI can call OneSignal's official
+ *    system-permission prompt at a well-timed moment (e.g. after 1 min of
+ *    foreground use, once per app lifetime).
+ *  - Exposes in-app [diagnosticInfo] so devices without adb can self-diagnose
+ *    why the OneSignal dashboard shows zero installs / no push token.
+ */
 @Singleton
 class PushRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val store: PushCategoryStore,
 ) {
+    data class DiagnosticInfo(
+        val appId: String,
+        val appIdLength: Int,
+        val isTestId: Boolean,
+        val isValidUuid: Boolean,
+        val permissionState: String,
+        val optedIn: Boolean,
+        val tokenPreview: String,
+        val warning: String?,
+    )
+
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    /** OnInit: enable OneSignal with default logging. Tag user with category state. */
+    private val _diagnosticInfo = MutableStateFlow(buildDiagnosticInfo())
+    val diagnosticInfo: StateFlow<DiagnosticInfo> = _diagnosticInfo.asStateFlow()
+
+    /** OnInit: init with the configured App ID, then push the current per-
+     *  category opt-in state as OneSignal tags. Failures are logged. */
     suspend fun init() {
-        OneSignal.initWithContext(context, BuildConfig.ONESIGNAL_APP_ID)
+        val appId = BuildConfig.ONESIGNAL_APP_ID
+        Log.i(TAG, "init: appIdLen=${appId.length} (test=${appId == TEST_ID})")
+        try {
+            OneSignal.initWithContext(context, appId)
+            Log.i(TAG, "OneSignal.initWithContext returned")
+            // Post-init subscription log so users debugging "no devices on the
+            // dashboard" can see exactly what the OneSignal SDK thinks about
+            // this install. opt-in is needed for the SDK to register a
+            // push token; a non-empty token 1.5s after init usually means
+            // the registration succeeded.
+            scope.launch {
+                delay(1_500)
+                runCatching {
+                    val sub = OneSignal.User.pushSubscription
+                    Log.i(
+                        TAG,
+                        "subscription: optedIn=${sub.optedIn} " +
+                            "token=${if (sub.token.isNullOrEmpty()) "<none>" else sub.token.take(8) + "..."}"
+                    )
+                }.onFailure { Log.w(TAG, "pushSubscription read failed (SDK API drift?)", it) }
+                updateDiagnosticInfo()
+            }
+        } catch (t: Throwable) {
+            // The SDK throws if appId is malformed / blank / non-UUID — surface
+            // this in logcat so "notifications not arriving" is diagnosable.
+            Log.e(TAG, "OneSignal.initWithContext threw — notifications will NOT work", t)
+        }
+        updateDiagnosticInfo()
         refreshTags()
     }
 
-    /** Apply enabled-states as OneSignal tags, so server-segmented sends honor user prefs.
-     *  Tag key = PushCategory.storageKey; value = "1" if enabled else "0". */
+    /** Apply enabled-states as OneSignal tags, so server-segmented sends honour
+     *  user prefs. Tag key = PushCategory.storageKey; value = "1"/"0". */
     suspend fun refreshTags() {
         for (cat in PushCategory.entries) {
             val enabled = store.isEnabled(cat)
-            // Send a tag-bracket map - OneSignal accepts key-value tags only at user-level.
-            OneSignal.User.addTag(cat.storageKey, if (enabled) "1" else "0")
+            // Guard: if OneSignal init failed / was never called, addTag throws.
+            // Best-effort, swallow SDK errors so a misbehaving SDK can't crash
+            // the notification-settings toggles.
+            runCatching { OneSignal.User.addTag(cat.storageKey, if (enabled) "1" else "0") }
+                .onFailure { Log.w(TAG, "addTag($cat) failed", it) }
         }
     }
 
     fun setCategoryEnabled(category: PushCategory, enabled: Boolean) = scope.launch {
         store.setEnabled(category, enabled)
-        OneSignal.User.addTag(category.storageKey, if (enabled) "1" else "0")
+        runCatching { OneSignal.User.addTag(category.storageKey, if (enabled) "1" else "0") }
+            .onFailure { Log.w(TAG, "addTag($category) failed", it) }
+    }
+
+    /**
+     * Trigger the system notification-permission prompt via OneSignal.
+     *
+     * On Android 13+ this is required for any push notification to be delivered
+     * and for a push token to be registered on the OneSignal dashboard.
+     * [fallbackToSettings] = true routes the user to system notification settings
+     * after the OS prompt has been permanently denied.
+     *
+     * Fire-and-forget: launches on the repo's IO scope so callers (e.g. the
+     * NotificationPermissionGate) don't need to be in a coroutine themselves.
+     */
+    fun promptForPermission(fallbackToSettings: Boolean = true) {
+        scope.launch {
+            runCatching { OneSignal.Notifications.requestPermission(fallbackToSettings) }
+                .onFailure { Log.w(TAG, "requestPermission failed", it) }
+            updateDiagnosticInfo()
+        }
+    }
+
+    /** Refresh the snapshot shown in the in-app push diagnostics dialog. */
+    fun refreshDiagnosticInfo() { updateDiagnosticInfo() }
+
+    private fun updateDiagnosticInfo() {
+        _diagnosticInfo.value = buildDiagnosticInfo()
+    }
+
+    private fun buildDiagnosticInfo(): DiagnosticInfo {
+        val appId = BuildConfig.ONESIGNAL_APP_ID
+        val uuidRegex =
+            Regex("""^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$""")
+        val warning = when {
+            appId == TEST_ID ->
+                "OneSignal App ID is still the default 'test-onesignal-id'. " +
+                    "Set ONESIGNAL_APP_ID in CI secrets to see installs on the dashboard."
+            appId.length != 36 || !uuidRegex.matches(appId) ->
+                "OneSignal App ID ($appId) does not look like a 36-character UUID. " +
+                    "Verify the value in CI secrets / Dashboard > Keys & IDs."
+            else -> null
+        }
+
+        val permission = runCatching {
+            // 5.x API surface varies by minor version; try both common names.
+            OneSignal.Notifications::class.java
+                .methods
+                .firstOrNull { it.name in listOf("hasPermission", "permission") && it.parameterTypes.isEmpty() }
+                ?.invoke(OneSignal.Notifications)
+        }.getOrNull()?.toString() ?: "unknown"
+
+        val (optedIn, token) = runCatching {
+            OneSignal.User.pushSubscription.let { it.optedIn to it.token }
+        }.getOrDefault(false to null)
+
+        return DiagnosticInfo(
+            appId = if (appId.length > 12) "...${appId.takeLast(8)}" else appId,
+            appIdLength = appId.length,
+            isTestId = appId == TEST_ID,
+            isValidUuid = warning == null,
+            permissionState = permission,
+            optedIn = optedIn,
+            tokenPreview = if (token.isNullOrBlank()) "<none>" else "${token.take(8)}...",
+            warning = warning,
+        )
+    }
+
+    private companion object {
+        const val TAG = "PushRepository"
+        const val TEST_ID = "test-onesignal-id"
     }
 }

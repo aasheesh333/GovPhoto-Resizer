@@ -18,18 +18,27 @@ class BackgroundRemover @Inject constructor(
     private val segmenter: SegmenterClient
 ) {
     /**
+     * Run selfie segmentation on [source] and return the raw confidence mask.
+     * Callers may cache this mask and re-composite over different background
+     * colours via [composeOver] without re-running the (expensive) ML model.
+     */
+    suspend fun segment(source: Bitmap): SegmentationMask = segmenter.process(source)
+
+    /**
      * Run selfie segmentation on [source], then composite subject over [bgColor].
      * Returns a new ARGB_8888 bitmap the same size as [source].
      */
     suspend fun remove(source: Bitmap, bgColor: BackgroundColor): Bitmap {
-        val mask = segmenter.process(source)
+        val mask = segment(source)
         return composeOver(source, mask, bgColor)
     }
 
     /**
      * Pure compositing function — unit-testable without ML Kit.
-     * Threshold 0.5: confidence > 0.5 keeps subject pixel; else uses bg.
-     * 3px box-blur feather at edges (radius capped at width/200, min 1).
+     * Confidence is passed through a smoothstep around the 0.5 threshold so the
+     * subject/background transition softens over a wider band (less jagged halo
+     * than a hard 0.5 cut). 4px box-blur feather at edges (radius capped at
+     * width/150, min 1) smooths the segmentation boundary.
      */
     fun composeOver(
         source: Bitmap,
@@ -39,7 +48,7 @@ class BackgroundRemover @Inject constructor(
         val w = source.width
         val h = source.height
         val maskConf = scaleMask(mask, w, h)
-        val featherRadius = max(1, min(3, w / 200))
+        val featherRadius = max(1, min(4, w / 150))
         val feathered = boxBlur(maskConf, w, h, featherRadius)
 
         val bg = buildBackground(w, h, bgColor)
@@ -52,11 +61,24 @@ class BackgroundRemover @Inject constructor(
 
         for (i in outPixels.indices) {
             val conf = feathered[i].coerceIn(0f, 1f)
-            outPixels[i] = blend(srcPixels[i], bgPixels[i], conf)
+            val alpha = smoothstep(0.35f, 0.65f, conf)
+            outPixels[i] = blend(srcPixels[i], bgPixels[i], alpha)
         }
         result.setPixels(outPixels, 0, w, 0, 0, w, h)
         bg.recycle()
         return result
+    }
+
+    /**
+     * Hermite smoothstep: monotonic 0..1 S-curve between [edge0] and [edge1].
+     * Values <= edge0 -> 0, >= edge1 -> 1, with a smooth transition between.
+     * Used to feather the segmentation boundary so the cutout edge isn't a hard
+     * confidence threshold (which produces a 1px jagged halo).
+     */
+    internal fun smoothstep(edge0: Float, edge1: Float, x: Float): Float {
+        if (edge0 == edge1) return if (x < edge0) 0f else 1f
+        val t = ((x - edge0) / (edge1 - edge0)).coerceIn(0f, 1f)
+        return t * t * (3f - 2f * t)
     }
 
     internal fun scaleMask(mask: SegmentationMask, targetW: Int, targetH: Int): FloatArray {

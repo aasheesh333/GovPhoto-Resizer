@@ -3,13 +3,18 @@
     <string name="app_name">GovPhoto Resizer</string>
     <string name="app_tagline">Resize photos for all government forms</string>
     <string name="security_note">No photo stored without permission</string>
-    
+
     <!-- Home Screen -->
     <string name="quick_upload">Quick Upload</string>
     <string name="auto_detect_requirements">Auto-detect requirements</string>
     <string name="select_document_type">Select Document Type</string>
     <string name="view_all">View All</string>
     <string name="browse_all_forms">Browse All Forms</string>
+    <string name="app_tagline_short">Resize Photos</string>
+    <string name="compliant_subtitle">Compliant with all government standards</string>
+    <string name="custom_size">Custom Size</string>
+    <string name="custom_size_subtitle">Manual Width &amp; Height</string>
+    <string name="select">Select</string>
     
     <!-- Navigation -->
     <string name="nav_home">Home</string>
@@ -98,6 +103,8 @@
     <string name="large_buttons_desc">Increase button sizes for easier tapping</string>
     <string name="high_contrast_desc">Improve visibility with higher contrast</string>
     <string name="view_privacy_policy">View privacy policy</string>
+    <string name="prevent_screenshots">Prevent Screenshots</string>
+    <string name="prevent_screenshots_desc">Block screenshots for sensitive document photos</string>
     <string name="support_us_section">Support us</string>
     <string name="share_app">Share app</string>
     <string name="share_app_subtitle">Tell a friend about GovPhoto</string>
@@ -251,6 +258,7 @@
     <string name="paywall_done">Done</string>
     <string name="paywall_already_pro">You already have GovPhoto Pro. Thank you.</string>
     <string name="paywall_legal">Auto-renews. Cancel anytime in Play Store. By subscribing you agree to the Terms and Privacy Policy.</string>
+    <string name="paywall_billing_not_ready">Billing setup in progress. Try again later.</string>
     <string name="cd_best_value">Best value badge</string>
 
     <!-- Monetization / Settings new sections -->
@@ -264,13 +272,78 @@
     <string name="notify_exam_deadlines_desc">Alerts when exam form windows close soon</string>
     <string name="notify_support_replies">Support replies</string>
     <string name="notify_support_replies_desc">Notify when our team replies to your message</string>
-    <string name="privacy_choices">Privacy choices</string>
-    <string name="privacy_choices_subtitle">Manage ad consent preferences</string>
-    <string name="privacy_choices_not_available">Privacy options are not available yet.</string>
     <string name="rewarded_ad_free_button">Watch ad for 24 hours ad-free</string>
     <string name="rewarded_ad_free_subtitle">Tap to watch a short video and remove ads for 24 hours</string>
     <string name="rewarded_ad_loaded_toast">Ad loaded. Tap to start.</string>
     <string name="rewarded_ad_granted_toast">24 hours of ad-free unlocked. Thanks for supporting our work.</string>
     <string name="rewarded_ad_failed_toast">Ad failed to load. Please try again later.</string>
+
+    <!-- Notification permission (OneSignal) -->
+    <string name="notif_perm_title">Stay updated?</string>
+    <string name="notif_perm_message">We\'ll send you important updates like bug fixes, new releases and exam reminders. No spam.</string>
+    <string name="notif_perm_allow">Allow</string>
+    <string name="notif_perm_later">Not now</string>
+
+    <!-- Localized UI strings (previously hardcoded) -->
+    <string name="done">Done</string>
+    <string name="cd_clear">Clear</string>
+    <string name="select_clear_photo">Select a clear, front-facing photo</string>
+    <string name="discard_title">Discard edits?</string>
+    <string name="discard_message">Your changes will be lost. Are you sure you want to go back?</string>
+    <string name="discard_confirm">Discard</string>
+    <string name="discard_cancel">Keep editing</string>
+    <string name="no_image_selected">No image selected</string>
+    <string name="custom_dimensions">Custom Dimensions</string>
+    <string name="width_px">Width (px)</string>
+    <string name="height_px">Height (px)</string>
+
+    <!-- Accessibility / labels (TalkBack reads these in the user's locale) -->
+    <string name="cd_selected_photo">Selected photo</string>
+    <string name="cd_reset_edits">Reset edits</string>
+    <string name="cd_rotate_90">Rotate 90 degrees</string>
+    <string name="cd_zoom_out">Zoom out</string>
+    <string name="cd_zoom_in">Zoom in</string>
+    <string name="cd_share">Share</string>
+    <string name="cd_processed_photo">Processed photo</string>
+    <string name="cd_processable_photo">Processable photo</string>
+    <string name="cd_original_photo">Original photo</string>
+    <string name="cd_clear_search">Clear search</string>
+    <string name="format_label">Format:</string>
+
+    <!-- Paywall tier titles -->
+    <string name="paywall_tier_weekly">Weekly</string>
+    <string name="paywall_tier_monthly">Monthly</string>
+    <string name="paywall_tier_annual">Annual</string>
+
+    <!-- HomeScreen Pro banner (compact card below header) -->
+    <string name="home_pro_banner_title">Go Pro</string>
+    <string name="home_pro_banner_subtitle">Ad-free + 30-min support</string>
+    <string name="home_pro_banner_cta">See plans</string>
+    <string name="home_pro_banner_dismiss">Dismiss Pro banner</string>
+
+    <!-- Settings sign-in / account section -->
+    <string name="restore_section">Restore</string>
+    <string name="restore_title">Already purchased?</string>
+    <string name="restore_subtitle">If you\'ve already bought Pro on this Google account, tap below to restore it.</string>
+    <string name="restore_button">Restore purchases</string>
+    <string name="restore_success">Pro plan restored</string>
+
+    <!-- Settings top Pro plan CTA card -->
+    <string name="pro_card_title">Go Pro</string>
+    <string name="pro_card_subtitle">Remove all ads and unlock priority support</string>
+    <string name="pro_card_features">✓ Ad-free experience\n✓ Instant 30-minute email support\n✓ Priority access to new features</string>
+    <string name="pro_card_title_subscribed">Pro Subscribed</string>
+    <string name="pro_card_subtitle_subscribed">You\'re enjoying the ad-free Pro experience.</string>
+
+    <!-- Ad diagnostics in-app dialog (adb logcat unavailable on user device) -->
+    <string name="ad_status_title">Ad status</string>
+    <string name="refresh">Refresh</string>
+    <string name="close">Close</string>
+
+    <!-- Push diagnostics in-app dialog (OneSignal zero installs) -->
+    <string name="push_diag_title">Push status</string>
+    <string name="push_diag_invalid_app_id">The OneSignal App ID is missing or invalid. Set ONESIGNAL_APP_ID in CI secrets / Dashboard > Keys &amp; IDs.</string>
+    <string name="push_diag_no_token">App ID looks valid, but no push token is registered yet. Grant notification permission and wait a few seconds, then refresh.</string>
+    <string name="push_diag_looks_ok">App ID is valid and a push token preview is available. Check OneSignal dashboard Audience > All Users.</string>
 </resources>
 

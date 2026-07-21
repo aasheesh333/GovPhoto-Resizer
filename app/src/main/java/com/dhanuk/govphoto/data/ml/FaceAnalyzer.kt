@@ -99,7 +99,7 @@ class FaceAnalyzer @Inject constructor(
             )
         } else primary.bounds
 
-        val within = faces.size == 1 && withinOval(scaledBounds, ovalGuide, margin = 0.05f)
+        val within = faces.size == 1 && withinOval(scaledBounds, ovalGuide, minOverlap = 0.70f)
         if (!within && faces.size == 1) issues += "Face not within guide oval"
 
         if (ownsDownscaled) detectionBitmap.recycle()
@@ -128,23 +128,26 @@ class FaceAnalyzer @Inject constructor(
         }
 
         /**
-         * True if [faceBounds] is fully contained within [ovalGuide] shrunk by [margin]
-         * (fraction of oval width/height on each side).
+         * Lenient oval check: a face counts as "inside" the guide when
+         *   1) the face bounding-box centre is inside the oval, and
+         *   2) at least [minOverlap] fraction of the face box overlaps the oval.
+         * This prevents false negatives from ears/hair extending slightly past
+         * the guide while a real human shooting a passport-style photo would
+         * still say "the face is inside the oval".
+         *
          * Pure function — unit-testable without ML Kit.
          */
-        fun withinOval(faceBounds: RectF, ovalGuide: RectF, margin: Float = 0.05f): Boolean {
-            val mx = ovalGuide.width() * margin
-            val my = ovalGuide.height() * margin
-            val inner = RectF(
-                ovalGuide.left + mx,
-                ovalGuide.top + my,
-                ovalGuide.right - mx,
-                ovalGuide.bottom - my,
-            )
-            return faceBounds.left >= inner.left &&
-                faceBounds.top >= inner.top &&
-                faceBounds.right <= inner.right &&
-                faceBounds.bottom <= inner.bottom
+        fun withinOval(faceBounds: RectF, ovalGuide: RectF, minOverlap: Float = 0.70f): Boolean {
+            val centerInside = ovalGuide.contains(faceBounds.centerX(), faceBounds.centerY())
+            if (!centerInside) return false
+            val intersection = RectF(faceBounds)
+            if (!intersection.intersect(ovalGuide)) return false
+            val intersectArea = intersection.width().coerceAtLeast(0f) *
+                intersection.height().coerceAtLeast(0f)
+            val faceArea = faceBounds.width().coerceAtLeast(0f) *
+                faceBounds.height().coerceAtLeast(0f)
+            if (faceArea <= 0f) return false
+            return intersectArea / faceArea >= minOverlap
         }
     }
 }

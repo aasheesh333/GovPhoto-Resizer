@@ -29,6 +29,7 @@ import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.dhanuk.govphoto.R
+import com.dhanuk.govphoto.ui.ads.GlobalBannerAd
 import com.dhanuk.govphoto.ui.theme.*
 import com.dhanuk.govphoto.ui.viewmodel.SharedPhotoViewModel
 import java.io.File
@@ -141,7 +142,8 @@ fun PhotoUploadScreen(
                     navigationIconContentColor = Color.White
                 )
             )
-        }
+        },
+        bottomBar = { GlobalBannerAd() }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -165,7 +167,7 @@ fun PhotoUploadScreen(
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = "Select a clear, front-facing photo",
+                text = stringResource(R.string.select_clear_photo),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center

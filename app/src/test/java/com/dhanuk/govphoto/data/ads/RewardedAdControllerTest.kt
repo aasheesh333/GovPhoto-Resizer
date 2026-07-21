@@ -4,7 +4,11 @@ import org.junit.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class InterstitialControllerTest {
+/**
+ * Rate-limiter policy for RewardedAdController mirrors InterstitialController:
+ * every save eligible, 2-minute cooldown, per-session cap of 5.
+ */
+class RewardedAdControllerTest {
 
     private val policy = Triple(120_000L, 5, 1)
 
@@ -38,9 +42,7 @@ class InterstitialControllerTest {
     @Test fun `markShown advances state`() {
         val rl = RateLimiter(now = { 1_000 }, saveCount = 1)
         rl.markShown()
-        // After a show, the 2-min cooldown applies.
         assertFalse(rl.canShowPolicy())
-        // 2 min later, within the session cap, one more is allowed.
         rl.now = { 121_000 }; assertTrue(rl.canShowPolicy())
     }
 }

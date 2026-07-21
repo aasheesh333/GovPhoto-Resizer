@@ -15,15 +15,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
 import com.dhanuk.govphoto.BuildConfig
 import com.dhanuk.govphoto.data.datastore.DarkModePref
 import com.dhanuk.govphoto.ui.navigation.GovPhotoNavHost
+import com.dhanuk.govphoto.ui.ads.AdEntryPoint
+import com.dhanuk.govphoto.ui.components.NotificationPermissionGate
 import com.dhanuk.govphoto.ui.theme.GovPhotoTheme
 import com.dhanuk.govphoto.ui.theme.LocalAppLanguage
 import com.dhanuk.govphoto.ui.theme.LocalHighContrast
 import com.dhanuk.govphoto.ui.theme.LocalLargeButtons
 import com.dhanuk.govphoto.ui.viewmodel.SettingsViewModel
+import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 /**
@@ -52,7 +59,23 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // UMP consent flow -> MobileAds.initialize()
+        val adEntryPoint = runCatching {
+            EntryPointAccessors.fromApplication(
+                applicationContext,
+                AdEntryPoint::class.java,
+            )
+        }.getOrNull()
+
+        // Initialize AdMob up-front so the banner can start loading as soon as
+        // a screen mounts. UMP runs afterwards; if the region/user choice ever
+        // blocks ads, the SDK will no-fill and the banner state flips to Failed.
+        initializeMobileAds()
+
+        // Preload the interstitial early so the 3-minute app-usage timer has an
+        // ad ready when it fires.
+        adEntryPoint?.interstitialController()?.preloadIfNeeded()
+
+        // UMP consent flow -> kick the banner controller again once consent is known.
         val consentInfo = com.google.android.ump.UserMessagingPlatform.getConsentInformation(this)
         val params = com.google.android.ump.ConsentRequestParameters.Builder()
             .setTagForUnderAgeOfConsent(false)
@@ -63,13 +86,17 @@ class MainActivity : ComponentActivity() {
             object : com.google.android.ump.ConsentInformation.OnConsentInfoUpdateSuccessListener {
                 override fun onConsentInfoUpdateSuccess() {
                     com.google.android.ump.UserMessagingPlatform.loadAndShowConsentFormIfRequired(this@MainActivity) { _ ->
-                        initializeMobileAds()
+                        // AdMob is already initialized; re-kick the banner load
+                        // in case consent state changed from the form.
+                        adEntryPoint?.adsManager()?.onConsentReady()
                     }
                 }
             },
             object : com.google.android.ump.ConsentInformation.OnConsentInfoUpdateFailureListener {
                 override fun onConsentInfoUpdateFailure(error: com.google.android.ump.FormError) {
-                    initializeMobileAds()
+                    // AdMob is already initialized; still try to load ads. The SDK
+                    // will no-fill if the network/region/user choice disallows it.
+                    adEntryPoint?.adsManager()?.onConsentReady()
                 }
             }
         )
@@ -95,7 +122,8 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            val settings by hiltViewModel<SettingsViewModel>().state.collectAsState()
+            val settingsViewModel: SettingsViewModel = hiltViewModel()
+            val settings by settingsViewModel.state.collectAsState()
             // Resolve dark theme from pref
             val isDark = when (settings.darkMode) {
                 DarkModePref.SYSTEM -> isSystemInDarkTheme()
@@ -113,16 +141,115 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        GovPhotoNavHost()
+                        NotificationPermissionGate(settingsViewModel = settingsViewModel) {
+                            GovPhotoNavHost()
+                        }
                     }
                 }
             }
         }
+
+        // Show interstitial ads while the user is actively using the app,
+        // independent of the Save button (which only triggers rewarded ads).
+        scheduleAppUsageInterstitial(adEntryPoint?.interstitialController())
     }
 
-    private fun initializeMobileAds() {
+    private fun initializeMobileAds(){
         com.google.android.gms.ads.MobileAds.initialize(this)
+        // Single consolidated AdMob config dump so a "why is my banner not
+        // filling" investigation only needs `adb logcat | grep GovPhotoAd`.
+        // Banner / Interstitial / Reward units that are still Google's demo
+        // IDs (3940256099942544) while the app ID is a real one is the most
+        // common cause of "Ad Inspector only shows interstitial Fill".
+        val demoApp = "3940256099942544"
+        val isDemoApp = BuildConfig.ADMOB_APP_ID.startsWith(demoApp)
+        android.util.Log.i(
+            "GovPhotoAd",
+            "appId=${BuildConfig.ADMOB_APP_ID} demoApp=$isDemoApp | " +
+                "banner=${BuildConfig.ADMOB_BANNER_UNIT} | " +
+                "interstitial=${BuildConfig.ADMOB_INTERSTITIAL_UNIT} | " +
+                "reward=${BuildConfig.ADMOB_REWARDED_UNIT}",
+        )
+        listOf(
+            "banner" to BuildConfig.ADMOB_BANNER_UNIT,
+            "interstitial" to BuildConfig.ADMOB_INTERSTITIAL_UNIT,
+            "reward" to BuildConfig.ADMOB_REWARDED_UNIT,
+        ).forEach { (label, unit) ->
+            // Units under Google's demo app have the demoApp prefix.
+            if (!isDemoApp && unit.startsWith(demoApp)) {
+                android.util.Log.w(
+                    "GovPhotoAd",
+                    "$label unit ($unit) is a Google DEMO ID but appId is real — " +
+                        "this unit will NOT fill in production. Set the real unit " +
+                        "ID in ADMOB_${label.uppercase()}_UNIT.",
+                )
+            }
+        }
     }
+
+    override fun onResume() {
+        super.onResume()
+        runCatching {
+            EntryPointAccessors.fromApplication(
+                applicationContext,
+                AdEntryPoint::class.java,
+            ).adsManager().resume()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        runCatching {
+            EntryPointAccessors.fromApplication(
+                applicationContext,
+                AdEntryPoint::class.java,
+            ).adsManager().pause()
+        }
+    }
+
+    /**
+     * When the app is UI-hidden under memory pressure, pause the banner ad so
+     * its network/refresh work stops competing for resources. The ad resumes
+     * on onResume. Mirrors AdView.pause() semantics that the AdMob docs
+     * recommend for parent activities.
+     */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
+            runCatching {
+                EntryPointAccessors.fromApplication(
+                    applicationContext,
+                    AdEntryPoint::class.java,
+                ).adsManager().pause()
+            }
+        }
+    }
+
+    /**
+     * Loop while MainActivity is alive: wait an initial 2-minute grace period,
+     * then attempt an interstitial every 3 minutes of foreground time. The
+     * InterstitialController guards against actual display unless an ad is
+     * loaded and no other full-screen ad is currently showing.
+     */
+    private fun scheduleAppUsageInterstitial(controller: com.dhanuk.govphoto.data.ads.InterstitialController?) {
+        if (controller == null) return
+        lifecycleScope.launch {
+            delay(APP_USAGE_INITIAL_DELAY_MS)
+            while (true) {
+                if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                    controller.tryShowAppUsage(this@MainActivity)
+                }
+                delay(APP_USAGE_INTERVAL_MS)
+            }
+        }
+    }
+
+    // NOTE: AdsManager is a process-scoped @Singleton holding the shared
+    // banner AdView. Calling destroy() here would tear down the AdView on
+    // every config change / language recreate and the banner would be dead
+    // for the rest of the process (the singleton survives Activity recreate).
+    // The OS reclaims the AdView when the process dies; onDestroy is left
+    // empty intentionally.
 
     private fun applyLocale(base: Context, tag: String): Context {
         val locale = Locale(tag)
@@ -131,5 +258,10 @@ class MainActivity : ComponentActivity() {
         @Suppress("DEPRECATION")
         config.setLocale(locale)
         return base.createConfigurationContext(config) ?: base
+    }
+
+    companion object {
+        private const val APP_USAGE_INITIAL_DELAY_MS = 120_000L
+        private const val APP_USAGE_INTERVAL_MS = 180_000L
     }
 }

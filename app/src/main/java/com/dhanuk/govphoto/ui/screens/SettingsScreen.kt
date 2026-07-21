@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -24,11 +25,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dhanuk.govphoto.BuildConfig
+import com.dhanuk.govphoto.GovPhotoAppEntryPoint
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.data.datastore.AppLanguage
 import com.dhanuk.govphoto.data.datastore.DarkModePref
-import com.dhanuk.govphoto.ui.ads.BannerAd
+import com.dhanuk.govphoto.ui.ads.GlobalBannerAd
 import com.dhanuk.govphoto.ui.viewmodel.SettingsViewModel
+import dagger.hilt.android.EntryPointAccessors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,12 +42,15 @@ fun SettingsScreen(
 ) {
     val settings by viewModel.state.collectAsState()
     val context = LocalContext.current
-    var showPrivacyPolicy by remember { mutableStateOf(false) }
+    val subRepo = remember {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            GovPhotoAppEntryPoint::class.java
+        ).subscriptionRepository()
+    }
+    val isPro by subRepo.isPro.collectAsState()
     val sharedPreferences = remember { context.getSharedPreferences("govphoto_settings", android.content.Context.MODE_PRIVATE) }
     var preventScreenshots by remember { mutableStateOf(sharedPreferences.getBoolean("prevent_screenshots", false)) }
-    var releaseNotesEnabled by remember { mutableStateOf(true) }
-    var examDeadlinesEnabled by remember { mutableStateOf(false) }
-    var supportRepliesEnabled by remember { mutableStateOf(true) }
 
     Scaffold(
         topBar = {
@@ -69,7 +75,8 @@ fun SettingsScreen(
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
-        }
+        },
+        bottomBar = { GlobalBannerAd() }
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize()) {
             Column(
@@ -79,6 +86,14 @@ fun SettingsScreen(
                     .background(MaterialTheme.colorScheme.background)
                     .verticalScroll(rememberScrollState())
             ) {
+            // Pro Plan CTA — shows "Go Pro" when not subscribed and
+            // "Pro Subscribed" when the user already has Pro.
+            SettingsProCard(
+                isPro = isPro,
+                onClick = onNavigateToPaywall,
+            )
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
             // Appearance Section
             SettingsSection(title = stringResource(R.string.appearance)) {
                 // Theme selector
@@ -88,16 +103,18 @@ fun SettingsScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 // Dynamic Color toggle
+                val dynamicColorSupported = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
                 SettingsToggle(
                     icon = Icons.Default.Palette,
                     title = stringResource(R.string.dynamic_color),
                     subtitle = stringResource(R.string.dynamic_color_desc),
-                    isChecked = settings.dynamicColor,
+                    isChecked = settings.dynamicColor && dynamicColorSupported,
+                    enabled = dynamicColorSupported,
                     onCheckedChange = { viewModel.setDynamicColor(it) }
                 )
             }
 
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // Support us Section
             SettingsSection(title = stringResource(R.string.support_us_section)) {
@@ -151,23 +168,6 @@ fun SettingsScreen(
                     }
                 )
 
-                // Privacy choices (UMP form)
-                SettingsItem(
-                    icon = Icons.Default.Cookie,
-                    title = stringResource(R.string.privacy_choices),
-                    subtitle = stringResource(R.string.privacy_choices_subtitle),
-                    onClick = {
-                        val activity = context as? android.app.Activity
-                        if (activity != null) {
-                            com.google.android.ump.UserMessagingPlatform.showPrivacyOptionsForm(activity) { error ->
-                                if (error != null) {
-                                    android.widget.Toast.makeText(context, context.getString(R.string.privacy_choices_not_available), android.widget.Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        }
-                    }
-                )
-
                 // Open Privacy Policy in browser
                 SettingsItem(
                     icon = Icons.Default.PrivacyTip,
@@ -214,7 +214,7 @@ fun SettingsScreen(
                 )
             }
 
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // Subscription Section
             SettingsSection(title = stringResource(R.string.subscription_section)) {
@@ -224,101 +224,9 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.remove_ads_subtitle),
                     onClick = onNavigateToPaywall
                 )
-
-                SettingsItem(
-                    icon = Icons.Default.PlayCircle,
-                    title = stringResource(R.string.rewarded_ad_free_button),
-                    subtitle = stringResource(R.string.rewarded_ad_free_subtitle),
-                    onClick = {
-                        if (BuildConfig.DEBUG || BuildConfig.FORCE_NO_ADS) {
-                            android.widget.Toast.makeText(context, context.getString(R.string.rewarded_ad_failed_toast), android.widget.Toast.LENGTH_SHORT).show()
-                            return@SettingsItem
-                        }
-                        val activity = context as? android.app.Activity
-                        if (activity == null) {
-                            android.widget.Toast.makeText(context, context.getString(R.string.rewarded_ad_failed_toast), android.widget.Toast.LENGTH_SHORT).show()
-                            return@SettingsItem
-                        }
-                        // Load + show rewarded ad; on user-earned reward, persist ad-free for 24h
-                        val adRequest = com.google.android.gms.ads.AdRequest.Builder().build()
-                        com.google.android.gms.ads.rewarded.RewardedAd.load(
-                            context.applicationContext,
-                            BuildConfig.ADMOB_REWARDED_UNIT,
-                            adRequest,
-                            object : com.google.android.gms.ads.rewarded.RewardedAdLoadCallback() {
-                                override fun onAdLoaded(ad: com.google.android.gms.ads.rewarded.RewardedAd) {
-                                    android.widget.Toast.makeText(context, context.getString(R.string.rewarded_ad_loaded_toast), android.widget.Toast.LENGTH_SHORT).show()
-                                    ad.show(activity) { rewardItem ->
-                                        // Persist ad-free for 24h - task 9 will swap this to SettingsRepository
-                                        val untilMs = System.currentTimeMillis() + 24 * 3_600_000L
-                                        // Direct write to a prefs file as interim storage
-                                        val prefs = context.getSharedPreferences("govphoto_ad_free", android.content.Context.MODE_PRIVATE)
-                                        prefs.edit().putLong("ad_free_until_ms", untilMs).apply()
-                                        // Force adsRepository refresh via EntryPoint
-                                        runCatching {
-                                            dagger.hilt.android.EntryPointAccessors.fromApplication(
-                                                context.applicationContext,
-                                                AdsRefreshEntryPoint::class.java,
-                                            ).adsRepository().refresh()
-                                        }
-                                        android.widget.Toast.makeText(context, context.getString(R.string.rewarded_ad_granted_toast), android.widget.Toast.LENGTH_LONG).show()
-                                    }
-                                }
-
-                                override fun onAdFailedToLoad(error: com.google.android.gms.ads.LoadAdError) {
-                                    android.widget.Toast.makeText(context, context.getString(R.string.rewarded_ad_failed_toast), android.widget.Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        )
-                    }
-                )
             }
 
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-            // Notifications Section
-            SettingsSection(title = stringResource(R.string.notifications_section)) {
-                val pushRepository = remember {
-                    runCatching {
-                        dagger.hilt.android.EntryPointAccessors.fromApplication(
-                            context.applicationContext,
-                            PushEntryPoint::class.java,
-                        ).pushRepository()
-                    }.getOrNull()
-                }
-                SettingsToggle(
-                    icon = Icons.Default.Campaign,
-                    title = stringResource(R.string.notify_release_notes),
-                    subtitle = stringResource(R.string.notify_release_notes_desc),
-                    isChecked = releaseNotesEnabled,
-                    onCheckedChange = { v ->
-                        releaseNotesEnabled = v
-                        pushRepository?.setCategoryEnabled(com.dhanuk.govphoto.data.push.PushCategory.RELEASE_NOTES, v)
-                    }
-                )
-                SettingsToggle(
-                    icon = Icons.Default.NotificationsActive,
-                    title = stringResource(R.string.notify_exam_deadlines),
-                    subtitle = stringResource(R.string.notify_exam_deadlines_desc),
-                    isChecked = examDeadlinesEnabled,
-                    onCheckedChange = { v ->
-                        examDeadlinesEnabled = v
-                        pushRepository?.setCategoryEnabled(com.dhanuk.govphoto.data.push.PushCategory.EXAM_DEADLINES, v)
-                    }
-                )
-                SettingsToggle(
-                    icon = Icons.Default.MarkEmailRead,
-                    title = stringResource(R.string.notify_support_replies),
-                    subtitle = stringResource(R.string.notify_support_replies_desc),
-                    isChecked = supportRepliesEnabled,
-                    onCheckedChange = { v ->
-                        supportRepliesEnabled = v
-                        pushRepository?.setCategoryEnabled(com.dhanuk.govphoto.data.push.PushCategory.SUPPORT_REPLIES, v)
-                    }
-                )
-            }
-
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // Language Section
             SettingsSection(title = stringResource(R.string.language)) {
@@ -326,7 +234,7 @@ fun SettingsScreen(
                     label = stringResource(R.string.english),
                     isSelected = settings.language == AppLanguage.ENGLISH,
                     onClick = {
-                        viewModel.setLanguage(AppLanguage.ENGLISH)
+                        viewModel.applyLanguage(AppLanguage.ENGLISH)
                         (context as? Activity)?.recreate()
                     }
                 )
@@ -334,13 +242,13 @@ fun SettingsScreen(
                     label = stringResource(R.string.hindi),
                     isSelected = settings.language == AppLanguage.HINDI,
                     onClick = {
-                        viewModel.setLanguage(AppLanguage.HINDI)
+                        viewModel.applyLanguage(AppLanguage.HINDI)
                         (context as? Activity)?.recreate()
                     }
                 )
             }
 
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // Accessibility Section
             SettingsSection(title = stringResource(R.string.accessibility)) {
@@ -360,8 +268,8 @@ fun SettingsScreen(
                 )
                 SettingsToggle(
                     icon = Icons.Default.Lock,
-                    title = "Prevent Screenshots",
-                    subtitle = "Block screenshots for sensitive document photos",
+                    title = stringResource(R.string.prevent_screenshots),
+                    subtitle = stringResource(R.string.prevent_screenshots_desc),
                     isChecked = preventScreenshots,
                     onCheckedChange = {
                         preventScreenshots = it
@@ -379,88 +287,21 @@ fun SettingsScreen(
                 )
             }
 
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // About Section
             SettingsSection(title = stringResource(R.string.about)) {
-                SettingsItem(
+SettingsItem(
                     icon = Icons.Default.Info,
                     title = stringResource(R.string.version),
                     subtitle = BuildConfig.VERSION_NAME
                 )
-                SettingsItem(
-                    icon = Icons.Default.PrivacyTip,
-                    title = stringResource(R.string.privacy_policy),
-                    subtitle = stringResource(R.string.view_privacy_policy),
-                    onClick = { showPrivacyPolicy = true }
-                )
-                SettingsItem(
-                    icon = Icons.Default.BugReport,
-                    title = "Share Crash Log",
-                    subtitle = "Send diagnostic info to support",
-                    onClick = {
-                        try {
-                            val crashFile = java.io.File(context.filesDir, "last_crash.txt")
-                            if (crashFile.exists()) {
-                                val uri = androidx.core.content.FileProvider.getUriForFile(
-                                    context,
-                                    "${context.packageName}.fileprovider",
-                                    crashFile
-                                )
-                                val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(android.content.Intent.EXTRA_STREAM, uri)
-                                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                                context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Crash Log"))
-                            } else {
-                                android.widget.Toast.makeText(context, "No crash logs found", android.widget.Toast.LENGTH_SHORT).show()
-                            }
-                        } catch (e: Exception) {
-                            android.widget.Toast.makeText(context, "Could not share crash log", android.widget.Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                )
-            }
+}
 
             Spacer(modifier = Modifier.height(32.dp))
             }
-            BannerAd(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-            )
         }
     }
-
-    if (showPrivacyPolicy) {
-        PrivacyPolicyDialog(onDismiss = { showPrivacyPolicy = false })
-    }
-}
-
-@Composable
-private fun PrivacyPolicyDialog(onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.privacy_policy), fontWeight = FontWeight.Bold) },
-        text = {
-            Text(
-                text = """GovPhoto Resizer respects your privacy.
-
-All photos are processed on-device. No image data is uploaded to any server.
-
-App settings (language, theme, accessibility) are stored locally using encrypted preferences.
-
-Optional photo history is saved on your device only. No personal data is collected or transmitted.
-
-For background removal and face detection, on-device ML Kit models run entirely offline.""",
-                style = MaterialTheme.typography.bodyMedium
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("OK") }
-        }
-    )
 }
 
 @Composable
@@ -551,7 +392,8 @@ private fun SettingsToggle(
     title: String,
     subtitle: String,
     isChecked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -567,14 +409,14 @@ private fun SettingsToggle(
 Icon(
             imageVector = icon,
             contentDescription = stringResource(R.string.cd_settings_toggle),
-            tint = MaterialTheme.colorScheme.primary,
+            tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(24.dp)
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                color = MaterialTheme.colorScheme.onSurface
+                color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = subtitle,
@@ -585,6 +427,7 @@ Icon(
         Switch(
             checked = isChecked,
             onCheckedChange = onCheckedChange,
+            enabled = enabled,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                 checkedTrackColor = MaterialTheme.colorScheme.primary
@@ -644,14 +487,75 @@ Icon(
     }
 }
 
-@dagger.hilt.EntryPoint
-@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
-interface PushEntryPoint {
-    fun pushRepository(): com.dhanuk.govphoto.data.push.PushRepository
-}
+@Composable
+private fun SettingsProCard(
+    isPro: Boolean,
+    onClick: () -> Unit,
+) {
+    val cardColor = if (isPro) {
+        MaterialTheme.colorScheme.tertiaryContainer
+    } else {
+        MaterialTheme.colorScheme.primaryContainer
+    }
+    val contentColor = if (isPro) {
+        MaterialTheme.colorScheme.onTertiaryContainer
+    } else {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    }
 
-@dagger.hilt.EntryPoint
-@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
-interface AdsRefreshEntryPoint {
-    fun adsRepository(): com.dhanuk.govphoto.data.ads.AdsRepository
+    androidx.compose.material3.Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .then(if (isPro) Modifier else Modifier.clickable { onClick() }),
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = cardColor,
+            contentColor = contentColor,
+        ),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        androidx.compose.foundation.layout.Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            androidx.compose.foundation.layout.Row(
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                androidx.compose.material3.Icon(
+                    imageVector = if (isPro) Icons.Default.CheckCircle else Icons.Default.Star,
+                    contentDescription = null,
+                    tint = if (isPro) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
+                )
+                Spacer(modifier = Modifier.padding(start = 8.dp))
+                androidx.compose.material3.Text(
+                    text = stringResource(
+                        if (isPro) R.string.pro_card_title_subscribed else R.string.pro_card_title
+                    ),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                if (!isPro) {
+                    androidx.compose.material3.Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = contentColor,
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.padding(top = 6.dp))
+            androidx.compose.material3.Text(
+                text = stringResource(
+                    if (isPro) R.string.pro_card_subtitle_subscribed else R.string.pro_card_subtitle
+                ),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Spacer(modifier = Modifier.padding(top = 12.dp))
+            if (!isPro) {
+                androidx.compose.material3.Text(
+                    text = stringResource(R.string.pro_card_features),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+    }
 }

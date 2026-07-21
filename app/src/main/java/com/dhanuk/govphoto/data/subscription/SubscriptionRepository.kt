@@ -28,7 +28,7 @@ class SubscriptionRepository @Inject constructor(
     private val cachedStore: CachedIsProStore,
 ) {
     companion object {
-        const val ENTITLEMENT_ID = "pro"
+        const val ENTITLEMENT_ID = "GovPhoto Resizer Pro"
         private const val REWARD_REPOS_SCOPE_TAG = "SubscriptionRepo"
     }
 
