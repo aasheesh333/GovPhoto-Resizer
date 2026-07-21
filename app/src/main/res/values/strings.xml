@@ -283,6 +283,8 @@
     <string name="notif_perm_message">We\'ll send you important updates like bug fixes, new releases and exam reminders. No spam.</string>
     <string name="notif_perm_allow">Allow</string>
     <string name="notif_perm_later">Not now</string>
+    <string name="notifications">Notifications</string>
+    <string name="notifications_subtitle">Tap to allow exam updates &amp; reminders</string>
 
     <!-- Localized UI strings (previously hardcoded) -->
     <string name="done">Done</string>
