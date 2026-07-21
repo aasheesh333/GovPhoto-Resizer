@@ -188,6 +188,7 @@ dependencies {
 
     // RevenueCat
     implementation("com.revenuecat.purchases:purchases:8.24.0")
+    implementation("com.revenuecat.purchases:purchases-ui:8.24.0")
 
     // OneSignal — keep within the v5.1.x stable line; latest patch fixes several
     // FCM token-registration and permission-handling issues.
