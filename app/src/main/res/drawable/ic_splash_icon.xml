@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Splash screen icon — large + full-bleed.
+    Used by Theme.GovPhotoResizer.Splash via windowSplashScreenAnimatedIcon.
+    On Android 12+ the system applies a circular mask automatically; the
+    photo fills the entire masked circle (no 66% safe-zone padding shrink).
+    On pre-12 the compat splash shows it as a full-bleed square.
+-->
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/ic_splash_photo"
+    android:gravity="fill"
+    android:tileMode="disabled" />
