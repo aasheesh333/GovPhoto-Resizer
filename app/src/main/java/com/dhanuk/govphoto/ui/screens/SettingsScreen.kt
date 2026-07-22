@@ -37,7 +37,6 @@ import dagger.hilt.android.EntryPointAccessors
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
-    onNavigateToPaywall: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val settings by viewModel.state.collectAsState()
@@ -50,9 +49,7 @@ fun SettingsScreen(
             )
         }.getOrNull()
     }
-    val subRepo = appEntryPoint?.subscriptionRepository()
     val pushRepo = appEntryPoint?.pushRepository()
-    val isPro by subRepo?.isPro?.collectAsState() ?: remember { mutableStateOf(false) }
     val sharedPreferences = remember { context.getSharedPreferences("govphoto_settings", android.content.Context.MODE_PRIVATE) }
     var preventScreenshots by remember { mutableStateOf(sharedPreferences.getBoolean("prevent_screenshots", false)) }
 
@@ -90,14 +87,6 @@ fun SettingsScreen(
                     .background(MaterialTheme.colorScheme.background)
                     .verticalScroll(rememberScrollState())
             ) {
-            // Pro Plan CTA — shows "Go Pro" when not subscribed and
-            // "Pro Subscribed" when the user already has Pro.
-            SettingsProCard(
-                isPro = isPro,
-                onClick = onNavigateToPaywall,
-            )
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
             // Appearance Section
             SettingsSection(title = stringResource(R.string.appearance)) {
                 // Theme selector
@@ -228,18 +217,6 @@ fun SettingsScreen(
                             Toast.makeText(context, "No browser found", Toast.LENGTH_SHORT).show()
                         }
                     }
-                )
-            }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-            // Subscription Section
-            SettingsSection(title = stringResource(R.string.subscription_section)) {
-                SettingsItem(
-                    icon = Icons.Default.WorkspacePremium,
-                    title = stringResource(R.string.remove_ads),
-                    subtitle = stringResource(R.string.remove_ads_subtitle),
-                    onClick = onNavigateToPaywall
                 )
             }
 

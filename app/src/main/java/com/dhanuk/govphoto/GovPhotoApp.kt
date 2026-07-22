@@ -43,19 +43,25 @@ class GovPhotoApp : Application() {
             Firebase.crashlytics.setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG)
         }
 
-        // RevenueCat. Best-effort: validateConfiguration() throws if INTERNET
-        // permission is missing (Robolectric) or apiKey blank. Without
-        // successful configure(), the singleton is "unconfigured" and any
-        // subsequent call (getCustomerInfo, awaitOfferings) NPEs, so we only
-        // launch the bind/init background work when configure() returns cleanly.
-        val rcConfigured = runCatching {
-            com.revenuecat.purchases.Purchases.configure(
-                com.revenuecat.purchases.PurchasesConfiguration.Builder(
-                    this,
-                    BuildConfig.REVENUECAT_API_KEY,
-                ).build()
-            )
-        }.isSuccess
+        // RevenueCat — DORMANT. BillDesk KYC was rejected, so real Google Play
+        // IAPs cannot be created and the app has pivoted to an ads-only model.
+        // The configure() call and the bind() coroutine below are intentionally
+        // skipped so the SDK stays "unconfigured" and Purchases.shared points to
+        // a no-op singleton. SubscriptionRepository.isPro therefore always
+        // resolves to false and all Pro-gated features are unlocked by default.
+        // To re-enable: replace `false` with the runCatching{ configure(...) }
+        // block below (kept commented for reference) and ensure
+        // BuildConfig.REVENUECAT_API_KEY points at a live project key.
+        // ---
+        // val rcConfigured = runCatching {
+        //     com.revenuecat.purchases.Purchases.configure(
+        //         com.revenuecat.purchases.PurchasesConfiguration.Builder(
+        //             this,
+        //             BuildConfig.REVENUECAT_API_KEY,
+        //         ).build()
+        //     )
+        // }.isSuccess
+        val rcConfigured = false
 
         // A CoroutineExceptionHandler that swallows any uncaught exception so a
         // misbehaving SDK call on a background thread can't crash the whole app.
