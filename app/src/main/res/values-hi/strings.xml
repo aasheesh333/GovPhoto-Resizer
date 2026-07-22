@@ -286,6 +286,14 @@
     <string name="notifications">नोटिफिकेशन</string>
     <string name="notifications_subtitle">एग्जाम अपडेट और रिमाइंडर के लिए टैप करें</string>
 
+    <!-- First-open notification rationale popup (Hindi translations) -->
+    <string name="notif_rationale_title">कोई एग्जाम की डेडलाइन मिस न करें</string>
+    <string name="notif_rationale_message">जब नई सरकारी परीक्षा के आवेदन खुलें, डेडलाइन पास हो और महत्वपूर्ण अपडेट आएँ तो हम आपको सूचित करेंगे। नोटिफिकेशन चालू करने के लिए अनुमति दें पर टैप करें।</string>
+    <string name="notif_rationale_allow">अनुमति दें</string>
+    <string name="notif_rationale_not_now">अभी नहीं</string>
+    <string name="notifications_off_subtitle">एग्जाम डेडलाइन और अपडेट की सूचना पाने के लिए टैप करें</string>
+    <string name="notifications_subtitle_preal13">आपके एंड्रॉइड वर्शन में डिफ़ॉल्ट रूप से चालू है</string>
+
     <!-- Localized UI strings (previously hardcoded) -->
     <string name="done">पूर्ण</string>
     <string name="cd_clear">साफ़ करें</string>
