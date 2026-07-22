@@ -1,9 +1,13 @@
 package com.dhanuk.govphoto.ui.screens
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -29,6 +33,9 @@ import com.dhanuk.govphoto.GovPhotoAppEntryPoint
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.data.datastore.AppLanguage
 import com.dhanuk.govphoto.data.datastore.DarkModePref
+import com.dhanuk.govphoto.data.push.isPostNotificationsPermissionGranted
+import com.dhanuk.govphoto.data.push.openNotificationSettings
+import com.dhanuk.govphoto.data.push.shouldShowPostNotificationsRationale
 import com.dhanuk.govphoto.ui.ads.GlobalBannerAd
 import com.dhanuk.govphoto.ui.viewmodel.SettingsViewModel
 import dagger.hilt.android.EntryPointAccessors
@@ -136,21 +143,38 @@ fun SettingsScreen(
                 )
 
                 // Push notifications — master toggle.
-                // ON  → calls promptForPermission (Android 13+) and flips all 3
-                //       category tags to "1" so OneSignal dashboard segment
-                //       includes this user.
-                // OFF → flips all 3 category tags to "0" so dashboard excludes
-                //       this user. OS-level permission is not revokable; the
-                //       tags are the gate.
-                // On Android < 13 the Switch is disabled (OS auto-grants
-                // notifications, so the toggle is meaningless).
+                // On Android 13+: the Switch reflects [enabled] and, when the user
+                // tries to turn it ON, launches the real Android system
+                // POST_NOTIFICATIONS permission dialog. If the user had
+                // permanently denied, we open system notification settings.
+                // OFF  → disables all 3 category tags via PushRepository.
+                // On Android < 13 the OS auto-grants notifications, so the
+                // Switch is disabled and pinned ON to avoid confusion.
+                val activity = context as? Activity
+                val permissionGranted = isPostNotificationsPermissionGranted(context)
+                val permissionLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission(),
+                ) { granted ->
+                    if (!granted && activity != null && !shouldShowPostNotificationsRationale(activity)) {
+                        openNotificationSettings(activity)
+                    }
+                    pushRepo?.setNotificationEnabled(granted)
+                    viewModel.setNotificationsEnabled(granted)
+                }
+
                 NotificationsMasterToggle(
                     enabled = settings.notificationsEnabled,
                     onToggle = { newValue ->
-                        pushRepo?.setNotificationEnabled(newValue)
-                        viewModel.setNotificationsEnabled(newValue)
                         if (newValue) {
-                            pushRepo?.promptForPermission(fallbackToSettings = true)
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !permissionGranted) {
+                                permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            } else {
+                                pushRepo?.setNotificationEnabled(true)
+                                viewModel.setNotificationsEnabled(true)
+                            }
+                        } else {
+                            pushRepo?.setNotificationEnabled(false)
+                            viewModel.setNotificationsEnabled(false)
                         }
                     },
                 )
@@ -491,21 +515,19 @@ Icon(
 /**
  * Master notifications toggle row with a Material3 [Switch].
  *
- * On Android 13+ (TIRAMISU): Switch reflects [enabled]; tapping ON triggers
- * [PushRepository.promptForPermission] (and the master category toggle),
- * tapping OFF disables all 3 category tags via [PushRepository.setNotificationEnabled].
- * The OS-level permission itself is not revokable; tags are the gate.
+ * On Android 13+ (TIRAMISU): Switch reflects [enabled]; tapping ON launches
+ * the system POST_NOTIFICATIONS permission dialog and enables OneSignal tags
+ * when granted, tapping OFF disables tags via [PushRepository.setNotificationEnabled].
  *
  * On Android < 13: notifications are auto-granted by the OS at install time,
- * so the Switch is rendered disabled and the subtitle is replaced with a
- * "Enabled by default on your Android version" hint to avoid confusion.
+ * so the Switch is pinned ON and disabled, with a subtitle explaining that.
  */
 @Composable
 private fun NotificationsMasterToggle(
     enabled: Boolean,
     onToggle: (Boolean) -> Unit,
 ) {
-    val preAndroid13 = android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU
+    val preAndroid13 = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
     val subtitle = if (preAndroid13) {
         stringResource(R.string.notifications_subtitle_preal13)
     } else if (enabled) {
@@ -514,10 +536,13 @@ private fun NotificationsMasterToggle(
         stringResource(R.string.notifications_off_subtitle)
     }
 
+    val switchChecked = enabled || preAndroid13
+    val switchEnabled = !preAndroid13
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (!preAndroid13) Modifier.clickable { onToggle(!enabled) } else Modifier),
+            .then(if (switchEnabled) Modifier.clickable { onToggle(!enabled) } else Modifier),
         color = MaterialTheme.colorScheme.surface
     ) {
         Row(
@@ -547,8 +572,9 @@ private fun NotificationsMasterToggle(
                 )
             }
             Switch(
-                checked = enabled && !preAndroid13,
-                onCheckedChange = if (preAndroid13) null else onToggle,
+                checked = switchChecked,
+                onCheckedChange = if (switchEnabled) onToggle else null,
+                enabled = switchEnabled,
             )
         }
     }

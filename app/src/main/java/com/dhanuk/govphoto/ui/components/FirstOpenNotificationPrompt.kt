@@ -1,5 +1,9 @@
 package com.dhanuk.govphoto.ui.components
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -14,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.dhanuk.govphoto.R
 import com.dhanuk.govphoto.data.push.PushRepository
+import com.dhanuk.govphoto.data.push.isPostNotificationsPermissionGranted
 import com.dhanuk.govphoto.ui.viewmodel.SettingsViewModel
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.delay
@@ -32,13 +37,16 @@ import kotlinx.coroutines.delay
  *    popup does not race the onboarding pager on first launch.
  *  - Waiting 3 seconds avoids a jarring popup the moment the user lands on
  *    Home, giving them time to see app content first.
+ *  - When the user taps "Allow", this composable launches the *real* Android
+ *    system permission dialog via [ActivityResultContracts.RequestPermission],
+ *    not OneSignal's internal request. The result is reflected in both the
+ *    OneSignal tags and the in-app Settings toggle state.
  *
  * Wrap your top-level content with this:
  *   FirstOpenNotificationPrompt(settingsViewModel) { NavHost(...) }
  *
  * Re-enabling notifications later (after the user denied here) is done via the
- * master Notifications Switch in SettingsScreen — tapping it ON calls
- * [PushRepository.promptForPermission] again.
+ * master Notifications Switch in SettingsScreen.
  */
 @Composable
 fun FirstOpenNotificationPrompt(
@@ -57,8 +65,19 @@ fun FirstOpenNotificationPrompt(
         }.getOrNull()
     }
 
-    val needsPrompt = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU
-    val eligible = needsPrompt && settings.onboardingComplete && !settings.notifPromptShown
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        pushRepository?.setNotificationEnabled(granted)
+        settingsViewModel.setNotificationsEnabled(granted)
+        settingsViewModel.setNotifPromptShown(true)
+    }
+
+    val needsPrompt = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+    val eligible = needsPrompt &&
+        !isPostNotificationsPermissionGranted(context) &&
+        settings.onboardingComplete &&
+        !settings.notifPromptShown
 
     var showPrompt by remember { mutableStateOf(false) }
 
@@ -75,11 +94,14 @@ fun FirstOpenNotificationPrompt(
     if (showPrompt) {
         NotificationRationaleDialog(
             onAllow = {
-                pushRepository?.promptForPermission(fallbackToSettings = true)
-                pushRepository?.setNotificationEnabled(true)
-                settingsViewModel.setNotificationsEnabled(true)
                 settingsViewModel.setNotifPromptShown(true)
                 showPrompt = false
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    pushRepository?.setNotificationEnabled(true)
+                    settingsViewModel.setNotificationsEnabled(true)
+                }
             },
             onDismiss = {
                 pushRepository?.setNotificationEnabled(false)
