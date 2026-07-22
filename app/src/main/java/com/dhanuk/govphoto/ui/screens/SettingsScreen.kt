@@ -135,17 +135,24 @@ fun SettingsScreen(
                     }
                 )
 
-                // Push notifications — lets users re-request permission from
-                // Settings if they dismissed the auto-prompt. OneSignal dashboard
-                // sends will only work once permission is granted and a real
-                // ONESIGNAL_APP_ID is configured in CI secrets.
-                SettingsItem(
-                    icon = Icons.Default.Notifications,
-                    title = stringResource(R.string.notifications),
-                    subtitle = stringResource(R.string.notifications_subtitle),
-                    onClick = {
-                        pushRepo?.promptForPermission(fallbackToSettings = true)
-                    }
+                // Push notifications — master toggle.
+                // ON  → calls promptForPermission (Android 13+) and flips all 3
+                //       category tags to "1" so OneSignal dashboard segment
+                //       includes this user.
+                // OFF → flips all 3 category tags to "0" so dashboard excludes
+                //       this user. OS-level permission is not revokable; the
+                //       tags are the gate.
+                // On Android < 13 the Switch is disabled (OS auto-grants
+                // notifications, so the toggle is meaningless).
+                NotificationsMasterToggle(
+                    enabled = settings.notificationsEnabled,
+                    onToggle = { newValue ->
+                        pushRepo?.setNotificationEnabled(newValue)
+                        viewModel.setNotificationsEnabled(newValue)
+                        if (newValue) {
+                            pushRepo?.promptForPermission(fallbackToSettings = true)
+                        }
+                    },
                 )
 
                 // Feedback (email to support)
@@ -471,12 +478,78 @@ Icon(
             )
         }
         if (onClick != null) {
-Icon(
+            Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = stringResource(R.string.cd_navigate_forward),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+    }
+}
+
+/**
+ * Master notifications toggle row with a Material3 [Switch].
+ *
+ * On Android 13+ (TIRAMISU): Switch reflects [enabled]; tapping ON triggers
+ * [PushRepository.promptForPermission] (and the master category toggle),
+ * tapping OFF disables all 3 category tags via [PushRepository.setNotificationEnabled].
+ * The OS-level permission itself is not revokable; tags are the gate.
+ *
+ * On Android < 13: notifications are auto-granted by the OS at install time,
+ * so the Switch is rendered disabled and the subtitle is replaced with a
+ * "Enabled by default on your Android version" hint to avoid confusion.
+ */
+@Composable
+private fun NotificationsMasterToggle(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
+    val preAndroid13 = android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU
+    val subtitle = if (preAndroid13) {
+        stringResource(R.string.notifications_subtitle_preal13)
+    } else if (enabled) {
+        stringResource(R.string.notifications_subtitle)
+    } else {
+        stringResource(R.string.notifications_off_subtitle)
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (!preAndroid13) Modifier.clickable { onToggle(!enabled) } else Modifier),
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Notifications,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.notifications),
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = enabled && !preAndroid13,
+                onCheckedChange = if (preAndroid13) null else onToggle,
+            )
         }
     }
 }

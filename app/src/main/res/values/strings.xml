@@ -286,6 +286,16 @@
     <string name="notifications">Notifications</string>
     <string name="notifications_subtitle">Tap to allow exam updates &amp; reminders</string>
 
+    <!-- First-open notification rationale popup (replaces the old notif_perm_*
+         gate strings — used by FirstOpenNotificationPrompt.kt).
+         Old notif_perm_* strings are kept above for any dormant code refs. -->
+    <string name="notif_rationale_title">Never miss an exam deadline</string>
+    <string name="notif_rationale_message">We\'ll notify you when new government exam applications open, deadlines approach, and important updates arrive. Tap Allow to enable notifications.</string>
+    <string name="notif_rationale_allow">Allow</string>
+    <string name="notif_rationale_not_now">Not now</string>
+    <string name="notifications_off_subtitle">Tap to allow exam deadline and update notifications</string>
+    <string name="notifications_subtitle_preal13">Enabled by default on your Android version</string>
+
     <!-- Localized UI strings (previously hardcoded) -->
     <string name="done">Done</string>
     <string name="cd_clear">Clear</string>

@@ -35,7 +35,8 @@ data class SettingsState(
     val releaseNotificationsEnabled: Boolean = true,
     val examDeadlineNotificationsEnabled: Boolean = false,
     val supportNotificationsEnabled: Boolean = true,
-    val notificationPermissionAsked: Boolean = false,
+    val notificationsEnabled: Boolean = true,
+    val notifPromptShown: Boolean = false,
 )
 
 @Singleton
@@ -56,7 +57,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val NOTIFY_RELEASE           = booleanPreferencesKey("notify_release")
         val NOTIFY_EXAM_DEADLINES    = booleanPreferencesKey("notify_exam_deadlines")
         val NOTIFY_SUPPORT_REPLIES   = booleanPreferencesKey("notify_support_replies")
-        val NOTIF_PERMISSION_ASKED   = booleanPreferencesKey("notif_permission_asked")
+        val NOTIFICATIONS_ENABLED    = booleanPreferencesKey("notifications_enabled")
+        val NOTIF_PROMPT_SHOWN       = booleanPreferencesKey("notif_prompt_shown")
+        // Legacy key kept only for one-time migration to NOTIF_PROMPT_SHOWN.
+        val LEGACY_NOTIF_PERMISSION_ASKED = booleanPreferencesKey("notif_permission_asked")
     }
 
     // Synchronous SharedPreferences shim for the locale cache so that
@@ -84,7 +88,13 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             releaseNotificationsEnabled = prefs[Keys.NOTIFY_RELEASE] ?: true,
             examDeadlineNotificationsEnabled = prefs[Keys.NOTIFY_EXAM_DEADLINES] ?: false,
             supportNotificationsEnabled = prefs[Keys.NOTIFY_SUPPORT_REPLIES] ?: true,
-            notificationPermissionAsked = prefs[Keys.NOTIF_PERMISSION_ASKED] ?: false,
+            notificationsEnabled = prefs[Keys.NOTIFICATIONS_ENABLED] ?: true,
+            notifPromptShown = prefs[Keys.NOTIF_PROMPT_SHOWN]
+                // One-time migration: existing installs that already saw the
+                // old NotificationPermissionGate (notif_permission_asked=true)
+                // are treated as having already been prompted by the new
+                // FirstOpenNotificationPrompt, so they don't see the popup again.
+                ?: (prefs[Keys.LEGACY_NOTIF_PERMISSION_ASKED] == true),
         )
     }
 
@@ -140,8 +150,12 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         context.dataStore.edit { it[key] = enabled }
     }
 
-    suspend fun setNotificationPermissionAsked(asked: Boolean) {
-        context.dataStore.edit { it[Keys.NOTIF_PERMISSION_ASKED] = asked }
+    suspend fun setNotifPromptShown(shown: Boolean) {
+        context.dataStore.edit { it[Keys.NOTIF_PROMPT_SHOWN] = shown }
+    }
+
+    suspend fun setNotificationsEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.NOTIFICATIONS_ENABLED] = enabled }
     }
 
     // Ad-free reward

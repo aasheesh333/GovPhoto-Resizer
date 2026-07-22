@@ -21,7 +21,7 @@ import com.dhanuk.govphoto.BuildConfig
 import com.dhanuk.govphoto.data.datastore.DarkModePref
 import com.dhanuk.govphoto.ui.navigation.GovPhotoNavHost
 import com.dhanuk.govphoto.ui.ads.AdEntryPoint
-import com.dhanuk.govphoto.ui.components.NotificationPermissionGate
+import com.dhanuk.govphoto.ui.components.FirstOpenNotificationPrompt
 import com.dhanuk.govphoto.ui.theme.GovPhotoTheme
 import com.dhanuk.govphoto.ui.theme.LocalAppLanguage
 import com.dhanuk.govphoto.ui.theme.LocalHighContrast
@@ -141,7 +141,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        NotificationPermissionGate(settingsViewModel = settingsViewModel) {
+                        FirstOpenNotificationPrompt(settingsViewModel = settingsViewModel) {
                             GovPhotoNavHost()
                         }
                     }

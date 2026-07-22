@@ -109,6 +109,27 @@ class PushRepository @Inject constructor(
     }
 
     /**
+     * Master notifications toggle. Sets all 3 per-category flags to |enabled|
+     * in one shot and refreshes all OneSignal tags accordingly.
+     *
+     * Used by the Notifications master Switch in SettingsScreen and by the
+     * FirstOpenNotificationPrompt popup's "Allow" / "Not now" buttons.
+     *
+     * Note: turning this OFF does not revoke OS-level notification permission
+     * (impossible on Android); instead, all 3 category tags are pushed as "0"
+     * to OneSignal so the dashboard segment won't include this user.
+     *
+     * Fire-and-forget; safe to call from any thread (UI or background).
+     */
+    fun setNotificationEnabled(enabled: Boolean) = scope.launch {
+        for (category in PushCategory.entries) {
+            store.setEnabled(category, enabled)
+            runCatching { OneSignal.User.addTag(category.storageKey, if (enabled) "1" else "0") }
+                .onFailure { Log.w(TAG, "addTag($category) failed", it) }
+        }
+    }
+
+    /**
      * Trigger the system notification-permission prompt via OneSignal.
      *
      * On Android 13+ this is required for any push notification to be delivered
