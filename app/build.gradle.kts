@@ -11,14 +11,14 @@ apply(from = "secrets.gradle.kts")
 
 android {
     namespace = "com.dhanuk.govphoto"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.dhanuk.govphoto"
         minSdk = 24
-        targetSdk = 35
-        versionCode = 2
-        versionName = "1.1.0"
+        targetSdk = 36
+        versionCode = 3
+        versionName = "1.2.0"
         buildConfigField("String", "PRIVACY_URL", "\"${project.findProperty("PRIVACY_URL") ?: "https://dhanuk.page.gd/govphoto-resizer/privacy.html"}\"")
         buildConfigField("String", "TERMS_URL", "\"${project.findProperty("TERMS_URL") ?: "https://dhanuk.page.gd/govphoto-resizer/terms.html"}\"")
         buildConfigField("String", "CONTACT_URL", "\"${project.findProperty("CONTACT_URL") ?: "https://dhanuk.page.gd/govphoto-resizer/contact.html"}\"")
@@ -192,7 +192,7 @@ dependencies {
 
     // OneSignal — keep within the v5.1.x stable line; latest patch fixes several
     // FCM token-registration and permission-handling issues.
-    implementation("com.onesignal:OneSignal:5.1.51")
+    implementation("com.onesignal:OneSignal:5.1.38")
 
     // Splash Screen API
     implementation("androidx.core:core-splashscreen:1.0.1")
