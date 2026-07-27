@@ -26,7 +26,7 @@ set_prop() {
   if grep -qE "^${key}=" "$SP"; then
     # Replace existing (portable sed: use temp file to avoid -i platform differences).
     # The `|` delimiter is safe for known secret values: URLs cannot contain `|`
-    # unencoded; AdMob/RevenueCat/OneSignal keys are strictly alphanumeric+dash.
+    # unencoded; AdMob/OneSignal keys are strictly alphanumeric+dash.
     # If a future secret could legally contain `|`, switch to awk before adding it.
     sed -E "s|^${key}=.*|${key}=${val}|" "$SP" > "$SP.tmp" && mv "$SP.tmp" "$SP"
   else
@@ -43,7 +43,6 @@ set_prop() {
 [ -n "${ADMOB_BANNER_UNIT:-}" ]      && set_prop ADMOB_BANNER_UNIT "$ADMOB_BANNER_UNIT"
 [ -n "${ADMOB_INTERSTITIAL_UNIT:-}" ] && set_prop ADMOB_INTERSTITIAL_UNIT "$ADMOB_INTERSTITIAL_UNIT"
 [ -n "${ADMOB_REWARDED_UNIT:-}" ]    && set_prop ADMOB_REWARDED_UNIT "$ADMOB_REWARDED_UNIT"
-[ -n "${REVENUECAT_API_KEY:-}" ]     && set_prop REVENUECAT_API_KEY "$REVENUECAT_API_KEY"
 [ -n "${ONESIGNAL_APP_ID:-}" ]       && set_prop ONESIGNAL_APP_ID "$ONESIGNAL_APP_ID"
 
 # Keystore signing (PR2)

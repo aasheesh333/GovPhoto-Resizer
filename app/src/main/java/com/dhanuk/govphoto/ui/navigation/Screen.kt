@@ -16,7 +16,6 @@ sealed class Screen(val route: String) {
     data object HelpArticle : Screen("help_article/{articleId}") {
         fun createRoute(articleId: String) = "help_article/$articleId"
     }
-    data object Paywall : Screen("paywall")
     data object Batch : Screen("batch")
     data object BatchResults : Screen("batch_results")
 }

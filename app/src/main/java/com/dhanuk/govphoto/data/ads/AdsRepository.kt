@@ -14,15 +14,16 @@ import javax.inject.Singleton
 
 /**
  * Holds ad-free state for the app. Composed of:
- *  - SubscriptionRepository.isPro (wired in Task 4 via isProProvider)
+ *  - adStateProvider.isPro (always false since RevenueCat was removed and the
+ *    app pivoted to ads-only; kept as aninterface field for future re-enablement)
  *  - adFreeUntilMs (24h ad-free reward; from SettingsRepository, Task 9 via adStateProvider)
  *  - forceNoAds (debug-only; sourced from AdStateProvider, bound to BuildConfig.DEBUG in AppModule)
  */
 interface AdStateProvider {
-    /** False when subscriptions have not been wired yet. */
+    /** Always false in the current ads-only build. */
     val isPro: Boolean
-    /** Reactive stream of the Pro state so AdsRepository updates immediately
-     *  after a purchase/restore without waiting for an explicit refresh(). */
+    /** Reactive stream of the Pro state so AdsRepository would pick up changes
+     *  immediately if Pro were ever re-enabled. Currently a constant false flow. */
     val isProFlow: StateFlow<Boolean>
     /** ms epoch; 0 if no reward active. */
     val adFreeUntilMs: Long
@@ -47,8 +48,8 @@ class AdsRepository @Inject constructor(
         }
     }
 
-    /** Re-read external state. Called by SubscriptionRepository after a purchase
-     *  completes and by SettingsRepository when adFreeUntilMs changes. */
+    /** Re-read external state. Called by SettingsRepository when adFreeUntilMs
+     *  changes (e.g. after a rewarded-ad reward is granted). */
     fun refresh() {
         val now = System.currentTimeMillis()
         _isAdFree.value =

@@ -7,9 +7,7 @@ import com.dhanuk.govphoto.data.ml.MlKitFaceDetectorClient
 import com.dhanuk.govphoto.data.ml.MlKitSegmenterClient
 import com.dhanuk.govphoto.data.ml.SegmenterClient
 import com.dhanuk.govphoto.data.datastore.SettingsRepository
-import com.dhanuk.govphoto.data.datastore.CachedIsProStore
 import com.dhanuk.govphoto.data.push.PushCategoryStore
-import com.dhanuk.govphoto.data.subscription.SubscriptionRepository
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dagger.Module
@@ -18,7 +16,6 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -40,21 +37,19 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideCachedIsProStore(repo: SettingsRepository): CachedIsProStore = repo
-
-    @Provides
-    @Singleton
     fun providePushCategoryStore(repo: SettingsRepository): PushCategoryStore = repo
 
     @Provides
     @Singleton
     fun provideAdStateProvider(
         @dagger.hilt.android.qualifiers.ApplicationContext ctx: android.content.Context,
-        subscriptionRepository: SubscriptionRepository,
     ): AdStateProvider =
         object : AdStateProvider {
-            override val isPro: Boolean get() = subscriptionRepository.isPro.value
-            override val isProFlow: StateFlow<Boolean> = subscriptionRepository.isPro
+            // RevenueCat was removed from the app (ads-only model). Pro state is
+            // hard-coded to false; the only ad-suppression paths now are the
+            // 24-hour rewarded-ad reward (adFreeUntilMs) and debug FORCE_NO_ADS.
+            override val isPro: Boolean get() = false
+            override val isProFlow = MutableStateFlow(false)
             override val adFreeUntilMs: Long get() {
                 return ctx.getSharedPreferences("govphoto_ad_free", android.content.Context.MODE_PRIVATE)
                     .getLong("ad_free_until_ms", 0L)

@@ -26,7 +26,6 @@ android {
         buildConfigField("String", "ADMOB_BANNER_UNIT", "\"${project.findProperty("ADMOB_BANNER_UNIT") ?: "ca-app-pub-3940256099942544/6300978111"}\"")
         buildConfigField("String", "ADMOB_INTERSTITIAL_UNIT", "\"${project.findProperty("ADMOB_INTERSTITIAL_UNIT") ?: "ca-app-pub-3940256099942544/1033173712"}\"")
         buildConfigField("String", "ADMOB_REWARDED_UNIT", "\"${project.findProperty("ADMOB_REWARDED_UNIT") ?: "ca-app-pub-3940256099942544/5224354917"}\"")
-        buildConfigField("String", "REVENUECAT_API_KEY", "\"${project.findProperty("REVENUECAT_API_KEY") ?: "test_reBLWKQuYoCcNnfaDmwjuQiGGCu"}\"")
         buildConfigField("String", "ONESIGNAL_APP_ID", "\"${project.findProperty("ONESIGNAL_APP_ID") ?: "test-onesignal-id"}\"")
 
         manifestPlaceholders["onesignal_app_id"] = project.findProperty("ONESIGNAL_APP_ID") ?: "test-onesignal-id"
@@ -185,10 +184,6 @@ dependencies {
     // AdMob via Google Play Services Ads + UMP
     implementation("com.google.android.gms:play-services-ads:23.3.0")
     implementation("com.google.android.ump:user-messaging-platform:3.0.0")
-
-    // RevenueCat
-    implementation("com.revenuecat.purchases:purchases:8.24.0")
-    implementation("com.revenuecat.purchases:purchases-ui:8.24.0")
 
     // OneSignal — keep within the v5.1.x stable line; latest patch fixes several
     // FCM token-registration and permission-handling issues.

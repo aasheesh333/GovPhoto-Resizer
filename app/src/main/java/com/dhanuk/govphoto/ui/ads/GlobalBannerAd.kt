@@ -14,7 +14,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
-import com.dhanuk.govphoto.GovPhotoAppEntryPoint
 import com.dhanuk.govphoto.data.ads.AdsManager
 import dagger.hilt.android.EntryPointAccessors
 
@@ -23,12 +22,14 @@ import dagger.hilt.android.EntryPointAccessors
  * it never scrolls with content.
  *
  * Behaviour:
- *  - Hidden for Pro users (watches SubscriptionRepository.isPro).
  *  - Not composed until an ad actually loads (no white gap when no ad).
  *  - Uses an adaptive banner so the ad width matches the screen exactly and
  *    its height is the ad's natural height, avoiding any empty border.
  *  - Uses the same shared AdView from AdsManager across the whole session.
  *  - Auto-refresh and failed-reload are handled by AdsManager on a timer.
+ *  - Ad-suppression for ad-free users (rewarded-ad 24h window, debug FORCE_NO_ADS)
+ *    is enforced inside AdsManager via AdsRepository.isAdFree; this composable
+ *    does not need to know about it.
  *
  * @param applyNavBarPadding Set to false when this banner is already above a
  *        bottom navigation bar or action surface that applies its own navigation
@@ -47,18 +48,8 @@ fun GlobalBannerAd(
         }.getOrNull()
     } ?: return
 
-    val subscriptionRepository = remember {
-        runCatching {
-            EntryPointAccessors.fromApplication(
-                context.applicationContext,
-                GovPhotoAppEntryPoint::class.java,
-            ).subscriptionRepository()
-        }.getOrNull()
-    }
-
     val bannerState by adsManager.bannerState.collectAsState()
-    val isPro by subscriptionRepository?.isPro?.collectAsState() ?: remember { androidx.compose.runtime.mutableStateOf(false) }
-    if (isPro || bannerState != AdsManager.BannerState.Loaded) return
+    if (bannerState != AdsManager.BannerState.Loaded) return
 
     val adView = adsManager.getBannerAdView() ?: return
 
