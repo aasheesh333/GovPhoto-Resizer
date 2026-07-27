@@ -121,7 +121,7 @@ android {
 
 dependencies {
     // Core Android
-    implementation("androidx.core:core-ktx:1.19.0")
+    implementation("androidx.core:core-ktx:1.18.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
     implementation("androidx.activity:activity-compose:1.13.0")
 
@@ -135,7 +135,7 @@ dependencies {
 
     // Navigation Compose
     implementation("androidx.navigation:navigation-compose:2.9.8")
-    implementation("androidx.hilt:hilt-navigation-compose:1.4.0")
+    implementation("androidx.hilt:hilt-navigation-compose:1.3.0")
 
     // Lifecycle & ViewModel
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
