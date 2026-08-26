@@ -164,8 +164,13 @@ dependencies {
     implementation("androidx.camera:camera-view:1.4.0")
 
     // ML Kit Face Detection
-    implementation("com.google.mlkit:face-detection:16.1.6")
-    implementation("com.google.mlkit:segmentation-selfie:16.0.0-beta4")
+    // ML Kit Face Detection (16.1.7 — ships 16 KB page-size-aligned native libs;
+    // required for Play acceptance since the Nov 1 2025 16 KB deadline)
+    implementation("com.google.mlkit:face-detection:16.1.7")
+
+    // ML Kit Selfie Segmentation (beta6 — pulls mediapipe-internal 17.0.0-beta10
+    // whose libxeno_native.so is 16 KB-aligned; beta4's was only 4 KB-aligned)
+    implementation("com.google.mlkit:segmentation-selfie:16.0.0-beta6")
 
     // Image Loading - Coil
     implementation("io.coil-kt:coil-compose:2.7.0")
