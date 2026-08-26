@@ -131,7 +131,7 @@ fun SettingsScreen(
                             putExtra(
                                 Intent.EXTRA_TEXT,
                                 "Check out GovPhoto Resizer — resize photos & signatures for any Indian exam form. " +
-                                "Play Store link: https://play.google.com/store/apps/details?id=${context.packageName.removeSuffix(".debug")}"
+                                "Search \"GovPhoto Resizer\" in your app store."
                             )
                         }
                         try {

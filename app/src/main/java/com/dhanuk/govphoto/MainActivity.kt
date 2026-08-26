@@ -155,6 +155,28 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun initializeMobileAds(){
+        // Cap served ad content BEFORE initializing the SDK so the very first
+        // banner/interstitial request is already filtered.
+        //
+        // OPPO rejected 1.4.0 with "Gambling appear on the landing page" — the
+        // reviewer screenshot shows a Vietnamese gacha-game install ad in the
+        // home-screen banner. Gambling & Betting / Social Casino Games / Get
+        // Rich Quick are already blocked account-wide in AdMob, so the ad was
+        // NOT from those categories: gacha/casino-styled game creatives are
+        // typically rated T, which means a T cap would still let them through.
+        //
+        // PicFix Pro hit the same rejection ("Risk App; Gambling Ads") and the
+        // cap that actually cleared OPPO review was G, so match that proven
+        // setting here rather than trading review risk for ad revenue — a
+        // rejected app earns nothing. This is per-app; the AdMob account
+        // rating stays at MA so other apps keep full inventory.
+        com.google.android.gms.ads.MobileAds.setRequestConfiguration(
+            com.google.android.gms.ads.RequestConfiguration.Builder()
+                .setMaxAdContentRating(
+                    com.google.android.gms.ads.RequestConfiguration.MAX_AD_CONTENT_RATING_G,
+                )
+                .build(),
+        )
         com.google.android.gms.ads.MobileAds.initialize(this)
         // Single consolidated AdMob config dump so a "why is my banner not
         // filling" investigation only needs `adb logcat | grep GovPhotoAd`.

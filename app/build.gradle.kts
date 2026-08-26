@@ -17,8 +17,8 @@ android {
         applicationId = "com.dhanuk.govphoto"
         minSdk = 24
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.4.0"
+        versionCode = 6
+        versionName = "1.4.1"
         buildConfigField("String", "PRIVACY_URL", "\"${project.findProperty("PRIVACY_URL") ?: "https://dhanuk.page.gd/govphoto-resizer/privacy.html"}\"")
         buildConfigField("String", "TERMS_URL", "\"${project.findProperty("TERMS_URL") ?: "https://dhanuk.page.gd/govphoto-resizer/terms.html"}\"")
         buildConfigField("String", "CONTACT_URL", "\"${project.findProperty("CONTACT_URL") ?: "https://dhanuk.page.gd/govphoto-resizer/contact.html"}\"")
